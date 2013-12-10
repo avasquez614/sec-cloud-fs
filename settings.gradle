@@ -1,1 +1,1 @@
-include "filesystem"
+include "filesystem", "secure-cloud-storage"
