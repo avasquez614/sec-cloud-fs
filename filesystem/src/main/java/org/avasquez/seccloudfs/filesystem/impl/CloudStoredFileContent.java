@@ -8,10 +8,11 @@ import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.BitSet;
+import java.util.Date;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
- * A file content that is stored securely in the cloud
+ * A file content that is stored securely in the cloud.
  *
  * @author avasquez
  */
@@ -19,15 +20,13 @@ public class CloudStoredFileContent implements FileContent {
 
     protected RandomAccessFile content;
     protected File file;
-    protected FileDao fileDao;
     protected SecureCloudStorage cloudStorage;
     protected ReadWriteLock readWriteLock;
 
-    public CloudStoredFileContent(RandomAccessFile content, File file, FileDao fileDao,
-                                  SecureCloudStorage cloudStorage, ReadWriteLock readWriteLock) {
+    public CloudStoredFileContent(RandomAccessFile content, File file, SecureCloudStorage cloudStorage,
+                                  ReadWriteLock readWriteLock) {
         this.content = content;
         this.file = file;
-        this.fileDao = fileDao;
         this.cloudStorage = cloudStorage;
         this.readWriteLock = readWriteLock;
     }
@@ -52,7 +51,7 @@ public class CloudStoredFileContent implements FileContent {
         try {
             content.write(bytes, offset, length);
 
-            updateModifiedChunks(offset, length);
+            updateMetadataOnWrite(offset, length);
         } finally {
             readWriteLock.writeLock().unlock();
         }
@@ -63,44 +62,40 @@ public class CloudStoredFileContent implements FileContent {
         content.close();
     }
 
-    protected BitSet getChunks(int offset, int length) {
+    protected BitSet getChunksToDownload(int offset, int length) {
         int endOffset = offset + length - 1;
         int startChunk = (int) (offset / file.getChunkSize());
         int endChunk = (int) (endOffset / file.getChunkSize());
-        int currentNumChunks = file.getAvailableChunks().size();
-        BitSet requiredChunks = new BitSet(currentNumChunks);
+        BitSet availableChunks = file.getAvailableChunks();
+        int currentNumChunks = availableChunks.size();
+        BitSet chunksToDownload = new BitSet(currentNumChunks);
+
+        if (endChunk >= currentNumChunks) {
+            endChunk = currentNumChunks - 1;
+        }
 
         for (int i = startChunk; i <= endChunk; i++) {
-            if (i < currentNumChunks) {
-                requiredChunks.set(i);
+            if (!availableChunks.get(i)) {
+                chunksToDownload.set(i);
             }
         }
 
-        return requiredChunks;
-    }
-
-    protected boolean areRequiredChunksAvailable(BitSet requiredChunks, BitSet availableChunks) {
-        availableChunks = (BitSet) availableChunks.clone();
-        availableChunks.and(requiredChunks);
-
-        return availableChunks.equals(requiredChunks);
+        return chunksToDownload;
     }
 
     protected void downloadRequiredChunks(int offset, int length) throws IOException {
-        BitSet requiredChunks = getChunks(offset, length);
-        BitSet availableChunks = file.getAvailableChunks();
+        BitSet chunksToDownload = getChunksToDownload(offset, length);
 
-        if (!areRequiredChunksAvailable(requiredChunks, availableChunks)) {
+        if (chunksToDownload.cardinality() > 0) {
             readWriteLock.writeLock().lock();
             try {
-                if (!areRequiredChunksAvailable(requiredChunks, availableChunks)) {
-                    for (int i = requiredChunks.nextSetBit(0); i >= 0; i = requiredChunks.nextSetBit(i + 1)) {
+                if (chunksToDownload.cardinality() > 0) {
+                    for (int i = chunksToDownload.nextSetBit(0); i >= 0; i = chunksToDownload.nextSetBit(i + 1)) {
                         content.seek(i * file.getChunkSize());
 
                         cloudStorage.loadData(file.getChunkId(i), content);
 
                         file.getAvailableChunks().set(i);
-                        fileDao.save(file);
                     }
                 }
             } finally {
@@ -109,16 +104,13 @@ public class CloudStoredFileContent implements FileContent {
         }
     }
 
-    protected void updateModifiedChunks(int offset, int length) {
-        BitSet modifiedChunks = getChunks(offset, length);
-        BitSet newAvailableChunks = (BitSet) file.getAvailableChunks().clone();
+    protected void updateMetadataOnWrite(int offset, int length) throws IOException {
+        int endOffset = offset + length - 1;
+        int startChunk = (int) (offset / file.getChunkSize());
+        int endChunk = (int) (endOffset / file.getChunkSize());
 
-        newAvailableChunks.or(modifiedChunks);
-
-        if (!newAvailableChunks.equals(file.getAvailableChunks())) {
-            file.setAvailableChunks(newAvailableChunks);
-            fileDao.save(file);
-        }
+        file.getAvailableChunks().set(startChunk, endChunk + 1);
+        file.setSize(content.length());
     }
 
 }
