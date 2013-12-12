@@ -1,11 +1,11 @@
-package org.avasquez.seccloudfs.filesystem.dao;
+package org.avasquez.seccloudfs.filesystem.db.dao;
 
-import org.avasquez.seccloudfs.filesystem.File;
+import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 
 /**
- * Data Access Object for {@link org.avasquez.seccloudfs.filesystem.File}s.
+ * Data Access Object for {@link org.avasquez.seccloudfs.filesystem.db.model.FileMetadata}s.
  */
-public interface FileDao {
+public interface FileMetadataDao {
 
     /**
      * Searches the file for the specified ID in the database.
@@ -14,14 +14,14 @@ public interface FileDao {
      *
      * @return the file, or null if not found
      */
-    File findById(String id);
+    FileMetadata findById(String id);
 
     /**
      * Saves the file in the database.
      *
      * @param file  the file to save
      */
-    void save(File file);
+    void save(FileMetadata file);
 
     /**
      * Deletes the file for the specified ID in the database.
