@@ -4,43 +4,62 @@ import java.util.BitSet;
 import java.util.Date;
 
 /**
- * The file metadata.
+ * The cloud file metadata.
  *
  * @author avasquez
  */
 public class FileMetadata {
 
-    private String id;
     private String path;
+    private String parent;
+    private boolean directory;
     private long size;
     private Date lastModified;
     private Date lastAccess;
+    private String contentId;
     private long chunkSize;
     private BitSet cachedChunks;
 
     /**
-     * Returns the file ID.
-     */
-    public String getId() {
-        return id;
-    }
-
-    /**
-     * Returns the file path.
+     * Returns the file's path in the virtual filesystem.
      */
     public String getPath() {
         return path;
     }
 
+    /**
+     * Sets the file's path in the virtual filesystem.
+     */
     public void setPath(String path) {
         this.path = path;
     }
 
     /**
-     * Sets the file ID.
+     * Returns the parent path.
      */
-    public void setId(String id) {
-        this.id = id;
+    public String getParent() {
+        return parent;
+    }
+
+    /**
+     * Sets the path of the parent directory.
+     */
+    public void setParent(String parent) {
+        this.parent = parent;
+    }
+
+    /**
+     * Returns true if the file is a directory, false otherwise.
+     */
+    public boolean isDirectory() {
+        return directory;
+    }
+
+    /**
+     * Sets whether the file is a directory or not.
+     */
+    public void setDirectory(boolean directory) {
+        this.directory = directory;
     }
 
     /**
@@ -86,6 +105,20 @@ public class FileMetadata {
     }
 
     /**
+     * Returns the ID of the file content used for caching and storage.
+     */
+    public String getContentId() {
+        return contentId;
+    }
+
+    /**
+     * Sets the ID of the file content used for caching and storage.
+     */
+    public void setContentId(String contentId) {
+        this.contentId = contentId;
+    }
+
+    /**
      * Returns the chunk size in bytes.
      */
     public long getChunkSize() {
@@ -95,15 +128,8 @@ public class FileMetadata {
     /**
      * Sets the chunk size for the file.
      */
-    public void getChunkSize(long chunkSize) {
+    public void setChunkSize(long chunkSize) {
         this.chunkSize = chunkSize;
-    }
-
-    /**
-     * Returns the ID for the specified chunk.
-     */
-    public String getChunkId(int chunkIdx) {
-        return getId() + "$" + chunkIdx;
     }
 
     /**
@@ -118,6 +144,15 @@ public class FileMetadata {
      */
     public void setCachedChunks(BitSet cachedChunks) {
         this.cachedChunks = cachedChunks;
+    }
+
+    /**
+     * Returns the storage name of the specified chunk.
+     *
+     * @param idx  the index of the chunk
+     */
+    public String getChunkName(int idx) {
+        return getContentId() + "$" + idx;
     }
 
 }

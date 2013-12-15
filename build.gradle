@@ -9,6 +9,9 @@ allprojects {
     }
 
     dependencies {
-        testCompile group: 'junit', name: 'junit', version: '4.11'
+        compile 'ch.qos.logback:logback-classic:1.0.13'
+        compile 'commons-lang:commons-lang:2.6'
+        compile 'commons-io:commons-io:2.3'
+        testCompile 'junit:junit:4.11'
     }
 }

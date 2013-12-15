@@ -5,7 +5,8 @@ import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.BitSet;
 import java.util.concurrent.locks.ReadWriteLock;
 
@@ -15,15 +16,15 @@ import java.util.concurrent.locks.ReadWriteLock;
  *
  * @author avasquez
  */
-public class CachedCloudFileContent implements FileContent {
+public class CloudFileContent implements FileContent {
 
-    protected RandomAccessFile content;
+    protected FileChannel content;
     protected FileMetadata metadata;
     protected SecureCloudStorage cloudStorage;
     protected ReadWriteLock readWriteLock;
 
-    public CachedCloudFileContent(RandomAccessFile content, FileMetadata metadata, SecureCloudStorage cloudStorage,
-                                  ReadWriteLock readWriteLock) {
+    public CloudFileContent(FileChannel content, FileMetadata metadata, SecureCloudStorage cloudStorage,
+                            ReadWriteLock readWriteLock) {
         this.content = content;
         this.metadata = metadata;
         this.cloudStorage = cloudStorage;
@@ -31,31 +32,28 @@ public class CachedCloudFileContent implements FileContent {
     }
 
     @Override
-    public int read(byte[] bytes, int position) throws IOException {
-        int length = bytes.length;
+    public int read(ByteBuffer buffer, int position) throws IOException {
+        int length = buffer.capacity();
 
-        downloadRequiredChunks(position, length);
+        downloadChunks(getChunksToDownload(position, length));
 
         readWriteLock.readLock().lock();
         try {
-            content.seek(position);
-
-            return content.read(bytes, position, length);
+            return content.read(buffer, position);
         } finally {
             readWriteLock.readLock().unlock();
         }
     }
 
     @Override
-    public void write(byte[] bytes, int position) throws IOException {
-        int length = bytes.length;
+    public void write(ByteBuffer buffer, int position) throws IOException {
+        int length = buffer.capacity();
 
-        downloadRequiredChunks(position, length);
+        downloadChunks(getChunksToDownload(position, length));
 
         readWriteLock.writeLock().lock();
         try {
-            content.seek(position);
-            content.write(bytes, position, length);
+            content.write(buffer, position);
 
             updateMetadataOnWrite(position, length);
         } finally {
@@ -89,17 +87,15 @@ public class CachedCloudFileContent implements FileContent {
         return chunksToDownload;
     }
 
-    protected void downloadRequiredChunks(int position, int length) throws IOException {
-        BitSet chunksToDownload = getChunksToDownload(position, length);
-
+    protected void downloadChunks(BitSet chunksToDownload) throws IOException {
         if (chunksToDownload.cardinality() > 0) {
             readWriteLock.writeLock().lock();
             try {
                 if (chunksToDownload.cardinality() > 0) {
                     for (int i = chunksToDownload.nextSetBit(0); i >= 0; i = chunksToDownload.nextSetBit(i + 1)) {
-                        content.seek(i * metadata.getChunkSize());
+                        content.position(i * metadata.getChunkSize());
 
-                        cloudStorage.loadData(metadata.getChunkId(i), content);
+                        cloudStorage.loadData(metadata.getChunkName(i), content);
 
                         metadata.getCachedChunks().set(i);
                     }
@@ -116,7 +112,7 @@ public class CachedCloudFileContent implements FileContent {
         int endChunk = (int) (endPosition / metadata.getChunkSize());
 
         metadata.getCachedChunks().set(startChunk, endChunk + 1);
-        metadata.setSize(content.length());
+        metadata.setSize(content.size());
     }
 
 }

@@ -1,3 +1,10 @@
+repositories {
+    maven {
+        url "http://oss.sonatype.org"
+    }
+}
+
 dependencies {
     compile project(':secure-cloud-storage')
+    compile 'net.sf.ehcache:ehcache:2.7.4'
 }

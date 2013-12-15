@@ -2,31 +2,42 @@ package org.avasquez.seccloudfs.filesystem.db.dao;
 
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 
+import java.util.List;
+
 /**
  * Data Access Object for {@link org.avasquez.seccloudfs.filesystem.db.model.FileMetadata}s.
  */
 public interface FileMetadataDao {
 
     /**
-     * Searches the file for the specified ID in the database.
+     * Returns the file metadata with the specified path in the database.
      *
-     * @param id    the ID of the file to look for
+     * @param path  the path of the file metadata to look for
      *
-     * @return the file, or null if not found
+     * @return the file metadata, or null if not found
      */
-    FileMetadata findById(String id);
+    FileMetadata findByPath(String path);
 
     /**
-     * Saves the file in the database.
+     * Returns the children metadata of the directory specified by the path.
      *
-     * @param file  the file to save
+     * @param path  the path of the directory
+     *
+     * @return the children metadata, or null if directory metadata not found
      */
-    void save(FileMetadata file);
+    List<FileMetadata> findChildren(String path);
 
     /**
-     * Deletes the file for the specified ID in the database.
+     * Saves the file metadata in the database.
      *
-     * @param id    the ID of the file to delete
+     * @param metadata  the file metadata to save
+     */
+    void save(FileMetadata metadata);
+
+    /**
+     * Deletes the file metadata for the specified ID in the database.
+     *
+     * @param id    the ID of the file metadata to delete
      */
     void delete(String id);
 
