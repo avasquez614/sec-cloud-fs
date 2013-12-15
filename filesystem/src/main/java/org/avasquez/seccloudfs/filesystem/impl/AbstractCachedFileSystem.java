@@ -2,10 +2,7 @@ package org.avasquez.seccloudfs.filesystem.impl;
 
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheManager;
-import net.sf.ehcache.Ehcache;
-import net.sf.ehcache.Element;
 import net.sf.ehcache.config.CacheConfiguration;
-import net.sf.ehcache.event.CacheEventListenerAdapter;
 import org.avasquez.seccloudfs.filesystem.File;
 import org.avasquez.seccloudfs.filesystem.FileSystem;
 import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
@@ -15,8 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -66,7 +61,6 @@ public abstract class AbstractCachedFileSystem implements FileSystem {
         cacheManager.addCache(new Cache(config));
 
         cache = cacheManager.getCache(FILE_CACHE_NAME);
-        cache.getCacheEventNotificationService().registerListener(new DeleteCachedFileContentOnEvictionOrExpiration());
     }
 
     @Override
@@ -206,30 +200,6 @@ public abstract class AbstractCachedFileSystem implements FileSystem {
             }
 
             cache.remove(getFileKey(file.getPath()));
-        }
-    }
-
-    protected class DeleteCachedFileContentOnEvictionOrExpiration extends CacheEventListenerAdapter {
-
-        @Override
-        public void notifyElementExpired(Ehcache cache, Element element) {
-            deleteCachedFileContent(element);
-        }
-
-        @Override
-        public void notifyElementEvicted(Ehcache cache, Element element) {
-            deleteCachedFileContent(element);
-        }
-
-        private void deleteCachedFileContent(Element element) {
-            MetadataAwareFile file = (MetadataAwareFile) element.getObjectValue();
-            Path contentPath = fileContentCachePath.resolve(file.getMetadata().getContentId());
-
-            try {
-                Files.delete(contentPath);
-            } catch (IOException e) {
-                logger.error("Unable to delete cached content file", e);
-            }
         }
     }
 

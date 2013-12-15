@@ -28,11 +28,11 @@ public class CacheUtils {
     public static <T> T get(Cache cache, String key) {
         Element element;
         if ((element = cache.get(key)) != null) {
-            logger.debug("Object found in cache {} for key {}", cache.getName(), key);
+            logger.debug("Object found in cache '{}' for key '{}'", cache.getName(), key);
 
             return (T) element.getObjectValue();
         } else {
-            logger.debug("Object not found in cache {} for key {}", cache.getName(), key);
+            logger.debug("Object not found in cache '{}' for key '{}'", cache.getName(), key);
 
             return null;
         }
@@ -49,7 +49,7 @@ public class CacheUtils {
         if (value != null) {
             cache.put(new Element(key, value));
 
-            logger.debug("Object put in cache {} for key {}", cache.getName(), key);
+            logger.debug("Object put in cache '{}' for key '{}'", cache.getName(), key);
         }
     }
 
