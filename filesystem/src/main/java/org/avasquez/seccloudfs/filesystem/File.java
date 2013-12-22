@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.filesystem;
 
+import java.io.IOException;
 import java.util.Date;
 
 /**
@@ -25,7 +26,7 @@ public interface File {
     /**
      * Returns the parent directory.
      */
-    File getParentDir();
+    File getParentDir() throws IOException;
 
     /**
      * Returns true if the file is a directory.
@@ -35,16 +36,30 @@ public interface File {
     /**
      * Returns the content of the file.
      */
-    FileContent getContent();
+    FileContent getContent() throws IOException;
 
     /**
-     * Returns the date of the last access.
+     * Returns the date of the last access (read).
      */
     Date getLastAccess();
 
     /**
-     * Returns the date of the last modification.
+     * Returns the date of the last modification (write).
      */
     Date getLastModified();
+
+    /**
+     * Sets the date of the last access (read).
+     *
+     * @param date  the last access date
+     */
+    void setLastAccess(Date date);
+
+    /**
+     * Sets the date of the last modification (write).
+     *
+     * @param date  the last modification date
+     */
+    void setLastModified(Date date);
 
 }

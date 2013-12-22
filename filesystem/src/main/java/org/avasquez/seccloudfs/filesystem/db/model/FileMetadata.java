@@ -4,21 +4,21 @@ import java.util.BitSet;
 import java.util.Date;
 
 /**
- * The cloud file metadata.
+ * The cloud file metadata. All fields are volatile since instances are normally used by multiple threads.
  *
  * @author avasquez
  */
 public class FileMetadata {
 
-    private String path;
-    private String parent;
-    private boolean directory;
-    private long size;
-    private Date lastModified;
-    private Date lastAccess;
-    private String contentId;
-    private long chunkSize;
-    private BitSet cachedChunks;
+    private volatile String path;
+    private volatile String parent;
+    private volatile boolean directory;
+    private volatile long size;
+    private volatile Date lastModified;
+    private volatile Date lastAccess;
+    private volatile String contentId;
+    private volatile long chunkSize;
+    private volatile BitSet cachedChunks;
 
     /**
      * Returns the file's path in the virtual filesystem.
@@ -133,7 +133,8 @@ public class FileMetadata {
     }
 
     /**
-     * Returns the bit mask of chunks of the file that are cached locally.
+     * Returns the bit mask of chunks of the file that are cached locally. Access to this {@link java.util.BitSet}
+     * should be synchronized.
      */
     public BitSet getCachedChunks() {
         return cachedChunks;
@@ -153,6 +154,17 @@ public class FileMetadata {
      */
     public String getChunkName(int idx) {
         return getContentId() + "$" + idx;
+    }
+
+    /**
+     * Returns the chunk that corresponds to a given position.
+     *
+     * @param position  the position
+     *
+     * @return  the chunk
+     */
+    public int getChunkForPosition(long position) {
+        return (int) (position / chunkSize);
     }
 
 }

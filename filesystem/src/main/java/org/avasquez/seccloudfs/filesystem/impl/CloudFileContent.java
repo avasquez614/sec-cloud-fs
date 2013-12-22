@@ -8,57 +8,91 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.BitSet;
-import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * Content of a cloud file that's cached in the local filesystem and downloaded on demand (a chunk at a time,
- * depending on the chunk(s) that are need to be read from/written to).
+ * depending on the chunk(s) that are need to be read from/written to). Also, on file writes, new
+ * {@link org.avasquez.seccloudfs.filesystem.impl.FileUpdate} are created and added to the updates queue for
+ * processing.
  *
  * @author avasquez
  */
 public class CloudFileContent implements FileContent {
 
-    protected FileChannel content;
-    protected FileMetadata metadata;
-    protected SecureCloudStorage cloudStorage;
-    protected ReadWriteLock readWriteLock;
+    private FileMetadata metadata;
+    private FileChannel content;
+    private SecureCloudStorage cloudStorage;
+    private FileUploader fileUploader;
 
-    public CloudFileContent(FileChannel content, FileMetadata metadata, SecureCloudStorage cloudStorage,
-                            ReadWriteLock readWriteLock) {
-        this.content = content;
+    public CloudFileContent(FileMetadata metadata, FileChannel content, SecureCloudStorage cloudStorage,
+                            FileUploader fileUploader) {
         this.metadata = metadata;
+        this.content = content;
         this.cloudStorage = cloudStorage;
-        this.readWriteLock = readWriteLock;
+        this.fileUploader = fileUploader;
     }
 
     @Override
-    public int read(ByteBuffer buffer, int position) throws IOException {
-        int length = buffer.capacity();
-
-        downloadChunks(getChunksToDownload(position, length));
-
-        readWriteLock.readLock().lock();
-        try {
-            return content.read(buffer, position);
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
+    public long getPosition() throws IOException {
+        return content.position();
     }
 
     @Override
-    public void write(ByteBuffer buffer, int position) throws IOException {
-        int length = buffer.capacity();
+    public void setPosition(long position) throws IOException {
+        content.position(position);
+    }
+
+    @Override
+    public int read(ByteBuffer dst) throws IOException {
+        int length = dst.capacity();
+        long position = getPosition();
 
         downloadChunks(getChunksToDownload(position, length));
 
-        readWriteLock.writeLock().lock();
-        try {
-            content.write(buffer, position);
+        return content.read(dst, position);
+    }
 
-            updateMetadataOnWrite(position, length);
-        } finally {
-            readWriteLock.writeLock().unlock();
-        }
+    @Override
+    public int write(ByteBuffer src) throws IOException {
+        int length = src.capacity();
+        long position = getPosition();
+
+        downloadChunks(getChunksToDownload(position, length));
+
+        int written = content.write(src);
+        updateMetadataOnWrite(position, written);
+
+        fileUploader.upload(new FileUpdate(position, written));
+
+        return written;
+    }
+
+    @Override
+    public int read(ByteBuffer dst, long position) throws IOException {
+        int length = dst.capacity();
+
+        downloadChunks(getChunksToDownload(position, length));
+
+        return content.read(dst, position);
+    }
+
+    @Override
+    public int write(ByteBuffer src, long position) throws IOException {
+        int length = src.capacity();
+
+        downloadChunks(getChunksToDownload(position, length));
+
+        int written = content.write(src, position);
+        updateMetadataOnWrite(position, written);
+
+        fileUploader.upload(new FileUpdate(position, written));
+
+        return written;
+    }
+
+    @Override
+    public boolean isOpen() {
+        return content.isOpen();
     }
 
     @Override
@@ -66,10 +100,10 @@ public class CloudFileContent implements FileContent {
         content.close();
     }
 
-    protected BitSet getChunksToDownload(int position, int length) {
-        int endPosition = position + length - 1;
-        int startChunk = (int) (position / metadata.getChunkSize());
-        int endChunk = (int) (endPosition / metadata.getChunkSize());
+    protected BitSet getChunksToDownload(long position, int length) {
+        long endPosition = position + length - 1;
+        int startChunk = metadata.getChunkForPosition(position);
+        int endChunk = metadata.getChunkForPosition(endPosition);
         BitSet availableChunks = metadata.getCachedChunks();
         int currentNumChunks = availableChunks.size();
         BitSet chunksToDownload = new BitSet(currentNumChunks);
@@ -89,27 +123,20 @@ public class CloudFileContent implements FileContent {
 
     protected void downloadChunks(BitSet chunksToDownload) throws IOException {
         if (chunksToDownload.cardinality() > 0) {
-            readWriteLock.writeLock().lock();
-            try {
-                if (chunksToDownload.cardinality() > 0) {
-                    for (int i = chunksToDownload.nextSetBit(0); i >= 0; i = chunksToDownload.nextSetBit(i + 1)) {
-                        content.position(i * metadata.getChunkSize());
+            for (int i = chunksToDownload.nextSetBit(0); i >= 0; i = chunksToDownload.nextSetBit(i + 1)) {
+                content.position(i * metadata.getChunkSize());
 
-                        cloudStorage.loadData(metadata.getChunkName(i), content);
+                cloudStorage.loadData(metadata.getChunkName(i), content);
 
-                        metadata.getCachedChunks().set(i);
-                    }
-                }
-            } finally {
-                readWriteLock.writeLock().unlock();
+                metadata.getCachedChunks().set(i);
             }
         }
     }
 
-    protected void updateMetadataOnWrite(int position, int length) throws IOException {
-        int endPosition = position + length - 1;
-        int startChunk = (int) (position / metadata.getChunkSize());
-        int endChunk = (int) (endPosition / metadata.getChunkSize());
+    protected void updateMetadataOnWrite(long position, int length) throws IOException {
+        long endPosition = position + length - 1;
+        int startChunk = metadata.getChunkForPosition(position);
+        int endChunk = metadata.getChunkForPosition(endPosition);
 
         metadata.getCachedChunks().set(startChunk, endChunk + 1);
         metadata.setSize(content.size());

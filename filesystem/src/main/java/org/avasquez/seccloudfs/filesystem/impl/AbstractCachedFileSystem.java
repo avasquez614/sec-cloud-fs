@@ -12,8 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -29,15 +27,10 @@ public abstract class AbstractCachedFileSystem implements FileSystem {
     public static final String FILE_CACHE_KEY_FORMAT =      "file[%s]";
     public static final String CHILDREN_CACHE_KEY_FORMAT =  "children[%s]";
 
-    private Path fileContentCachePath;
     private long maxFilesInCache;
     private long cachedFileExpirationTime;
     private CacheManager cacheManager;
     private Cache cache;
-
-    public void setFileContentCachePath(String fileContentCachePath) {
-        this.fileContentCachePath = Paths.get(fileContentCachePath);
-    }
 
     public void setMaxFilesInCache(long maxFilesInCache) {
         this.maxFilesInCache = maxFilesInCache;

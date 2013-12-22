@@ -1,11 +1,13 @@
 package org.avasquez.seccloudfs.filesystem.exception;
 
+import java.io.IOException;
+
 /**
  * Root exception for all related filesystem stuff.
  *
  * @author avasquez
  */
-public class FileSystemException extends Exception {
+public class FileSystemException extends IOException {
 
     public FileSystemException() {
     }
