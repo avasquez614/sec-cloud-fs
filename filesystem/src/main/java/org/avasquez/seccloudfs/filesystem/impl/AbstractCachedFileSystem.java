@@ -78,6 +78,11 @@ public abstract class AbstractCachedFileSystem implements FileSystem {
     }
 
     @Override
+    public boolean exists(String path) throws FileSystemException {
+        return getFile(path) != null;
+    }
+
+    @Override
     public File createFile(String path, boolean dir) throws FileSystemException {
         String key = getFileKey(path);
 

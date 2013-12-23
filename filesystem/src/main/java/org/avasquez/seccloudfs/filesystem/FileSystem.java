@@ -23,6 +23,17 @@ public interface FileSystem {
     File getFile(String path) throws FileSystemException;
 
     /**
+     * Returns true only if the file exists in the filesystem.
+     *
+     * @param path  the file's path
+     *
+     * @return true if the file exists.
+     *
+     * @throws FileSystemException if an error occurs
+     */
+    boolean exists(String path) throws FileSystemException;
+
+    /**
      * Create a new file or directory at the specified path.
      *
      * @param path  the path where to create the file
