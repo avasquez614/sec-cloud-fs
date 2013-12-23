@@ -20,29 +20,29 @@ import java.util.concurrent.locks.Lock;
  */
 public class SynchronizedFileContent implements FileContent {
 
-    private FileContent underlyingFileContent;
+    private FileContent underlyingContent;
     private Lock lock;
 
-    public SynchronizedFileContent(FileContent underlyingFileContent, Lock lock) {
-        this.underlyingFileContent = underlyingFileContent;
+    public SynchronizedFileContent(FileContent underlyingContent, Lock lock) {
+        this.underlyingContent = underlyingContent;
         this.lock = lock;
     }
 
     @Override
     public long getPosition() throws IOException {
-        return underlyingFileContent.getPosition();
+        return underlyingContent.getPosition();
     }
 
     @Override
     public void setPosition(long position) throws IOException {
-        underlyingFileContent.setPosition(position);
+        underlyingContent.setPosition(position);
     }
 
     @Override
     public int read(ByteBuffer dst) throws IOException {
         lock.lock();
         try {
-            return underlyingFileContent.read(dst);
+            return underlyingContent.read(dst);
         } finally {
             lock.unlock();
         }
@@ -52,7 +52,7 @@ public class SynchronizedFileContent implements FileContent {
     public int write(ByteBuffer src) throws IOException {
         lock.lock();
         try {
-            return underlyingFileContent.write(src);
+            return underlyingContent.write(src);
         } finally {
             lock.unlock();
         }
@@ -62,7 +62,7 @@ public class SynchronizedFileContent implements FileContent {
     public int read(ByteBuffer dst, long position) throws IOException {
         lock.lock();
         try {
-            return underlyingFileContent.read(dst, position);
+            return underlyingContent.read(dst, position);
         } finally {
             lock.unlock();
         }
@@ -72,7 +72,7 @@ public class SynchronizedFileContent implements FileContent {
     public int write(ByteBuffer src, long position) throws IOException {
         lock.lock();
         try {
-            return underlyingFileContent.read(src, position);
+            return underlyingContent.read(src, position);
         } finally {
             lock.unlock();
         }
@@ -80,12 +80,12 @@ public class SynchronizedFileContent implements FileContent {
 
     @Override
     public boolean isOpen() {
-        return underlyingFileContent.isOpen();
+        return underlyingContent.isOpen();
     }
 
     @Override
     public void close() throws IOException {
-        underlyingFileContent.close();
+        underlyingContent.close();
     }
 
 }

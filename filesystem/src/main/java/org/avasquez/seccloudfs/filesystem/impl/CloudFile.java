@@ -27,16 +27,19 @@ public class CloudFile implements MetadataAwareFile {
     private Path cachedFileContentRoot;
     private FileSystem fileSystem;
     private SecureCloudStorage cloudStorage;
+    private WriteLog writeLog;
 
     private FileUploader fileUploader;
     private Lock lock;
 
     public CloudFile(FileMetadata metadata, Path cachedFileContentRoot, FileSystem fileSystem,
-                     SecureCloudStorage cloudStorage, long nextUpdateTimeout, Executor fileUploaderExecutor) {
+                     SecureCloudStorage cloudStorage, WriteLog writeLog, long nextUpdateTimeout,
+                     Executor fileUploaderExecutor) {
         this.metadata = metadata;
         this.cachedFileContentRoot = cachedFileContentRoot;
         this.fileSystem = fileSystem;
         this.cloudStorage = cloudStorage;
+        this.writeLog = writeLog;
         this.fileUploader = new FileUploader(this, nextUpdateTimeout, cloudStorage, fileUploaderExecutor);
         this.lock = new ReentrantLock();
     }
@@ -85,6 +88,7 @@ public class CloudFile implements MetadataAwareFile {
 
         fileContent = new CloudFileContent(metadata, content, cloudStorage, fileUploader);
         fileContent = new SynchronizedFileContent(fileContent, lock);
+        fileContent = new LoggingFileContent(fileContent, metadata.getPath(), writeLog);
 
         return fileContent;
     }
