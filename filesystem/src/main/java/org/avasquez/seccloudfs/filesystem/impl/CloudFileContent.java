@@ -100,12 +100,17 @@ public class CloudFileContent implements FileContent {
         content.close();
     }
 
-    protected BitSet getChunksToDownload(long position, int length) {
+    @Override
+    public void downloadAll() throws IOException {
+        downloadChunks(getChunksToDownload(0, metadata.getSize()));
+    }
+
+    protected BitSet getChunksToDownload(long position, long length) {
         long endPosition = position + length - 1;
         int startChunk = metadata.getChunkForPosition(position);
         int endChunk = metadata.getChunkForPosition(endPosition);
-        BitSet availableChunks = metadata.getCachedChunks();
-        int currentNumChunks = availableChunks.size();
+        BitSet cachedChunks = metadata.getCachedChunks();
+        int currentNumChunks = cachedChunks.size();
         BitSet chunksToDownload = new BitSet(currentNumChunks);
 
         if (endChunk >= currentNumChunks) {
@@ -113,7 +118,7 @@ public class CloudFileContent implements FileContent {
         }
 
         for (int i = startChunk; i <= endChunk; i++) {
-            if (!availableChunks.get(i)) {
+            if (!cachedChunks.get(i)) {
                 chunksToDownload.set(i);
             }
         }
@@ -139,7 +144,9 @@ public class CloudFileContent implements FileContent {
         int endChunk = metadata.getChunkForPosition(endPosition);
 
         metadata.getCachedChunks().set(startChunk, endChunk + 1);
-        metadata.setSize(content.size());
+        if (endPosition >= metadata.getSize()) {
+            metadata.setSize(endPosition + 1);
+        }
     }
 
 }

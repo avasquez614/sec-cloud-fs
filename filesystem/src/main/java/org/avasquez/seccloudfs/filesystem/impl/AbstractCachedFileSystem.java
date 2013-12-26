@@ -141,21 +141,12 @@ public abstract class AbstractCachedFileSystem implements FileSystem {
 
     @Override
     public synchronized File copyFile(String srcPath, String dstPath) throws FileSystemException {
-        File copiedFile = doCopyFile(srcPath, dstPath);
-        updateCacheOnCreate(copiedFile);
-
-        return copiedFile;
+        return doCopyFile(srcPath, dstPath);
     }
 
     @Override
     public synchronized File moveFile(String srcPath, String dstPath) throws FileSystemException {
-        File newFile = doMoveFile(srcPath, dstPath);
-        updateCacheOnCreate(newFile);
-
-        File oldFile = CacheUtils.get(cache, getFileKey(srcPath));
-        updateCacheOnDelete(oldFile);
-
-        return newFile;
+        return doMoveFile(srcPath, dstPath);
     }
 
     protected abstract File doGetFile(String path) throws FileSystemException;

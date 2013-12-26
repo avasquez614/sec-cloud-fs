@@ -21,6 +21,29 @@ public class FileMetadata {
     private volatile BitSet cachedChunks;
 
     /**
+     * Default constructor.
+     */
+    public FileMetadata() {
+    }
+
+    /**
+     * Copy constructor.
+     *
+     * @param metadata  the metadata to copy.
+     */
+    public FileMetadata(FileMetadata metadata) {
+        this.path = metadata.path;
+        this.parent = metadata.parent;
+        this.directory = metadata.directory;
+        this.size = metadata.size;
+        this.lastModified = metadata.lastModified;
+        this.lastAccess = metadata.lastAccess;
+        this.contentId = metadata.contentId;
+        this.chunkSize = metadata.chunkSize;
+        this.cachedChunks = (BitSet) metadata.cachedChunks.clone();
+    }
+
+    /**
      * Returns the file's path in the virtual filesystem.
      */
     public String getPath() {

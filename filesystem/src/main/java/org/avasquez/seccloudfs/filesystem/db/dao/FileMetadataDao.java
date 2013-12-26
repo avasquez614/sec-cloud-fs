@@ -37,8 +37,8 @@ public interface FileMetadataDao {
     /**
      * Deletes the file metadata for the specified ID in the database.
      *
-     * @param id    the ID of the file metadata to delete
+     * @param path    the path the file metadata to delete
      */
-    void delete(String id);
+    void delete(String path);
 
 }

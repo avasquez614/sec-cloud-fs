@@ -9,7 +9,9 @@ import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.util.concurrent.Executor;
@@ -76,6 +78,10 @@ public class CloudFile implements MetadataAwareFile {
 
     @Override
     public FileContent getContent() throws IOException {
+        if (metadata.isDirectory()) {
+            throw new IOException(String.format("Can't return content for %s since it's a directory", this));
+        }
+
         Path path = cachedFileContentRoot.resolve(getPath());
         FileChannel content;
         FileContent fileContent;
@@ -83,7 +89,7 @@ public class CloudFile implements MetadataAwareFile {
         try {
             content = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
         } catch (IOException e) {
-            throw new IOException("Unable to open content at " + path.toAbsolutePath(), e);
+            throw new IOException(String.format("Unable to open content at %s", this), e);
         }
 
         fileContent = new CloudFileContent(metadata, content, cloudStorage, fileUploader);
@@ -91,6 +97,35 @@ public class CloudFile implements MetadataAwareFile {
         fileContent = new LoggingFileContent(fileContent, metadata.getPath(), writeLog);
 
         return fileContent;
+    }
+
+    @Override
+    public void copyContentTo(File file) throws IOException {
+        FileMetadata targetMetadata = ((MetadataAwareFile) file).getMetadata();
+
+        if (metadata.isDirectory()) {
+            throw new IOException(String.format("Can't copy content from %s since it's a directory", this));
+        }
+        if (targetMetadata.isDirectory()) {
+            throw new IOException(String.format("Can't copy content to %s since it's a directory", this));
+        }
+
+        FileContent content = getContent();
+        content.downloadAll();
+        content.close();
+
+        Path srcPath = cachedFileContentRoot.resolve(getPath());
+        Path targetPath = cachedFileContentRoot.resolve(file.getPath());
+
+        lock.lock();
+        try {
+            Files.copy(srcPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            targetMetadata.setCachedChunks(metadata.getCachedChunks());
+            targetMetadata.setSize(metadata.getSize());
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -111,6 +146,11 @@ public class CloudFile implements MetadataAwareFile {
     @Override
     public void setLastModified(Date date) {
         metadata.setLastModified(date);
+    }
+
+    @Override
+    public String toString() {
+        return metadata.getPath();
     }
 
 }

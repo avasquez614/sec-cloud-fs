@@ -79,6 +79,16 @@ public class SynchronizedFileContent implements FileContent {
     }
 
     @Override
+    public void downloadAll() throws IOException {
+        lock.lock();
+        try {
+            underlyingContent.downloadAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
     public boolean isOpen() {
         return underlyingContent.isOpen();
     }

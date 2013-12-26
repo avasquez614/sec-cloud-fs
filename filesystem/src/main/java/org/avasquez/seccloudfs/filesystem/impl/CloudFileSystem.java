@@ -4,10 +4,12 @@ import org.apache.commons.io.FilenameUtils;
 import org.avasquez.seccloudfs.filesystem.File;
 import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
+import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
 import org.avasquez.seccloudfs.filesystem.exception.FileSystemException;
 import org.avasquez.seccloudfs.filesystem.exception.PathNotFoundException;
 import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -20,6 +22,8 @@ import java.util.concurrent.Executor;
  * @author avasquez
  */
 public class CloudFileSystem extends AbstractCachedFileSystem {
+
+    public static final char FILE_SEPARATOR = '/';
 
     private FileMetadataDao fileMetadataDao;
     private long fileChunkSize;
@@ -70,24 +74,30 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
 
     @Override
     protected File doCreateFile(String path, boolean dir) throws FileSystemException {
+        if (exists(path)) {
+            throw new FileExistsException(String.format("File %s already exists", path));
+        }
+
         String parentPath = FilenameUtils.getFullPathNoEndSeparator(path);
         if (exists(parentPath)) {
             FileMetadata metadata = new FileMetadata();
             metadata.setPath(path);
             metadata.setParent(parentPath);
             metadata.setDirectory(dir);
-            metadata.setContentId(UUID.randomUUID().toString());
-            metadata.setChunkSize(fileChunkSize);
-            metadata.setCachedChunks(new BitSet());
-            metadata.setSize(0);
             metadata.setLastModified(new Date());
+            if (!dir) {
+                metadata.setContentId(UUID.randomUUID().toString());
+                metadata.setChunkSize(fileChunkSize);
+                metadata.setCachedChunks(new BitSet());
+                metadata.setSize(0);
+            }
 
             fileMetadataDao.save(metadata);
 
             return new CloudFile(metadata, cachedFileContentRoot, this, cloudStorage, writeLog, nextUpdateTimeout,
                     fileUploaderExecutor);
         } else {
-            throw new PathNotFoundException("Path '" + parentPath + "' not found");
+            throw new PathNotFoundException(String.format("Directory %s not found", parentPath));
         }
     }
 
@@ -108,17 +118,90 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
 
     @Override
     protected void doDeleteFile(String path) throws FileSystemException {
-
+        fileMetadataDao.delete(path);
     }
 
     @Override
     protected File doCopyFile(String srcPath, String dstPath) throws FileSystemException {
-        return null;
+        MetadataAwareFile srcFile = (MetadataAwareFile) getFile(srcPath);
+        if (srcFile == null) {
+            throw new PathNotFoundException(String.format("Path %s not found", srcPath));
+        }
+
+        MetadataAwareFile dstFile = (MetadataAwareFile) getFile(dstPath);
+        if (dstFile == null) {
+            dstFile = (MetadataAwareFile) createFile(dstPath, srcFile.isDirectory());
+        } else {
+            throw new FileExistsException(String.format("File %s already exists", dstFile));
+        }
+
+        FileMetadata srcMetadata = srcFile.getMetadata();
+        FileMetadata dstMetadata = dstFile.getMetadata();
+
+        dstMetadata.setLastAccess(srcMetadata.getLastAccess());
+        dstMetadata.setLastModified(srcMetadata.getLastModified());
+
+        if (srcFile.isDirectory()) {
+            if (!dstFile.isDirectory()) {
+                throw new FileSystemException(String.format("Can't copy %s to %s because the source is a directory " +
+                        "and the destination is not a directory", srcFile, dstFile));
+            }
+
+            // Copy children recursively
+            List<File> children = getChildren(srcFile.getPath());
+            if (children != null) {
+                for (File child : children) {
+                    copyFile(child.getPath(), dstPath + FILE_SEPARATOR + child.getName());
+                }
+            }
+        } else {
+            if (dstFile.isDirectory()) {
+                throw new FileSystemException(String.format("Can't copy %s to %s because the source is not a " +
+                        "directory and the destination is a directory", srcFile, dstFile));
+            }
+
+            try {
+                srcFile.copyContentTo(dstFile);
+            } catch (IOException e) {
+                throw new FileSystemException(String.format("Error while copying content from %s to %s", srcFile,
+                        dstFile));
+            }
+        }
+
+        fileMetadataDao.save(dstMetadata);
+
+        return dstFile;
     }
 
     @Override
     protected File doMoveFile(String srcPath, String dstPath) throws FileSystemException {
-        return null;
+        MetadataAwareFile srcFile = (MetadataAwareFile) getFile(srcPath);
+        if (srcFile == null) {
+            throw new PathNotFoundException(String.format("Path %s not found", srcPath));
+        }
+
+        MetadataAwareFile dstFile = (MetadataAwareFile) getFile(dstPath);
+        if (dstFile == null) {
+            dstFile = (MetadataAwareFile) createFile(dstPath, srcFile.isDirectory());
+        } else {
+            throw new FileExistsException(String.format("File %s already exists", dstFile));
+        }
+
+        FileMetadata srcMetadata = srcFile.getMetadata();
+        FileMetadata dstMetadata = dstFile.getMetadata();
+
+        dstMetadata.setContentId(srcMetadata.getContentId());
+        dstMetadata.setChunkSize(srcMetadata.getChunkSize());
+        dstMetadata.setCachedChunks(srcMetadata.getCachedChunks());
+        dstMetadata.setSize(srcMetadata.getSize());
+        dstMetadata.setLastAccess(srcMetadata.getLastAccess());
+        dstMetadata.setLastModified(srcMetadata.getLastModified());
+
+        fileMetadataDao.save(dstMetadata);
+
+        deleteFile(srcPath);
+
+        return dstFile;
     }
 
 }

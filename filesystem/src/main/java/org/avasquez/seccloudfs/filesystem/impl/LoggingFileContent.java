@@ -46,6 +46,11 @@ public class LoggingFileContent implements FileContent {
     }
 
     @Override
+    public void downloadAll() throws IOException {
+        underlyingContent.downloadAll();
+    }
+
+    @Override
     public int read(ByteBuffer dst) throws IOException {
         return underlyingContent.read(dst);
     }
