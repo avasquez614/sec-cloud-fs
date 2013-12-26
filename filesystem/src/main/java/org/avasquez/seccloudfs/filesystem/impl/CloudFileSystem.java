@@ -4,9 +4,10 @@ import org.apache.commons.io.FilenameUtils;
 import org.avasquez.seccloudfs.filesystem.File;
 import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
+import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
 import org.avasquez.seccloudfs.filesystem.exception.FileSystemException;
-import org.avasquez.seccloudfs.filesystem.exception.PathNotFoundException;
+import org.avasquez.seccloudfs.filesystem.exception.NotSuchFileException;
 import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
 
 import java.io.IOException;
@@ -97,12 +98,20 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
             return new CloudFile(metadata, cachedFileContentRoot, this, cloudStorage, writeLog, nextUpdateTimeout,
                     fileUploaderExecutor);
         } else {
-            throw new PathNotFoundException(String.format("Directory %s not found", parentPath));
+            throw new NotSuchFileException(String.format("Directory %s not found", parentPath));
         }
     }
 
     @Override
     protected List<File> doGetChildren(String path) throws FileSystemException {
+        MetadataAwareFile file = (MetadataAwareFile) getFile(path);
+        if (file == null) {
+            throw new NotSuchFileException(String.format("File %s not found", path));
+        }
+        if (!file.isDirectory()) {
+            throw new FileSystemException(String.format("File %s is not a directory", path));
+        }
+
         List<File> children = new ArrayList<File>();
         List<FileMetadata> childrenMetadata = fileMetadataDao.findChildren(path);
 
@@ -118,6 +127,18 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
 
     @Override
     protected void doDeleteFile(String path) throws FileSystemException {
+        MetadataAwareFile file = (MetadataAwareFile) getFile(path);
+        if (file == null) {
+            throw new NotSuchFileException(String.format("File %s not found", path));
+        }
+
+        if (file.isDirectory()) {
+            List<File> children = getChildren(path);
+            if (children != null && !children.isEmpty())  {
+                throw new DirectoryNotEmptyException(String.format("Directory %s is not empty", path));
+            }
+        }
+
         fileMetadataDao.delete(path);
     }
 
@@ -125,7 +146,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
     protected File doCopyFile(String srcPath, String dstPath) throws FileSystemException {
         MetadataAwareFile srcFile = (MetadataAwareFile) getFile(srcPath);
         if (srcFile == null) {
-            throw new PathNotFoundException(String.format("Path %s not found", srcPath));
+            throw new NotSuchFileException(String.format("File %s not found", srcPath));
         }
 
         MetadataAwareFile dstFile = (MetadataAwareFile) getFile(dstPath);
@@ -177,7 +198,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
     protected File doMoveFile(String srcPath, String dstPath) throws FileSystemException {
         MetadataAwareFile srcFile = (MetadataAwareFile) getFile(srcPath);
         if (srcFile == null) {
-            throw new PathNotFoundException(String.format("Path %s not found", srcPath));
+            throw new NotSuchFileException(String.format("File %s not found", srcPath));
         }
 
         MetadataAwareFile dstFile = (MetadataAwareFile) getFile(dstPath);
