@@ -13,15 +13,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Receives updates of a file to upload, resolves which chunks of the file where updated, and waits for the next
- * update for a certain period of time. If no new update is received during that period, it proceeds to upload the
- * updated chunks to the cloud through the {@link org.avasquez.seccloudfs.secure.storage.SecureCloudStorage}.
+ * Receives updates of a file, resolves which chunks of the file where updated, and waits for the next update for a
+ * certain period of time. If no new update is received during that period, it proceeds to save the updated chunks
+ * (or delete if the update is a delete) to the cloud through the
+ * {@link org.avasquez.seccloudfs.secure.storage.SecureCloudStorage}.
  *
  * @author avasquez
  */
-public class FileUploader implements Runnable {
+public class CloudStorageUpdater implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(FileUploader.class);
+    private static final Logger logger = LoggerFactory.getLogger(CloudStorageUpdater.class);
 
     private MetadataAwareFile file;
     private long nextUpdateTimeout;
@@ -30,20 +31,20 @@ public class FileUploader implements Runnable {
 
     private BlockingQueue<FileUpdate> fileUpdates;
     private BitSet updatedChunks;
+    private BitSet deletedChunks;
     private volatile boolean running;
 
-    public FileUploader(MetadataAwareFile file, long nextUpdateTimeout, SecureCloudStorage cloudStorage,
-                        Executor executor) {
+    public CloudStorageUpdater(MetadataAwareFile file, long nextUpdateTimeout, SecureCloudStorage cloudStorage,
+                               Executor executor) {
         this.file = file;
         this.nextUpdateTimeout = nextUpdateTimeout;
         this.cloudStorage = cloudStorage;
         this.executor = executor;
         this.fileUpdates = new LinkedBlockingQueue<FileUpdate>();
-        this.updatedChunks = new BitSet();
         this.running = false;
     }
 
-    public void upload(FileUpdate fileUpdate) {
+    public void addUpdate(FileUpdate fileUpdate) {
         fileUpdates.add(fileUpdate);
 
         if (!running) {
@@ -69,10 +70,22 @@ public class FileUploader implements Runnable {
                 int startChunk = metadata.getChunkForPosition(fileUpdate.getPosition());
                 int endChunk = metadata.getChunkForPosition(endPosition);
 
-                updatedChunks.set(startChunk, endChunk + 1);
+                if (fileUpdate.isDelete()) {
+                    if (deletedChunks == null) {
+                        deletedChunks = new BitSet();
+                    }
+
+                    deletedChunks.set(startChunk, endChunk + 1);
+                } else {
+                    if (updatedChunks == null) {
+                        updatedChunks = new BitSet();
+                    }
+
+                    updatedChunks.set(startChunk, endChunk + 1);
+                }
             }
 
-            if (updatedChunks.cardinality() > 0) {
+            if (updatedChunks != null && updatedChunks.cardinality() > 0) {
                 try {
                     FileContent content = file.getContent();
 
@@ -85,12 +98,22 @@ public class FileUploader implements Runnable {
                     logger.error("Error while trying to store data in cloud", e);
                 }
             }
+            if (deletedChunks != null && deletedChunks.cardinality() > 0) {
+                try {
+                    for (int i = deletedChunks.nextSetBit(0); i >= 0; i = deletedChunks.nextSetBit(i + 1)) {
+                        cloudStorage.deleteData(metadata.getChunkName(i));
+                    }
+                } catch (Exception e) {
+                    logger.error("Error while trying to delete data in cloud", e);
+                }
+            }
         } catch (InterruptedException e) {
-            logger.error("The thread was interrupted while waiting for new update of file '" + metadata.getPath() +
-                    "'", e);
+            logger.error(String.format("The thread was interrupted while waiting for new update of file %s", file), e);
         }
 
         running = false;
+        updatedChunks = null;
+        deletedChunks = null;
     }
 
 }

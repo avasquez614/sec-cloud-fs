@@ -3,6 +3,7 @@ package org.avasquez.seccloudfs.filesystem.impl;
 import org.apache.commons.io.FilenameUtils;
 import org.avasquez.seccloudfs.filesystem.File;
 import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
+import org.avasquez.seccloudfs.filesystem.db.dao.FileOperationDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
@@ -27,10 +28,10 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
     public static final char FILE_SEPARATOR = '/';
 
     private FileMetadataDao fileMetadataDao;
+    private FileOperationDao fileOperationDao;
     private long fileChunkSize;
     private Path cachedFileContentRoot;
     private SecureCloudStorage cloudStorage;
-    private WriteLog writeLog;
     private long nextUpdateTimeout;
     private Executor fileUploaderExecutor;
 
@@ -50,8 +51,8 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
         this.cloudStorage = cloudStorage;
     }
 
-    public void setWriteLog(WriteLog writeLog) {
-        this.writeLog = writeLog;
+    public void setFileOperationDao(FileOperationDao fileOperationDao) {
+        this.fileOperationDao = fileOperationDao;
     }
 
     public void setNextUpdateTimeout(long nextUpdateTimeout) {
@@ -66,7 +67,12 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
     protected File doGetFile(String path) throws FileSystemException {
         FileMetadata metadata = fileMetadataDao.findByPath(path);
         if (metadata != null) {
-            return new CloudFile(metadata, cachedFileContentRoot, this, cloudStorage, writeLog, nextUpdateTimeout,
+            return new CloudFile(metadata,
+                    cachedFileContentRoot,
+                    this,
+                    cloudStorage,
+                    fileOperationDao,
+                    nextUpdateTimeout,
                     fileUploaderExecutor);
         } else {
             return null;
@@ -93,9 +99,14 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
                 metadata.setSize(0);
             }
 
-            fileMetadataDao.save(metadata);
+            fileMetadataDao.insert(metadata);
 
-            return new CloudFile(metadata, cachedFileContentRoot, this, cloudStorage, writeLog, nextUpdateTimeout,
+            return new CloudFile(metadata,
+                    cachedFileContentRoot,
+                    this,
+                    cloudStorage,
+                    fileOperationDao,
+                    nextUpdateTimeout,
                     fileUploaderExecutor);
         } else {
             throw new NotSuchFileException(String.format("Directory %s not found", parentPath));
@@ -117,8 +128,13 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
 
         if (childrenMetadata != null) {
             for (FileMetadata metadata : childrenMetadata) {
-                children.add(new CloudFile(metadata, cachedFileContentRoot, this, cloudStorage, writeLog,
-                        nextUpdateTimeout, fileUploaderExecutor));
+                children.add(new CloudFile(metadata,
+                        cachedFileContentRoot,
+                        this,
+                        cloudStorage,
+                        fileOperationDao,
+                        nextUpdateTimeout,
+                        fileUploaderExecutor));
             }
         }
 
@@ -136,6 +152,12 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
             List<File> children = getChildren(path);
             if (children != null && !children.isEmpty())  {
                 throw new DirectoryNotEmptyException(String.format("Directory %s is not empty", path));
+            }
+        } else {
+            try {
+                file.getContent().delete();
+            } catch (IOException e) {
+                throw new FileSystemException(String.format("Error while deleting content of %s", path), e);
             }
         }
 
@@ -164,8 +186,8 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
 
         if (srcFile.isDirectory()) {
             if (!dstFile.isDirectory()) {
-                throw new FileSystemException(String.format("Can't copy %s to %s because the source is a directory " +
-                        "and the destination is not a directory", srcFile, dstFile));
+                throw new FileSystemException(String.format("Can't copy %s to %s because the source is a " +
+                        "directory and the destination is not a directory", srcFile, dstFile));
             }
 
             // Copy children recursively
@@ -177,19 +199,19 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
             }
         } else {
             if (dstFile.isDirectory()) {
-                throw new FileSystemException(String.format("Can't copy %s to %s because the source is not a " +
-                        "directory and the destination is a directory", srcFile, dstFile));
+                throw new FileSystemException(String.format("Can't copy %s to %s because the source is not " +
+                        "a directory and the destination is a directory", srcFile, dstFile));
             }
 
             try {
-                srcFile.copyContentTo(dstFile);
+                srcFile.getContent().copyTo(dstFile.getContent());
             } catch (IOException e) {
-                throw new FileSystemException(String.format("Error while copying content from %s to %s", srcFile,
-                        dstFile));
+                throw new FileSystemException(String.format("Error while copying content from %s to %s",
+                        srcFile, dstFile), e);
             }
         }
 
-        fileMetadataDao.save(dstMetadata);
+        fileMetadataDao.update(dstMetadata);
 
         return dstFile;
     }
@@ -218,7 +240,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
         dstMetadata.setLastAccess(srcMetadata.getLastAccess());
         dstMetadata.setLastModified(srcMetadata.getLastModified());
 
-        fileMetadataDao.save(dstMetadata);
+        fileMetadataDao.update(dstMetadata);
 
         deleteFile(srcPath);
 

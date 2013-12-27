@@ -45,9 +45,23 @@ public interface FileContent extends ReadableByteChannel, WritableByteChannel {
     int write(ByteBuffer src, long position) throws IOException;
 
     /**
-     * If the file is stored in the cloud, download it completely
+     * Copies this content to the specified content.
+     *
+     * @param target   the content to copy to
      */
-    void downloadAll() throws IOException;
+    void copyTo(FileContent target) throws IOException;
+
+    /**
+     * Truncates the content to the specified size.
+     *
+     * @param size  the size to truncate the content to.
+     */
+    void truncate(long size) throws IOException;
+
+    /**
+     * Deletes the entire content.
+     */
+    void delete() throws IOException;
 
     /**
      * Closes all resources used by the content.

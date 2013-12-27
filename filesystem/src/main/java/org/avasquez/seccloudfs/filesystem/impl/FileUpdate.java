@@ -8,19 +8,24 @@ package org.avasquez.seccloudfs.filesystem.impl;
 public class FileUpdate {
 
     private long position;
-    private int length;
+    private long length;
+    private boolean delete;
 
-    public FileUpdate(long position, int length) {
+    public FileUpdate(long position, long length, boolean delete) {
         this.position = position;
         this.length = length;
+        this.delete = delete;
     }
 
     public long getPosition() {
         return position;
     }
 
-    public int getLength() {
+    public long getLength() {
         return length;
     }
 
+    public boolean isDelete() {
+        return delete;
+    }
 }

@@ -7,6 +7,10 @@ import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.BitSet;
 
 /**
@@ -20,26 +24,27 @@ import java.util.BitSet;
 public class CloudFileContent implements FileContent {
 
     private FileMetadata metadata;
-    private FileChannel content;
+    private Path path;
     private SecureCloudStorage cloudStorage;
-    private FileUploader fileUploader;
+    private CloudStorageUpdater cloudStorageUpdater;
+    private FileChannel content;
 
-    public CloudFileContent(FileMetadata metadata, FileChannel content, SecureCloudStorage cloudStorage,
-                            FileUploader fileUploader) {
+    public CloudFileContent(FileMetadata metadata, Path path, SecureCloudStorage cloudStorage,
+                            CloudStorageUpdater cloudStorageUpdater) {
         this.metadata = metadata;
-        this.content = content;
+        this.path = path;
         this.cloudStorage = cloudStorage;
-        this.fileUploader = fileUploader;
+        this.cloudStorageUpdater = cloudStorageUpdater;
     }
 
     @Override
     public long getPosition() throws IOException {
-        return content.position();
+        return getContent().position();
     }
 
     @Override
     public void setPosition(long position) throws IOException {
-        content.position(position);
+        getContent().position(position);
     }
 
     @Override
@@ -49,7 +54,7 @@ public class CloudFileContent implements FileContent {
 
         downloadChunks(getChunksToDownload(position, length));
 
-        return content.read(dst, position);
+        return getContent().read(dst, position);
     }
 
     @Override
@@ -59,10 +64,11 @@ public class CloudFileContent implements FileContent {
 
         downloadChunks(getChunksToDownload(position, length));
 
-        int written = content.write(src);
+        int written = getContent().write(src);
+
         updateMetadataOnWrite(position, written);
 
-        fileUploader.upload(new FileUpdate(position, written));
+        cloudStorageUpdater.addUpdate(new FileUpdate(position, written, false));
 
         return written;
     }
@@ -73,7 +79,7 @@ public class CloudFileContent implements FileContent {
 
         downloadChunks(getChunksToDownload(position, length));
 
-        return content.read(dst, position);
+        return getContent().read(dst, position);
     }
 
     @Override
@@ -82,27 +88,80 @@ public class CloudFileContent implements FileContent {
 
         downloadChunks(getChunksToDownload(position, length));
 
-        int written = content.write(src, position);
+        int written = getContent().write(src, position);
+
         updateMetadataOnWrite(position, written);
 
-        fileUploader.upload(new FileUpdate(position, written));
+        cloudStorageUpdater.addUpdate(new FileUpdate(position, written, false));
 
         return written;
     }
 
     @Override
+    public void copyTo(FileContent target) throws IOException {
+        if (!(target instanceof CloudFileContent)) {
+            throw new IllegalArgumentException("Target argument should be an instance of " + CloudFileContent.class);
+        }
+
+        CloudFileContent targetContent = (CloudFileContent) target;
+
+        downloadAllChunks();
+
+        Files.copy(path, targetContent.path, StandardCopyOption.REPLACE_EXISTING);
+
+        updateMetadataOnCopy(targetContent.metadata);
+
+        targetContent.uploadAllChunks();
+    }
+
+    @Override
+    public void truncate(long size) throws IOException {
+        long oldSize = metadata.getSize();
+        if (oldSize > size) {
+            getContent().truncate(size);
+
+            updateMetadataOnTruncate(oldSize, size);
+
+            long position = size - 1;
+            long length = oldSize - size;
+
+            cloudStorageUpdater.addUpdate(new FileUpdate(position, length, true));
+        }
+    }
+
+    @Override
+    public void delete() throws IOException {
+        long size = metadata.getSize();
+
+        Files.deleteIfExists(path);
+
+        updateMetadataOnDelete();
+
+        cloudStorageUpdater.addUpdate(new FileUpdate(0, size, true));
+    }
+
+    @Override
     public boolean isOpen() {
-        return content.isOpen();
+        if (content != null) {
+            return content.isOpen();
+        } else {
+            return false;
+        }
     }
 
     @Override
     public void close() throws IOException {
-        content.close();
+        if (content != null) {
+            content.close();
+        }
     }
 
-    @Override
-    public void downloadAll() throws IOException {
-        downloadChunks(getChunksToDownload(0, metadata.getSize()));
+    protected FileChannel getContent() throws IOException {
+        if (content == null) {
+            content = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+        }
+
+        return content;
     }
 
     protected BitSet getChunksToDownload(long position, long length) {
@@ -138,7 +197,15 @@ public class CloudFileContent implements FileContent {
         }
     }
 
-    protected void updateMetadataOnWrite(long position, int length) throws IOException {
+    protected void downloadAllChunks() throws IOException {
+        downloadChunks(getChunksToDownload(0, metadata.getSize()));
+    }
+
+    protected void uploadAllChunks() throws IOException {
+        cloudStorageUpdater.addUpdate(new FileUpdate(0, metadata.getSize(), false));
+    }
+
+    protected void updateMetadataOnWrite(long position, int length) {
         long endPosition = position + length - 1;
         int startChunk = metadata.getChunkForPosition(position);
         int endChunk = metadata.getChunkForPosition(endPosition);
@@ -147,6 +214,29 @@ public class CloudFileContent implements FileContent {
         if (endPosition >= metadata.getSize()) {
             metadata.setSize(endPosition + 1);
         }
+    }
+
+    protected void updateMetadataOnCopy(FileMetadata targetMetadata) {
+        targetMetadata.setCachedChunks(metadata.getCachedChunks());
+        targetMetadata.setSize(metadata.getSize());
+    }
+
+    protected void updateMetadataOnTruncate(long oldSize, long newSize) {
+        int chunksToDelete = (int) (oldSize - newSize);
+        BitSet oldCachedChunks = metadata.getCachedChunks();
+        BitSet newCachedChunks = new BitSet(oldCachedChunks.size() - chunksToDelete);
+
+        for (int i = 0; i < newCachedChunks.size(); i++) {
+            newCachedChunks.set(i, oldCachedChunks.get(i));
+        }
+
+        metadata.setCachedChunks(newCachedChunks);
+        metadata.setSize(newSize);
+    }
+
+    protected void updateMetadataOnDelete() {
+        metadata.setCachedChunks(new BitSet());
+        metadata.setSize(0);
     }
 
 }

@@ -1,0 +1,2 @@
+* Add copy and move operations.
+* Check files on startup to see if file changes need to be uploaded to the cloud.

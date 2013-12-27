@@ -39,13 +39,6 @@ public interface File {
     FileContent getContent() throws IOException;
 
     /**
-     * Copies this file's content to the specified file.
-     *
-     * @param target  the file to copy to
-     */
-    void copyContentTo(File target) throws IOException;
-
-    /**
      * Returns the date of the last access (read).
      */
     Date getLastAccess();

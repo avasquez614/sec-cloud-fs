@@ -28,11 +28,18 @@ public interface FileMetadataDao {
     List<FileMetadata> findChildren(String path);
 
     /**
-     * Saves the file metadata in the database.
+     * Inserts the file metadata in the database.
      *
-     * @param metadata  the file metadata to save
+     * @param metadata  the metadata to insert
      */
-    void save(FileMetadata metadata);
+    void insert(FileMetadata metadata);
+
+    /**
+     * Updates the specified metadata in the database.
+     *
+     * @param metadata  the metadata to update
+     */
+    void update(FileMetadata metadata);
 
     /**
      * Deletes the file metadata for the specified ID in the database.

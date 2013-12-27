@@ -79,10 +79,30 @@ public class SynchronizedFileContent implements FileContent {
     }
 
     @Override
-    public void downloadAll() throws IOException {
+    public void copyTo(FileContent target) throws IOException {
         lock.lock();
         try {
-            underlyingContent.downloadAll();
+            underlyingContent.copyTo(target);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public void truncate(long size) throws IOException {
+        lock.lock();
+        try {
+            underlyingContent.truncate(size);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public void delete() throws IOException {
+        lock.lock();
+        try {
+            underlyingContent.delete();
         } finally {
             lock.unlock();
         }
