@@ -10,7 +10,7 @@ public interface Content {
 
     String getId();
 
-    long getSize();
+    long getSize() throws IOException;
 
     SeekableByteChannel getByteChannel() throws IOException;
 

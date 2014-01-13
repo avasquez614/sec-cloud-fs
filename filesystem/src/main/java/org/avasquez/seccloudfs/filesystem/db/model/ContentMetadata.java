@@ -13,8 +13,8 @@ public class ContentMetadata {
     @Id
     @ObjectId
     private String id;
-    private volatile long size;
-    private volatile Date lastUpload;
+    private volatile long uploadedSize;
+    private volatile Date lastUploadTime;
 
     public String getId() {
         return id;
@@ -24,20 +24,20 @@ public class ContentMetadata {
         this.id = id;
     }
 
-    public long getSize() {
-        return size;
+    public long getUploadedSize() {
+        return uploadedSize;
     }
 
-    public void setSize(long size) {
-        this.size = size;
+    public void setUploadedSize(long uploadedSize) {
+        this.uploadedSize = uploadedSize;
     }
 
-    public Date getLastUpload() {
-        return lastUpload;
+    public Date getLastUploadTime() {
+        return lastUploadTime;
     }
 
-    public void setLastUpload(Date lastUpload) {
-        this.lastUpload = lastUpload;
+    public void setLastUploadTime(Date lastUploadTime) {
+        this.lastUploadTime = lastUploadTime;
     }
 
 }

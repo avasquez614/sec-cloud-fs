@@ -39,8 +39,12 @@ public class CloudContent implements Content {
     }
 
     @Override
-    public long getSize() {
-        return metadata.getSize();
+    public long getSize() throws IOException {
+        if (Files.exists(path)) {
+            return Files.size(path);
+        } else {
+            return metadata.getUploadedSize();
+        }
     }
 
     @Override
@@ -69,8 +73,6 @@ public class CloudContent implements Content {
             try {
                 Files.copy(srcPath, path, StandardCopyOption.REPLACE_EXISTING);
 
-                metadata.setSize(Files.size(path));
-
                 uploader.notifyUpdate();
             } finally {
                 readWriteLock.writeLock().unlock();
@@ -81,17 +83,24 @@ public class CloudContent implements Content {
     }
 
     private void checkContentDownloaded() throws IOException {
-        if (getSize() > 0 && !Files.exists(path)) {
-            synchronized (this) {
-                if (!downloader.isContentDownloading()) {
-                    try {
-                        downloader.download();
-                    } catch (IOException e) {
-                        throw new IOException("Error while trying to download content '" + metadata.getId() + "'", e);
+        if (!Files.exists(path)) {
+            if (metadata.getLastUploadTime() != null) {
+                // File has not been downloaded, so download it
+                synchronized (this) {
+                    if (!downloader.isContentDownloading()) {
+                        try {
+                            downloader.download();
+                        } catch (IOException e) {
+                            throw new IOException("Error while trying to download content '" + metadata.getId() +
+                                    "'", e);
+                        }
+                    } else {
+                        downloader.awaitTillDownloadFinished();
                     }
-                } else {
-                    downloader.awaitTillDownloadFinished();
                 }
+            } else {
+                // It's new content, so create the file
+                Files.createFile(path);
             }
         }
     }
@@ -145,8 +154,6 @@ public class CloudContent implements Content {
             try {
                 int bytesWritten = fileChannel.write(src);
 
-                metadata.setSize(fileChannel.size());
-
                 uploader.notifyUpdate();
 
                 return bytesWritten;
@@ -160,8 +167,6 @@ public class CloudContent implements Content {
             readWriteLock.writeLock().lock();
             try {
                 fileChannel.truncate(size);
-
-                metadata.setSize(size);
 
                 uploader.notifyUpdate();
 

@@ -110,12 +110,19 @@ public class Uploader {
         }
 
         try {
+            metadata.setUploadedSize(Files.size(snapshotPath));
+            metadata.setLastUploadTime(new Date());
+        } catch (IOException e) {
+            logger.error("Unable to retrieve file size for '" + snapshotPath + "'", e);
+
+            return;
+        }
+
+        try {
             Files.delete(snapshotPath);
         } catch (IOException e) {
             logger.error("Unable to delete snapshot file '" + snapshotPath + "'", e);
         }
-
-        metadata.setLastUpload(new Date());
 
         metadataDao.update(metadata);
 
