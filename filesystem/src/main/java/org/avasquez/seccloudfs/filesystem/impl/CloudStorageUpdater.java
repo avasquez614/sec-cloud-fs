@@ -2,7 +2,7 @@ package org.avasquez.seccloudfs.filesystem.impl;
 
 import org.avasquez.seccloudfs.filesystem.FileContent;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
-import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
+import org.avasquez.seccloudfs.secure.storage.SecureCloudStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * Receives updates of a file, resolves which chunks of the file where updated, and waits for the next update for a
  * certain period of time. If no new update is received during that period, it proceeds to save the updated chunks
  * (or delete if the update is a delete) to the cloud through the
- * {@link org.avasquez.seccloudfs.secure.storage.SecureCloudStorage}.
+ * {@link org.avasquez.seccloudfs.secure.storage.SecureCloudStore}.
  *
  * @author avasquez
  */
@@ -26,7 +26,7 @@ public class CloudStorageUpdater implements Runnable {
 
     private MetadataAwareFile file;
     private long nextUpdateTimeout;
-    private SecureCloudStorage cloudStorage;
+    private SecureCloudStore cloudStorage;
     private Executor executor;
 
     private BlockingQueue<FileUpdate> fileUpdates;
@@ -34,7 +34,7 @@ public class CloudStorageUpdater implements Runnable {
     private BitSet deletedChunks;
     private volatile boolean running;
 
-    public CloudStorageUpdater(MetadataAwareFile file, long nextUpdateTimeout, SecureCloudStorage cloudStorage,
+    public CloudStorageUpdater(MetadataAwareFile file, long nextUpdateTimeout, SecureCloudStore cloudStorage,
                                Executor executor) {
         this.file = file;
         this.nextUpdateTimeout = nextUpdateTimeout;
@@ -92,7 +92,7 @@ public class CloudStorageUpdater implements Runnable {
                     for (int i = updatedChunks.nextSetBit(0); i >= 0; i = updatedChunks.nextSetBit(i + 1)) {
                         content.setPosition(i * chunkSize);
 
-                        cloudStorage.storeData(metadata.getChunkName(i), content, chunkSize);
+                        cloudStorage.upload(metadata.getChunkName(i), content, chunkSize);
                     }
                 } catch (Exception e) {
                     logger.error("Error while trying to store data in cloud", e);
@@ -101,7 +101,7 @@ public class CloudStorageUpdater implements Runnable {
             if (deletedChunks != null && deletedChunks.cardinality() > 0) {
                 try {
                     for (int i = deletedChunks.nextSetBit(0); i >= 0; i = deletedChunks.nextSetBit(i + 1)) {
-                        cloudStorage.deleteData(metadata.getChunkName(i));
+                        cloudStorage.delete(metadata.getChunkName(i));
                     }
                 } catch (Exception e) {
                     logger.error("Error while trying to delete data in cloud", e);

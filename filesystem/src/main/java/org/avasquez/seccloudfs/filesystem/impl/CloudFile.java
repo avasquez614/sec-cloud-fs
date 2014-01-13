@@ -6,7 +6,7 @@ import org.avasquez.seccloudfs.filesystem.FileContent;
 import org.avasquez.seccloudfs.filesystem.FileSystem;
 import org.avasquez.seccloudfs.filesystem.db.dao.FileOperationDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
-import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
+import org.avasquez.seccloudfs.secure.storage.SecureCloudStore;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -25,21 +25,21 @@ public class CloudFile implements MetadataAwareFile {
     private FileMetadata metadata;
     private Path cachedFileContentRoot;
     private FileSystem fileSystem;
-    private SecureCloudStorage cloudStorage;
+    private SecureCloudStore cloudStorage;
     private FileOperationDao fileOperationDao;
 
     private CloudStorageUpdater cloudStorageUpdater;
     private Lock lock;
 
     public CloudFile(FileMetadata metadata, Path cachedFileContentRoot, FileSystem fileSystem,
-                     SecureCloudStorage cloudStorage, FileOperationDao fileOperationDao, long nextUpdateTimeout,
-                     Executor fileUploaderExecutor) {
+                     SecureCloudStore cloudStorage, FileOperationDao fileOperationDao, long nextUpdateTimeout,
+                     Executor updaterExecutor) {
         this.metadata = metadata;
         this.cachedFileContentRoot = cachedFileContentRoot;
         this.fileSystem = fileSystem;
         this.cloudStorage = cloudStorage;
         this.fileOperationDao = fileOperationDao;
-        this.cloudStorageUpdater = new CloudStorageUpdater(this, nextUpdateTimeout, cloudStorage, fileUploaderExecutor);
+        this.cloudStorageUpdater = new CloudStorageUpdater(this, nextUpdateTimeout, cloudStorage, updaterExecutor);
         this.lock = new ReentrantLock();
     }
 
@@ -81,7 +81,6 @@ public class CloudFile implements MetadataAwareFile {
 
         FileContent content = new CloudFileContent(metadata, getContentPath(), cloudStorage, cloudStorageUpdater);
         content = new SynchronizedFileContent(content, lock);
-        content = new OperationLoggingFileContent(content, metadata.getPath(), fileOperationDao);
 
         return content;
     }

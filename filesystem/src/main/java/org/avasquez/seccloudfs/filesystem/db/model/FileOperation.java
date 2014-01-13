@@ -1,25 +1,29 @@
 package org.avasquez.seccloudfs.filesystem.db.model;
 
-import java.util.Date;
-
 /**
  * Represents a file operation.
  *
  * @author avasquez
  */
-public class FileOperation {
+public abstract class FileOperation {
 
     public enum Type {
         WRITE,
         TRUNCATE,
-        DELETE;
+        DELETE,
+        COPY,
+        MOVE;
     }
 
     protected String id;
     protected String path;
     protected Type type;
-    protected Date beginTime;
-    protected Date endTime;
+    protected boolean committed;
+
+    protected FileOperation(Type type) {
+        this.type = type;
+        this.committed = false;
+    }
 
     public String getId() {
         return id;
@@ -41,24 +45,12 @@ public class FileOperation {
         return type;
     }
 
-    public void setType(Type type) {
-        this.type = type;
+    public boolean isCommitted() {
+        return committed;
     }
 
-    public Date getBeginTime() {
-        return beginTime;
-    }
-
-    public void setBeginTime(Date beginTime) {
-        this.beginTime = beginTime;
-    }
-
-    public Date getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(Date endTime) {
-        this.endTime = endTime;
+    public void setCommitted(boolean committed) {
+        this.committed = committed;
     }
 
 }

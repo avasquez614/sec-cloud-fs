@@ -11,12 +11,7 @@ public class WriteOperation extends FileOperation {
     protected long length;
 
     public WriteOperation() {
-        type = Type.WRITE;
-    }
-
-    @Override
-    public void setType(Type type) {
-        throw new UnsupportedOperationException();
+        super(Type.WRITE);
     }
 
     public long getPosition() {

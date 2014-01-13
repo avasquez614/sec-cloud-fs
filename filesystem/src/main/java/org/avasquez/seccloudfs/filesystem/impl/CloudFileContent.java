@@ -2,7 +2,7 @@ package org.avasquez.seccloudfs.filesystem.impl;
 
 import org.avasquez.seccloudfs.filesystem.FileContent;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
-import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
+import org.avasquez.seccloudfs.secure.storage.SecureCloudStore;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,11 +25,11 @@ public class CloudFileContent implements FileContent {
 
     private FileMetadata metadata;
     private Path path;
-    private SecureCloudStorage cloudStorage;
+    private SecureCloudStore cloudStorage;
     private CloudStorageUpdater cloudStorageUpdater;
     private FileChannel content;
 
-    public CloudFileContent(FileMetadata metadata, Path path, SecureCloudStorage cloudStorage,
+    public CloudFileContent(FileMetadata metadata, Path path, SecureCloudStore cloudStorage,
                             CloudStorageUpdater cloudStorageUpdater) {
         this.metadata = metadata;
         this.path = path;
@@ -66,7 +66,7 @@ public class CloudFileContent implements FileContent {
 
         int written = getContent().write(src);
 
-        updateMetadataOnWrite(position, written);
+        updateFileMetadataOnWrite(position, written);
 
         cloudStorageUpdater.addUpdate(new FileUpdate(position, written, false));
 
@@ -90,7 +90,7 @@ public class CloudFileContent implements FileContent {
 
         int written = getContent().write(src, position);
 
-        updateMetadataOnWrite(position, written);
+        updateFileMetadataOnWrite(position, written);
 
         cloudStorageUpdater.addUpdate(new FileUpdate(position, written, false));
 
@@ -109,7 +109,7 @@ public class CloudFileContent implements FileContent {
 
         Files.copy(path, targetContent.path, StandardCopyOption.REPLACE_EXISTING);
 
-        updateMetadataOnCopy(targetContent.metadata);
+        updateFileMetadataOnCopy(targetContent.metadata);
 
         targetContent.uploadAllChunks();
     }
@@ -120,7 +120,7 @@ public class CloudFileContent implements FileContent {
         if (oldSize > size) {
             getContent().truncate(size);
 
-            updateMetadataOnTruncate(oldSize, size);
+            updateFileMetadataOnTruncate(oldSize, size);
 
             long position = size - 1;
             long length = oldSize - size;
@@ -135,7 +135,7 @@ public class CloudFileContent implements FileContent {
 
         Files.deleteIfExists(path);
 
-        updateMetadataOnDelete();
+        updateFileMetadataOnDelete();
 
         cloudStorageUpdater.addUpdate(new FileUpdate(0, size, true));
     }
@@ -190,7 +190,7 @@ public class CloudFileContent implements FileContent {
             for (int i = chunksToDownload.nextSetBit(0); i >= 0; i = chunksToDownload.nextSetBit(i + 1)) {
                 content.position(i * metadata.getChunkSize());
 
-                cloudStorage.loadData(metadata.getChunkName(i), content);
+                cloudStorage.download(metadata.getChunkName(i), content);
 
                 metadata.getCachedChunks().set(i);
             }
@@ -205,7 +205,7 @@ public class CloudFileContent implements FileContent {
         cloudStorageUpdater.addUpdate(new FileUpdate(0, metadata.getSize(), false));
     }
 
-    protected void updateMetadataOnWrite(long position, int length) {
+    protected void updateFileMetadataOnWrite(long position, int length) {
         long endPosition = position + length - 1;
         int startChunk = metadata.getChunkForPosition(position);
         int endChunk = metadata.getChunkForPosition(endPosition);
@@ -216,12 +216,12 @@ public class CloudFileContent implements FileContent {
         }
     }
 
-    protected void updateMetadataOnCopy(FileMetadata targetMetadata) {
+    protected void updateFileMetadataOnCopy(FileMetadata targetMetadata) {
         targetMetadata.setCachedChunks(metadata.getCachedChunks());
         targetMetadata.setSize(metadata.getSize());
     }
 
-    protected void updateMetadataOnTruncate(long oldSize, long newSize) {
+    protected void updateFileMetadataOnTruncate(long oldSize, long newSize) {
         int chunksToDelete = (int) (oldSize - newSize);
         BitSet oldCachedChunks = metadata.getCachedChunks();
         BitSet newCachedChunks = new BitSet(oldCachedChunks.size() - chunksToDelete);
@@ -234,7 +234,7 @@ public class CloudFileContent implements FileContent {
         metadata.setSize(newSize);
     }
 
-    protected void updateMetadataOnDelete() {
+    protected void updateFileMetadataOnDelete() {
         metadata.setCachedChunks(new BitSet());
         metadata.setSize(0);
     }

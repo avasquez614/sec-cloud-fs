@@ -9,13 +9,8 @@ public class TruncateOperation extends FileOperation {
 
     protected long size;
 
-    public TruncateOperation() {
-        type = Type.TRUNCATE;
-    }
-
-    @Override
-    public void setType(Type type) {
-        throw new UnsupportedOperationException();
+    protected TruncateOperation() {
+        super(Type.TRUNCATE);
     }
 
     public long getSize() {

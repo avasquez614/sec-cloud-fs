@@ -14,4 +14,12 @@ public class FileExistsException extends FileSystemException {
         super(message);
     }
 
+    public FileExistsException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public FileExistsException(Throwable cause) {
+        super(cause);
+    }
+
 }

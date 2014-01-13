@@ -9,7 +9,7 @@ import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
 import org.avasquez.seccloudfs.filesystem.exception.FileSystemException;
 import org.avasquez.seccloudfs.filesystem.exception.NotSuchFileException;
-import org.avasquez.seccloudfs.secure.storage.SecureCloudStorage;
+import org.avasquez.seccloudfs.secure.storage.SecureCloudStore;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -31,9 +31,9 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
     private FileOperationDao fileOperationDao;
     private long fileChunkSize;
     private Path cachedFileContentRoot;
-    private SecureCloudStorage cloudStorage;
+    private SecureCloudStore cloudStorage;
     private long nextUpdateTimeout;
-    private Executor fileUploaderExecutor;
+    private Executor updaterExecutor;
 
     public void setFileMetadataDao(FileMetadataDao fileMetadataDao) {
         this.fileMetadataDao = fileMetadataDao;
@@ -47,7 +47,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
         this.cachedFileContentRoot = Paths.get(cachedFileContentRoot);
     }
 
-    public void setCloudStorage(SecureCloudStorage cloudStorage) {
+    public void setCloudStorage(SecureCloudStore cloudStorage) {
         this.cloudStorage = cloudStorage;
     }
 
@@ -59,8 +59,8 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
         this.nextUpdateTimeout = nextUpdateTimeout;
     }
 
-    public void setFileUploaderExecutor(Executor fileUploaderExecutor) {
-        this.fileUploaderExecutor = fileUploaderExecutor;
+    public void setUpdaterExecutor(Executor updaterExecutor) {
+        this.updaterExecutor = updaterExecutor;
     }
 
     @Override
@@ -73,7 +73,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
                     cloudStorage,
                     fileOperationDao,
                     nextUpdateTimeout,
-                    fileUploaderExecutor);
+                    updaterExecutor);
         } else {
             return null;
         }
@@ -107,7 +107,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
                     cloudStorage,
                     fileOperationDao,
                     nextUpdateTimeout,
-                    fileUploaderExecutor);
+                    updaterExecutor);
         } else {
             throw new NotSuchFileException(String.format("Directory %s not found", parentPath));
         }
@@ -134,7 +134,7 @@ public class CloudFileSystem extends AbstractCachedFileSystem {
                         cloudStorage,
                         fileOperationDao,
                         nextUpdateTimeout,
-                        fileUploaderExecutor));
+                        updaterExecutor));
             }
         }
 
