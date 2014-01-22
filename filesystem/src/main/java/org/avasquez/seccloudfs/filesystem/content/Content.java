@@ -14,6 +14,6 @@ public interface Content {
 
     SeekableByteChannel getByteChannel() throws IOException;
 
-    void copyFrom(Content srcContent) throws IOException;
+    void copyTo(Content target) throws IOException;
 
 }

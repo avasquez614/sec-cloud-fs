@@ -15,6 +15,7 @@ public class ContentMetadata {
     private String id;
     private volatile long uploadedSize;
     private volatile Date lastUploadTime;
+    private volatile boolean markedAsDeleted;
 
     public String getId() {
         return id;
@@ -38,6 +39,14 @@ public class ContentMetadata {
 
     public void setLastUploadTime(Date lastUploadTime) {
         this.lastUploadTime = lastUploadTime;
+    }
+
+    public boolean isMarkedAsDeleted() {
+        return markedAsDeleted;
+    }
+
+    public void setMarkedAsDeleted(boolean markedAsDeleted) {
+        this.markedAsDeleted = markedAsDeleted;
     }
 
 }

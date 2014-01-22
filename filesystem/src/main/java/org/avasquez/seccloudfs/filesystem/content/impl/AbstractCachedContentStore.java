@@ -6,6 +6,8 @@ import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.avasquez.seccloudfs.filesystem.util.CacheUtils;
 
+import java.io.IOException;
+
 /**
  * Created by alfonsovasquez on 11/01/14.
  */
@@ -23,7 +25,7 @@ public abstract class AbstractCachedContentStore implements ContentStore {
     }
 
     @Override
-    public Content find(String id) {
+    public Content find(String id) throws IOException {
         Content content;
 
         if ((content = CacheUtils.get(cache, id)) != null) {
@@ -44,7 +46,7 @@ public abstract class AbstractCachedContentStore implements ContentStore {
     }
 
     @Override
-    public Content create() {
+    public Content create() throws IOException {
         Content content = doCreate();
 
         CacheUtils.put(cache, content.getId(), content);
@@ -53,14 +55,14 @@ public abstract class AbstractCachedContentStore implements ContentStore {
     }
 
     @Override
-    public void delete(String id) {
+    public void delete(String id) throws IOException {
         doDelete(id);
 
         cache.remove(id);
     }
 
-    protected abstract Content doFind(String id);
-    protected abstract Content doCreate();
-    protected abstract void doDelete(String id);
+    protected abstract Content doFind(String id) throws IOException;
+    protected abstract Content doCreate() throws IOException;
+    protected abstract void doDelete(String id) throws IOException;
 
 }

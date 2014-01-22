@@ -10,22 +10,22 @@ import java.util.List;
 public interface FileMetadataDao {
 
     /**
-     * Returns the file metadata with the specified path in the database.
+     * Returns the file metadata with the specified ID in the database.
      *
-     * @param path  the path of the file metadata to look for
+     * @param id  the ID of the file metadata to look for
      *
      * @return the file metadata, or null if not found
      */
-    FileMetadata findByPath(String path);
+    FileMetadata find(String id);
 
     /**
-     * Returns the children metadata of the directory specified by the path.
+     * Returns the children metadata of the directory specified by the ID.
      *
-     * @param path  the path of the directory
+     * @param id  the ID of the directory
      *
      * @return the children metadata, or null if directory metadata not found
      */
-    List<FileMetadata> findChildren(String path);
+    List<FileMetadata> findChildren(String id);
 
     /**
      * Inserts the file metadata in the database.
@@ -44,8 +44,8 @@ public interface FileMetadataDao {
     /**
      * Deletes the file metadata for the specified ID in the database.
      *
-     * @param path    the path the file metadata to delete
+     * @param id    the ID the file metadata to delete
      */
-    void delete(String path);
+    void delete(String id);
 
 }

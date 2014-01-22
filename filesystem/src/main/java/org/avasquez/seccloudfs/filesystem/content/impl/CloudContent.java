@@ -1,36 +1,39 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
+import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.filesystem.content.Content;
+import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * Created by alfonsovasquez on 11/01/14.
  */
-public class CloudContent implements Content {
+public class CloudContent implements DeletableContent {
+
+    private static final String TMP_PATH_SUFFIX = ".download";
 
     private ContentMetadata metadata;
+    private ContentMetadataDao metadataDao;
     private Path path;
-    private Downloader downloader;
+    private CloudStore cloudStore;
     private Uploader uploader;
-    private ReadWriteLock readWriteLock;
+    private ReadWriteLock rwLock;
 
-    public CloudContent(ContentMetadata metadata, Path path, Downloader downloader, Uploader uploader,
-                        ReadWriteLock readWriteLock) {
+    public CloudContent(ContentMetadata metadata, ContentMetadataDao metadataDao, Path path, CloudStore cloudStore,
+                        Uploader uploader, ReadWriteLock rwLock) throws IOException {
         this.metadata = metadata;
+        this.metadataDao = metadataDao;
         this.path = path;
-        this.downloader = downloader;
+        this.cloudStore = cloudStore;
         this.uploader = uploader;
-        this.readWriteLock = readWriteLock;
+        this.rwLock = rwLock;
     }
 
     @Override
@@ -49,59 +52,82 @@ public class CloudContent implements Content {
 
     @Override
     public SeekableByteChannel getByteChannel() throws IOException {
-        checkContentDownloaded();
+        checkDownloaded();
 
         return new ContentByteChannel();
     }
 
     @Override
-    public void copyFrom(Content srcContent) throws IOException {
-        if (!(srcContent instanceof CloudContent)) {
-            throw new IllegalArgumentException("Can't copy from " + srcContent + ". It must be of type" +
-                    CloudContent.class.getName());
+    public void copyTo(Content target) throws IOException {
+        if (!(target instanceof CloudContent)) {
+            throw new IllegalArgumentException("Target must be of type " + CloudContent.class.getName());
         }
 
-        CloudContent srcCloudContent = (CloudContent) srcContent;
-        Path srcPath = srcCloudContent.path;
-        ReadWriteLock srcReadWriteLock = srcCloudContent.readWriteLock;
+        CloudContent targetContent = (CloudContent) target;
+        ReadWriteLock targetRwLock = targetContent.rwLock;
 
-        srcCloudContent.checkContentDownloaded();
+        checkDownloaded();
 
-        srcReadWriteLock.readLock().lock();
+        rwLock.readLock().lock();
         try {
-            readWriteLock.writeLock().lock();
+            targetRwLock.writeLock().lock();
             try {
-                Files.copy(srcPath, path, StandardCopyOption.REPLACE_EXISTING);
-
-                uploader.notifyUpdate();
+                Files.copy(path, targetContent.path, StandardCopyOption.REPLACE_EXISTING);
             } finally {
-                readWriteLock.writeLock().unlock();
+                targetRwLock.writeLock().unlock();
             }
         } finally {
-            srcReadWriteLock.readLock().unlock();
+            rwLock.readLock().unlock();
         }
+
+        uploader.notifyUpdate();
     }
 
-    private void checkContentDownloaded() throws IOException {
-        if (!Files.exists(path)) {
+    @Override
+    public void delete() throws IOException {
+        metadata.setMarkedAsDeleted(true);
+        metadataDao.update(metadata);
+
+        rwLock.writeLock().lock();
+        try {
+            Files.deleteIfExists(path);
+        } finally {
+            rwLock.writeLock().unlock();
+        }
+
+        uploader.notifyUpdate();
+    }
+
+    private void checkDownloaded() throws IOException {
+        if (!metadata.isMarkedAsDeleted() && !Files.exists(path)) {
             if (metadata.getLastUploadTime() != null) {
                 // File has not been downloaded, so download it
-                synchronized (this) {
-                    if (!downloader.isContentDownloading()) {
-                        try {
-                            downloader.download();
-                        } catch (IOException e) {
-                            throw new IOException("Error while trying to download content '" + metadata.getId() +
-                                    "'", e);
-                        }
-                    } else {
-                        downloader.awaitTillDownloadFinished();
+                rwLock.writeLock().lock();
+                try {
+                    if (!metadata.isMarkedAsDeleted() && !Files.exists(path)) {
+                        download();
                     }
+                } finally {
+                    rwLock.writeLock().unlock();
                 }
             } else {
                 // It's new content, so create the file
                 Files.createFile(path);
             }
+        }
+    }
+
+    private void download() throws IOException {
+        Path tmpPath = Paths.get(path + TMP_PATH_SUFFIX);
+
+        try {
+            try (FileChannel tmpFile = FileChannel.open(tmpPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                cloudStore.download(metadata.getId(), tmpFile);
+            }
+
+            Files.move(tmpPath, path, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            throw new IOException("Error while trying to download content '" + metadata.getId() + "' from cloud", e);
         }
     }
 
@@ -125,7 +151,12 @@ public class CloudContent implements Content {
 
         @Override
         public long size() throws IOException {
-            return fileChannel.size();
+            rwLock.readLock().lock();
+            try {
+                return fileChannel.size();
+            } finally {
+                rwLock.readLock().unlock();
+            }
         }
 
         @Override
@@ -140,40 +171,42 @@ public class CloudContent implements Content {
 
         @Override
         public int read(ByteBuffer dst) throws IOException {
-            readWriteLock.readLock().lock();
+            rwLock.readLock().lock();
             try {
                 return fileChannel.read(dst);
             } finally {
-                readWriteLock.readLock().unlock();
+                rwLock.readLock().unlock();
             }
         }
 
         @Override
         public int write(ByteBuffer src) throws IOException {
-            readWriteLock.writeLock().lock();
+            int bytesWritten;
+
+            rwLock.writeLock().lock();
             try {
-                int bytesWritten = fileChannel.write(src);
-
-                uploader.notifyUpdate();
-
-                return bytesWritten;
+                bytesWritten = fileChannel.write(src);
             } finally {
-                readWriteLock.writeLock().unlock();
+                rwLock.writeLock().unlock();
             }
+
+            uploader.notifyUpdate();
+
+            return bytesWritten;
         }
 
         @Override
         public SeekableByteChannel truncate(long size) throws IOException {
-            readWriteLock.writeLock().lock();
+            rwLock.writeLock().lock();
             try {
                 fileChannel.truncate(size);
-
-                uploader.notifyUpdate();
-
-                return this;
             } finally {
-                readWriteLock.writeLock().unlock();
+                rwLock.writeLock().unlock();
             }
+
+            uploader.notifyUpdate();
+
+            return this;
         }
 
     }

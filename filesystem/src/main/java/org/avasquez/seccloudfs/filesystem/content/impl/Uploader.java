@@ -30,29 +30,28 @@ public class Uploader {
     private Path contentPath;
     private long timeoutForNextUpdate;
     private Executor threadPool;
-    private ReadWriteLock readWriteLock;
+    private ReadWriteLock rwLock;
     private CloudStore cloudStore;
 
     private boolean uploading;
 
     public Uploader(ContentMetadata metadata, ContentMetadataDao metadataDao, Path contentPath,
-                    long timeoutForNextUpdate, Executor threadPool, ReadWriteLock readWriteLock,
-                    CloudStore cloudStore) {
+                    long timeoutForNextUpdate, Executor threadPool, ReadWriteLock rwLock, CloudStore cloudStore) {
         this.metadata = metadata;
         this.metadataDao = metadataDao;
         this.contentPath = contentPath;
         this.timeoutForNextUpdate = timeoutForNextUpdate;
         this.threadPool = threadPool;
-        this.readWriteLock = readWriteLock;
+        this.rwLock = rwLock;
         this.cloudStore = cloudStore;
     }
 
     public synchronized void notifyUpdate() {
         if (!uploading) {
             runUploadInThread();
+        } else {
+            notify();
         }
-
-        notify();
     }
 
     private void runUploadInThread() {
@@ -73,7 +72,7 @@ public class Uploader {
     private void upload() {
         synchronized (this) {
             try {
-                while (!hasTimeoutOccurred()) {
+                while (!metadata.isMarkedAsDeleted() && !hasTimeoutOccurred()) {
                     wait(timeoutForNextUpdate);
                 }
             } catch (InterruptedException e) {
@@ -82,10 +81,22 @@ public class Uploader {
             }
         }
 
+        if (!metadata.isMarkedAsDeleted() && metadata.getLastUploadTime() != null) {
+            try {
+                cloudStore.delete(metadata.getId());
+            } catch (IOException e) {
+                logger.error("Error while deleting content '" + metadata.getId() + "' from cloud", e);
+            }
+
+            metadataDao.delete(metadata.getId());
+
+            return;
+        }
+
         long snapshotTime;
         Path snapshotPath;
 
-        readWriteLock.readLock().lock();
+        rwLock.readLock().lock();
         try {
             snapshotTime = System.currentTimeMillis();
             snapshotPath = Paths.get(contentPath + String.format(SNAPSHOT_PREFIX_FORMAT, snapshotTime));
@@ -98,13 +109,13 @@ public class Uploader {
                 return;
             }
         } finally {
-            readWriteLock.readLock().unlock();
+            rwLock.readLock().unlock();
         }
 
         try (FileChannel snapshotChannel = FileChannel.open(snapshotPath, StandardOpenOption.READ)) {
             cloudStore.upload(metadata.getId(), snapshotChannel, snapshotChannel.size());
         } catch (IOException e) {
-            logger.error("Error while uploading file to cloud", e);
+            logger.error("Error while uploading content '" + metadata.getId() + "' to cloud", e);
 
             return;
         }
@@ -126,8 +137,8 @@ public class Uploader {
 
         metadataDao.update(metadata);
 
-        // Check if there where new updates while uploading
-        if (getContentLastModifiedTime() > snapshotTime) {
+        // Check if content was deleted or if there where new updates while uploading
+        if (metadata.isMarkedAsDeleted() || getContentLastModifiedTime() > snapshotTime) {
             upload();
         }
     }

@@ -5,10 +5,9 @@ import java.io.IOException;
 /**
  * Created by alfonsovasquez on 21/01/14.
  */
-public class DirectoryNotEmptyException extends IOException {
+public class UnexpectedFileTypeException extends IOException {
 
-    public DirectoryNotEmptyException(String message) {
+    public UnexpectedFileTypeException(String message) {
         super(message);
     }
-
 }

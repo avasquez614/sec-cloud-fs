@@ -5,6 +5,7 @@ import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
@@ -43,7 +44,7 @@ public class CloudContentStore extends AbstractCachedContentStore {
     }
 
     @Override
-    protected Content doFind(String id) {
+    protected Content doFind(String id) throws IOException {
         ContentMetadata metadata = metadataDao.find(id);
         if (metadata != null) {
             return createContentObject(metadata);
@@ -53,7 +54,7 @@ public class CloudContentStore extends AbstractCachedContentStore {
     }
 
     @Override
-    protected Content doCreate() {
+    protected Content doCreate() throws IOException {
         ContentMetadata metadata = new ContentMetadata();
         metadataDao.insert(metadata);
 
@@ -61,18 +62,18 @@ public class CloudContentStore extends AbstractCachedContentStore {
     }
 
     @Override
-    protected void doDelete(String id) {
-        metadataDao.delete(id);
+    protected void doDelete(String id) throws IOException {
+        DeletableContent content = (DeletableContent) find(id);
+        content.delete();
     }
 
-    private Content createContentObject(ContentMetadata metadata) {
+    private DeletableContent createContentObject(ContentMetadata metadata) throws IOException {
         Path contentPath = Paths.get(cacheContentDir, metadata.getId());
-        ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-        Downloader downloader = new Downloader(metadata.getId(), contentPath, cloudStore);
-        Uploader uploader = new Uploader(metadata, metadataDao, contentPath, timeoutForNextUpdate, threadPool,
-                readWriteLock, cloudStore);
+        ReadWriteLock rwLock = new ReentrantReadWriteLock();
+        Uploader uploader = new Uploader(metadata, metadataDao, contentPath, timeoutForNextUpdate,
+                threadPool, rwLock, cloudStore);
 
-        return new CloudContent(metadata, contentPath, downloader, uploader, readWriteLock);
+        return new CloudContent(metadata, metadataDao, contentPath, cloudStore, uploader, rwLock);
     }
 
 }
