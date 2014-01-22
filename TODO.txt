@@ -1,2 +1,3 @@
-* Add copy and move operations.
-* Check files on startup to see if file changes need to be uploaded to the cloud.
+* Work in FUSE implementation.
+* Work in Mongo DAOs.
+* Work in recovery service.
