@@ -1,10 +1,10 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.CacheManager;
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.avasquez.seccloudfs.filesystem.util.CacheUtils;
+import org.infinispan.Cache;
+import org.infinispan.manager.CacheContainer;
 
 import java.io.IOException;
 
@@ -15,10 +15,10 @@ public abstract class AbstractCachedContentStore implements ContentStore {
 
     public static final String CONTENT_CACHE_NAME = "content";
 
-    private Cache cache;
+    private Cache<String, Content> cache;
 
-    public void setCacheManager(CacheManager cacheManager) {
-        cache = cacheManager.getCache(CONTENT_CACHE_NAME);
+    public void setCacheContainer(CacheContainer cacheContainer) {
+        cache = cacheContainer.getCache(CONTENT_CACHE_NAME);
         if (cache == null) {
             throw new IllegalArgumentException("No '" + CONTENT_CACHE_NAME + "' cache found");
         }

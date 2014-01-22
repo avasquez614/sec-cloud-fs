@@ -7,7 +7,7 @@ repositories {
 dependencies {
     compile project(':commons')
     compile project(':secure-cloud-storage')
-    compile 'net.sf.ehcache:ehcache:2.7.4'
+    compile 'org.infinispan:infinispan-core:6.0.1.Final'
     compile 'org.mongodb:mongo-java-driver:2.11.3'
     compile 'org.jongo:jongo:1.0'
 }

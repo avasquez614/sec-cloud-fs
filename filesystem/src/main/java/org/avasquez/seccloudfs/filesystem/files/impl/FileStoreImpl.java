@@ -12,6 +12,7 @@ import org.avasquez.seccloudfs.filesystem.files.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -33,6 +34,26 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
     public void setContentStore(ContentStore contentStore) {
         this.contentStore = contentStore;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (metadataDao.getRoot() == null) {
+            createRootFileMetadata();
+        }
+    }
+
+    @Override
+    protected File doGetRoot() throws IOException {
+        FileMetadata metadata = metadataDao.getRoot();
+
+        if (metadata == null) {
+            logger.info("No root directory found. Creating root directory");
+
+            metadata = createRootFileMetadata();
+        }
+
+        return new FileImpl(this, metadata, null);
     }
 
     @Override
@@ -207,6 +228,18 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
             parent.getChildren().remove(file.getName());
         }
+    }
+
+    private FileMetadata createRootFileMetadata() {
+        FileMetadata metadata = new FileMetadata();
+        metadata.setName("");
+        metadata.setDirectory(true);
+        metadata.setLastModifiedTime(new Date());
+        metadata.setLastAccessTime(new Date());
+
+        metadataDao.insert(metadata);
+
+        return metadata;
     }
 
     private Content getContent(FileMetadata metadata) throws IOException {

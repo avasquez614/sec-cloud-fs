@@ -1,10 +1,10 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.CacheManager;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileStore;
 import org.avasquez.seccloudfs.filesystem.util.CacheUtils;
+import org.infinispan.Cache;
+import org.infinispan.manager.CacheContainer;
 
 import java.io.IOException;
 import java.util.List;
@@ -14,16 +14,34 @@ import java.util.List;
  */
 public abstract class AbstractCachedFileStore implements FileStore {
 
-    public static final String FILE_SEPARATOR = "/";
+    public static final String FILE_CACHE_NAME =    "files";
 
-    public static final String FILE_CACHE_NAME =            "files";
+    private Cache<String, File> cache;
 
-    private Cache cache;
-
-    public void setCacheManager(CacheManager cacheManager) {
-        cache = cacheManager.getCache(FILE_CACHE_NAME);
+    public void setCacheContainer(CacheContainer cacheContainer) {
+        cache = cacheContainer.getCache(FILE_CACHE_NAME);
         if (cache == null) {
             throw new IllegalArgumentException("No '" + FILE_CACHE_NAME + "' cache found");
+        }
+    }
+
+    @Override
+    public File getRoot() throws IOException {
+        File root;
+
+        if ((root = CacheUtils.get(cache, "")) != null) {
+            return root;
+        } else {
+            synchronized (this) {
+                if ((root = CacheUtils.get(cache, "")) != null) {
+                    return root;
+                }
+
+                root = doGetRoot();
+                CacheUtils.put(cache, "", root);
+
+                return root;
+            }
         }
     }
 
@@ -93,6 +111,7 @@ public abstract class AbstractCachedFileStore implements FileStore {
         cache.remove(id);
     }
 
+    protected abstract File doGetRoot() throws IOException;
     protected abstract File doFind(String id) throws IOException;
     protected abstract List<File> doFindChildren(String id) throws IOException;
     protected abstract File doCreate(String parentId, String name, boolean dir) throws IOException;

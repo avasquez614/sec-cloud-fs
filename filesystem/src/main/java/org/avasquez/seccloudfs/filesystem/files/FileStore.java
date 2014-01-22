@@ -8,6 +8,8 @@ import java.util.List;
  */
 public interface FileStore {
 
+    File getRoot() throws IOException;
+
     File find(String id) throws IOException;
 
     List<File> findChildren(String id) throws IOException;

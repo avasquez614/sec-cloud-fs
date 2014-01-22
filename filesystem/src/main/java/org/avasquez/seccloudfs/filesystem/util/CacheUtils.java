@@ -1,7 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.util;
 
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.Element;
+import org.infinispan.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,14 +24,15 @@ public class CacheUtils {
      *
      * @return the cached object, or null if not found
      */
-    public static <T> T get(Cache cache, String key) {
-        Element element;
-        if ((element = cache.get(key)) != null) {
-            logger.debug("Object found in cache '{}' for key '{}'", cache.getName(), key);
+    public static <K, V> V get(Cache<K, V> cache, K key) {
+        V value;
 
-            return (T) element.getObjectValue();
+        if ((value = cache.get(key)) != null) {
+            logger.debug("Cache hit: cache '{}', key '{}'", cache.getName(), key);
+
+            return value;
         } else {
-            logger.debug("Object not found in cache '{}' for key '{}'", cache.getName(), key);
+            logger.debug("Cache miss: cache '{}', key '{}'", cache.getName(), key);
 
             return null;
         }
@@ -45,11 +45,11 @@ public class CacheUtils {
      * @param key   the object key
      * @param value the object to cache. Can be null, in which case nothing is put in the cache
      */
-    public static <T> void put(Cache cache, String key, T value) {
+    public static <K, V> void put(Cache<K, V> cache, K key, V value) {
         if (value != null) {
-            cache.put(new Element(key, value));
+            cache.put(key, value);
 
-            logger.debug("Object put in cache '{}' for key '{}'", cache.getName(), key);
+            logger.debug("Cache put: cache '{}', key '{}'", cache.getName(), key);
         }
     }
 

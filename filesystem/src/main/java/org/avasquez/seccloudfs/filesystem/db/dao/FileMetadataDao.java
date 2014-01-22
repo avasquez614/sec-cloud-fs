@@ -10,6 +10,11 @@ import java.util.List;
 public interface FileMetadataDao {
 
     /**
+     * Returns the root metadata.
+     */
+    FileMetadata getRoot();
+
+    /**
      * Returns the file metadata with the specified ID in the database.
      *
      * @param id  the ID of the file metadata to look for
