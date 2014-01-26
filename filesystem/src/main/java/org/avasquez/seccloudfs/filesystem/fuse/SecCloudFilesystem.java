@@ -1,19 +1,26 @@
 package org.avasquez.seccloudfs.filesystem.fuse;
 
+import net.fusejna.DirectoryFiller;
 import net.fusejna.util.FuseFilesystemAdapterFull;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
+import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
+import org.avasquez.seccloudfs.filesystem.exception.NotADirectoryException;
 import org.avasquez.seccloudfs.filesystem.exception.PermissionDeniedException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.avasquez.seccloudfs.filesystem.files.User;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static net.fusejna.ErrorCodes.*;
-import static net.fusejna.StructFuseFileInfo.FileInfoWrapper;
 import static net.fusejna.StructStat.StatWrapper;
+import static net.fusejna.types.TypeMode.ModeWrapper;
 import static net.fusejna.types.TypeMode.NodeType;
 
 /**
@@ -26,7 +33,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
      */
     public static final String PATH_SEPARATOR = "/";
 
-    private static final Logger logger = LoggerFactory.getLogger(SecCloudFilesystem.class);
+    private static final Logger logger = Logger.getLogger(SecCloudFilesystem.class.getName());
 
     private FileStore fileStore;
 
@@ -36,107 +43,140 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
     @Override
     public int getattr(final String path, final StatWrapper stat) {
-        return doWithLogging(new LoggedMethod() {
+        return doWithErrorHandling(new Callable<Integer>() {
 
             @Override
-            public int invoke() throws PermissionDeniedException, IOException {
+            public Integer call() throws Exception {
                 File file = resolveFile(path);
-                if (file != null) {
-                    checkReadPermission(file);
 
-                    NodeType nodeType = file.isDirectory()? NodeType.DIRECTORY : NodeType.FILE;
-                    long permissions = file.getPermissions();
-                    long mode = nodeType.getBits() | permissions;
+                checkReadPermission(file);
 
-                    stat.mode(mode);
-                    stat.uid(file.getOwner().getUid());
-                    stat.gid(file.getOwner().getGid());
-                    stat.size(file.getSize());
-                    stat.ctime(millisToSeconds(file.getLastChangeTime().getTime()));
-                    stat.atime(millisToSeconds(file.getLastAccessTime().getTime()));
-                    stat.mtime(millisToSeconds(file.getLastModifiedTime().getTime()));
+                NodeType nodeType = file.isDirectory() ? NodeType.DIRECTORY : NodeType.FILE;
+                long permissions = file.getPermissions();
+                long mode = nodeType.getBits() | permissions;
 
-                    return 0;
-                } else {
-                    return -ENOENT();
-                }
+                stat.mode(mode);
+                stat.uid(file.getOwner().getUid());
+                stat.gid(file.getOwner().getGid());
+                stat.size(file.getSize());
+                stat.ctime(millisToSeconds(file.getLastChangeTime().getTime()));
+                stat.atime(millisToSeconds(file.getLastAccessTime().getTime()));
+                stat.mtime(millisToSeconds(file.getLastModifiedTime().getTime()));
+
+                return 0;
             }
 
-        }, "getattr", path, stat);
+        }, "getattr");
     }
 
     @Override
     public int access(final String path, final int access) {
-        return doWithLogging(new LoggedMethod() {
+        return doWithErrorHandling(new Callable<Integer>() {
 
             @Override
-            public int invoke() throws PermissionDeniedException, IOException {
+            public Integer call() throws Exception {
                 File file = resolveFile(path);
-                if (file != null) {
-                    if (access == Constants.F_OK || hasPermission(file, access)) {
-                        return 0;
-                    } else {
-                        return -EACCES();
-                    }
+
+                if (access == Constants.F_OK || hasPermission(file, access)) {
+                    return 0;
                 } else {
-                    return -ENOENT();
+                    return -EACCES();
                 }
             }
 
-        }, "access", path, access);
+        }, "access");
     }
 
     @Override
-    public int opendir(final String path, final FileInfoWrapper info) {
-        return doWithLogging(new LoggedMethod() {
+    public int readdir(final String path, final DirectoryFiller filler) {
+        return doWithErrorHandling(new Callable<Integer>() {
 
             @Override
-            public int invoke() throws PermissionDeniedException, IOException {
-                File file = resolveFile(path);
-                if (file != null) {
-                    checkReadPermission(file);
+            public Integer call() throws Exception {
+                File dir = resolveFile(path);
 
-                    return 0;
-                } else {
-                    return -ENOENT();
+                checkIsDirectory(dir);
+                checkReadPermission(dir);
+
+                for (File child : dir.getChildren()) {
+                    filler.add(child.getName());
                 }
+
+                return 0;
             }
 
-        }, "opendir", path, info);
+        }, "readdir");
     }
 
-    private int doWithLogging(LoggedMethod method, String methodName, Object... args) {
-        log(methodName, args);
+    @Override
+    public int mkdir(final String path, final ModeWrapper mode) {
+        return doWithErrorHandling(new Callable<Integer>() {
 
+            @Override
+            public Integer call() throws Exception {
+                File parent = resolveParent(path);
+
+                checkIsDirectory(parent);
+                checkWritePermission(parent);
+
+                User owner = new User(getCurrentUid(), getCurrentGid());
+                long permissions = getPermissionsBits(mode.mode());
+
+                fileStore.create(parent.getId(), getFilename(path), true, owner, permissions);
+
+                return 0;
+            }
+
+        }, "mkdir");
+    }
+
+    @Override
+    public int rmdir(final String path) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File dir = resolveFile(path);
+
+                checkIsDirectory(dir);
+                checkWritePermission(dir.getParent());
+
+                fileStore.delete(dir.getId());
+
+                return 0;
+            }
+
+        }, "rmdir");
+    }
+
+    private int doWithErrorHandling(Callable<Integer> method, String methodName) {
         try {
-            return method.invoke();
+            return method.call();
+        } catch (FileNotFoundException e) {
+            logError(e, methodName);
+
+            return -ENOENT();
+        } catch (NotADirectoryException e) {
+            logError(e, methodName);
+
+            return -ENOTDIR();
         } catch (PermissionDeniedException e) {
-            logError(e, methodName, args);
+            logError(e, methodName);
 
             return -EACCES();
-        } catch (IOException e) {
-            logError(e, methodName, args);
+        } catch (FileExistsException e) {
+            logError(e, methodName);
+
+            return -EEXIST();
+        } catch (Exception e) {
+            logError(e, methodName);
 
             return -EIO();
         }
     }
 
-    private void log(String methodName, Object... args) {
-        if (logger.isDebugEnabled()) {
-            int uid = getCurrentUid();
-            int gid = getCurrentGid();
-
-            logger.debug("{}({}) called by user[uid='{}',gid='{}']", methodName,
-                    StringUtils.join(args, ','), uid, gid);
-        }
-    }
-
-    private void logError(Throwable ex, String methodName, Object... args) {
-        int uid = getCurrentUid();
-        int gid = getCurrentGid();
-
-        logger.error(String.format("%s(%s) call by user[uid='%s',gid='%s'] failed",
-                methodName, StringUtils.join(args, ','), uid, gid), ex);
+    private void logError(Throwable ex, String methodName) {
+        logger.logp(Level.FINE, getClass().getName(), methodName, "Operation failed", ex);
     }
 
     private long millisToSeconds(long millis) {
@@ -147,27 +187,37 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
         return resolveFile(fileStore.getRoot(), path);
     }
 
-    private File resolveFile(File currentFile, String path) throws PermissionDeniedException, IOException {
+    private File resolveFile(File currentDir, String path) throws PermissionDeniedException, IOException {
         path = StringUtils.strip(path, PATH_SEPARATOR);
 
         if (path.isEmpty()) {
-            return currentFile;
+            return currentDir;
         }
 
         // Execute permission means the user can search the directory
-        checkExecutePermission(currentFile);
+        checkExecutePermission(currentDir);
 
         int indexOfSep = path.indexOf(PATH_SEPARATOR);
         if (indexOfSep < 0) {
-            return currentFile.getChild(path);
+            return currentDir.getChild(path);
         } else {
-            File nextFile = currentFile.getChild(path.substring(0, indexOfSep));
-            if (nextFile != null) {
-                return resolveFile(nextFile, path.substring(indexOfSep));
+            File nextDir = currentDir.getChild(path.substring(0, indexOfSep));
+            if (nextDir != null) {
+                return resolveFile(nextDir, path.substring(indexOfSep));
             }
         }
 
-        return null;
+        throw new FileNotFoundException("Not file found at path " + path + " in dir '" + currentDir.getId() + "'");
+    }
+
+    private File resolveParent(String path) throws PermissionDeniedException, IOException {
+        String parentPath = StringUtils.stripEnd(FilenameUtils.getPath(path), PATH_SEPARATOR);
+
+        return resolveFile(parentPath);
+    }
+
+    private String getFilename(String path) {
+        return StringUtils.stripEnd(FilenameUtils.getName(path), PATH_SEPARATOR);
     }
 
     private int getCurrentUid() {
@@ -190,26 +240,30 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
     private void checkReadPermission(File file) throws PermissionDeniedException {
         if (!hasPermission(file, Constants.R_OK)) {
-            throw new PermissionDeniedException("Read denied");
+            throw new PermissionDeniedException("Read denied for '" + file.getId() + "'");
         }
     }
 
     private void checkWritePermission(File file) throws PermissionDeniedException {
         if (!hasPermission(file, Constants.W_OK)) {
-            throw new PermissionDeniedException("Write denied");
+            throw new PermissionDeniedException("Write denied '" + file.getId() + "'");
         }
     }
 
     private void checkExecutePermission(File file) throws PermissionDeniedException {
         if (!hasPermission(file, Constants.X_OK)) {
-            throw new PermissionDeniedException("Execute or search denied");
+            throw new PermissionDeniedException("Execute or search denied '" + file.getId() + "'");
         }
     }
 
-    private static interface LoggedMethod {
+    private void checkIsDirectory(File file) throws NotADirectoryException {
+        if (file.isDirectory()) {
+            throw new NotADirectoryException("File '" + file.getId() + "' is not a directory");
+        }
+    }
 
-        public int invoke() throws PermissionDeniedException, IOException;
-
+    private long getPermissionsBits(long mode) {
+        return mode & Constants.PERMISSIONS_MASK;
     }
 
 }

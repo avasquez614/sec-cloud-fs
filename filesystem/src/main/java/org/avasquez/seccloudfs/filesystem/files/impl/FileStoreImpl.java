@@ -9,21 +9,22 @@ import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
 import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
 import org.avasquez.seccloudfs.filesystem.exception.NotADirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.avasquez.seccloudfs.filesystem.files.User;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by alfonsovasquez on 19/01/14.
  */
 public class FileStoreImpl extends AbstractCachedFileStore {
 
-    private static final Logger logger = LoggerFactory.getLogger(FileStoreImpl.class);
+    private static final Logger logger = Logger.getLogger(FileStoreImpl.class.getName());
 
     private FileMetadataDao metadataDao;
     private ContentStore contentStore;
@@ -90,7 +91,8 @@ public class FileStoreImpl extends AbstractCachedFileStore {
     }
 
     @Override
-    protected File doCreate(String parentId, String name, boolean dir) throws IOException {
+    protected File doCreate(String parentId, String name, boolean dir, User owner, long permissions)
+            throws IOException {
         File parent = find(parentId);
 
         if (parent == null) {
@@ -113,6 +115,8 @@ public class FileStoreImpl extends AbstractCachedFileStore {
         metadata.setLastChangeTime(now);
         metadata.setLastModifiedTime(now);
         metadata.setLastAccessTime(now);
+        metadata.setOwner(owner);
+        metadata.setPermissions(permissions);
 
         Content content = null;
         if (!dir) {
@@ -251,8 +255,8 @@ public class FileStoreImpl extends AbstractCachedFileStore {
         if (!metadata.isDirectory()) {
             Content content = contentStore.find(metadata.getContentId());
             if (content == null) {
-                logger.warn("Content '{}' not found for file '{}'. Creating new one...", metadata.getContentId(),
-                        metadata.getId());
+                logger.log(Level.INFO, "Content '{0}' not found for file '{1}'. Creating new one...",
+                        new Object[] {metadata.getContentId(), metadata.getId()});
 
                 content = contentStore.create();
 

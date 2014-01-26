@@ -28,6 +28,11 @@ public interface File {
     String getParentId();
 
     /**
+     * Returns the parent directory.
+     */
+    File getParent() throws IOException;
+
+    /**
      * Returns the file's size.
      */
     long getSize() throws IOException;

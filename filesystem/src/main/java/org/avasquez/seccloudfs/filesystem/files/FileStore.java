@@ -14,7 +14,7 @@ public interface FileStore {
 
     List<File> findChildren(String id) throws IOException;
 
-    File create(String parentId, String name, boolean dir) throws IOException;
+    File create(String parentId, String name, boolean dir, User owner, long permissions) throws IOException;
 
     File rename(String id, String newName) throws IOException;
 

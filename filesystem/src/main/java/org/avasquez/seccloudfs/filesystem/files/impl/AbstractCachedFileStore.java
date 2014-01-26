@@ -2,6 +2,7 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileStore;
+import org.avasquez.seccloudfs.filesystem.files.User;
 import org.avasquez.seccloudfs.filesystem.util.CacheUtils;
 import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
@@ -81,8 +82,9 @@ public abstract class AbstractCachedFileStore implements FileStore {
     }
 
     @Override
-    public synchronized File create(String parentId, String name, boolean dir) throws IOException {
-        File file = doCreate(parentId, name, dir);
+    public synchronized File create(String parentId, String name, boolean dir, User owner, long permissions)
+            throws IOException {
+        File file = doCreate(parentId, name, dir, owner, permissions);
         CacheUtils.put(cache, file.getId(), file);
 
         return file;
@@ -108,7 +110,8 @@ public abstract class AbstractCachedFileStore implements FileStore {
     protected abstract File doGetRoot() throws IOException;
     protected abstract File doFind(String id) throws IOException;
     protected abstract List<File> doFindChildren(String id) throws IOException;
-    protected abstract File doCreate(String parentId, String name, boolean dir) throws IOException;
+    protected abstract File doCreate(String parentId, String name, boolean dir, User owner, long permissions)
+            throws IOException;
     protected abstract File doRename(String parentId, String newName) throws IOException;
     protected abstract File doMove(String id, String newParentId, String newName) throws IOException;
     protected abstract void doDelete(String id) throws IOException;

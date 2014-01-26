@@ -50,6 +50,11 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     }
 
     @Override
+    public File getParent() throws IOException {
+        return fileStore.find(getParentId());
+    }
+
+    @Override
     public long getSize() throws IOException {
         if (content != null) {
             return content.getSize();
@@ -87,7 +92,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
 
             for (String id : childIds) {
                 File child = fileStore.find(id);
-
                 if (child == null) {
                     throw new FileNotFoundException("File '" + id + "' not found");
                 }
@@ -103,7 +107,7 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
 
     @Override
     public Map<String, String> getChildrenMap() throws IOException {
-        if (isDirectory() && childrenMap == null) {
+        if (childrenMap == null) {
             synchronized (this) {
                 if (childrenMap == null) {
                     childrenMap = new ConcurrentHashMap<>();

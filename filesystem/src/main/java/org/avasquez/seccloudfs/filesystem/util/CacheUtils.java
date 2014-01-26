@@ -1,8 +1,9 @@
 package org.avasquez.seccloudfs.filesystem.util;
 
 import org.infinispan.Cache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Utility methods for cache related stuff.
@@ -11,7 +12,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CacheUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(CacheUtils.class);
+    private static final Logger logger = Logger.getLogger(CacheUtils.class.getName());
 
     private CacheUtils() {
     }
@@ -28,11 +29,11 @@ public class CacheUtils {
         V value;
 
         if ((value = cache.get(key)) != null) {
-            logger.debug("Cache hit: cache '{}', key '{}'", cache.getName(), key);
+            logger.log(Level.FINEST, "Cache hit: cache '{0}', key '{1}'", new Object[] {cache.getName(), key});
 
             return value;
         } else {
-            logger.debug("Cache miss: cache '{}', key '{}'", cache.getName(), key);
+            logger.log(Level.FINEST, "Cache miss: cache '{0}', key '{1}'", new Object[] {cache.getName(), key});
 
             return null;
         }
@@ -49,7 +50,7 @@ public class CacheUtils {
         if (value != null) {
             cache.put(key, value);
 
-            logger.debug("Cache put: cache '{}', key '{}'", cache.getName(), key);
+            logger.log(Level.FINEST, "Cache put: cache '{0}', key '{1}'", new Object[] {cache.getName(), key});
         }
     }
 
