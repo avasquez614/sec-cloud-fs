@@ -16,6 +16,7 @@ public abstract class AbstractCachedFileStore implements FileStore {
 
     public static final String FILE_CACHE_NAME =    "files";
 
+    private volatile File root;
     private Cache<String, File> cache;
 
     public void setCacheContainer(CacheContainer cacheContainer) {
@@ -27,22 +28,15 @@ public abstract class AbstractCachedFileStore implements FileStore {
 
     @Override
     public File getRoot() throws IOException {
-        File root;
-
-        if ((root = CacheUtils.get(cache, "")) != null) {
-            return root;
-        } else {
+        if (root == null) {
             synchronized (this) {
-                if ((root = CacheUtils.get(cache, "")) != null) {
-                    return root;
+                if (root == null) {
+                    root = doGetRoot();
                 }
-
-                root = doGetRoot();
-                CacheUtils.put(cache, "", root);
-
-                return root;
             }
         }
+
+        return root;
     }
 
     @Override

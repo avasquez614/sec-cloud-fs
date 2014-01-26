@@ -7,7 +7,7 @@ import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
 import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
-import org.avasquez.seccloudfs.filesystem.exception.UnexpectedFileTypeException;
+import org.avasquez.seccloudfs.filesystem.exception.NotADirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,14 +53,14 @@ public class FileStoreImpl extends AbstractCachedFileStore {
             metadata = createRootFileMetadata();
         }
 
-        return new FileImpl(this, metadata, null);
+        return new FileImpl(this, metadata, metadataDao, null);
     }
 
     @Override
     protected File doFind(String id) throws IOException {
         FileMetadata metadata = metadataDao.find(id);
         if (metadata != null) {
-            return new FileImpl(this, metadata, getContent(metadata));
+            return new FileImpl(this, metadata, metadataDao, getContent(metadata));
         } else {
             return null;
         }
@@ -74,7 +74,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
             throw new FileNotFoundException("File '" + id + "' not found");
         }
         if (!file.isDirectory()) {
-            throw new UnexpectedFileTypeException("File '" + id + "' is not a directory");
+            throw new NotADirectoryException("File '" + id + "' is not a directory");
         }
 
         List<File> children = new ArrayList<>();
@@ -82,7 +82,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
         if (childrenMetadata != null) {
             for (FileMetadata metadata : childrenMetadata) {
-                children.add(new FileImpl(this, metadata, getContent(metadata)));
+                children.add(new FileImpl(this, metadata, metadataDao, getContent(metadata)));
             }
         }
 
@@ -97,19 +97,22 @@ public class FileStoreImpl extends AbstractCachedFileStore {
             throw new FileNotFoundException("File '" + parentId + "' not found");
         }
         if (!parent.isDirectory()) {
-            throw new UnexpectedFileTypeException("File '" + parentId + "' is not a directory");
+            throw new NotADirectoryException("File '" + parentId + "' is not a directory");
         }
         if (parent.getChildrenMap().containsKey(name)) {
             throw new FileExistsException("Directory '" + parentId + "' already contains a file with name '" +
                     name + "'");
         }
 
+        Date now = new Date();
+
         FileMetadata metadata = new FileMetadata();
         metadata.setParentId(parentId);
         metadata.setName(name);
         metadata.setDirectory(dir);
-        metadata.setLastModifiedTime(new Date());
-        metadata.setLastAccessTime(new Date());
+        metadata.setLastChangeTime(now);
+        metadata.setLastModifiedTime(now);
+        metadata.setLastAccessTime(now);
 
         Content content = null;
         if (!dir) {
@@ -119,7 +122,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
         metadataDao.insert(metadata);
 
-        File file = new FileImpl(this, metadata, content);
+        File file = new FileImpl(this, metadata, metadataDao, content);
 
         parent.getChildrenMap().put(name, file.getId());
 
@@ -149,6 +152,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
             String oldName = metadata.getName();
 
             metadata.setName(newName);
+            metadata.setLastChangeTime(new Date());
 
             metadataDao.update(metadata);
 
@@ -180,7 +184,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
                 throw new FileNotFoundException("File '" + newParentId + "' not found");
             }
             if (!newParent.isDirectory()) {
-                throw new UnexpectedFileTypeException("File '" + newParentId + "' is not a directory");
+                throw new NotADirectoryException("File '" + newParentId + "' is not a directory");
             }
             if (newParent.getChildrenMap().containsKey(newName)) {
                 throw new FileExistsException("Directory '" + newParentId + "' already contains a file with " +
@@ -192,6 +196,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
             metadata.setParentId(newParentId);
             metadata.setName(newName);
+            metadata.setLastChangeTime(new Date());
 
             metadataDao.update(metadata);
 

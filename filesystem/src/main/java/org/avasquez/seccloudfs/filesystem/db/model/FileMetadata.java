@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.db.model;
 
+import org.avasquez.seccloudfs.filesystem.files.User;
 import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
 
@@ -19,8 +20,11 @@ public class FileMetadata {
     private volatile String parentId;
     private volatile boolean directory;
     private volatile String contentId;
+    private volatile Date lastChangeTime;
     private volatile Date lastModifiedTime;
     private volatile Date lastAccessTime;
+    private volatile User owner;
+    private volatile long permissions;
 
     /**
      * Default constructor.
@@ -68,6 +72,14 @@ public class FileMetadata {
         this.contentId = contentId;
     }
 
+    public Date getLastChangeTime() {
+        return lastChangeTime;
+    }
+
+    public void setLastChangeTime(Date lastChangeTime) {
+        this.lastChangeTime = lastChangeTime;
+    }
+
     public Date getLastModifiedTime() {
         return lastModifiedTime;
     }
@@ -82,6 +94,22 @@ public class FileMetadata {
 
     public void setLastAccessTime(Date lastAccessTime) {
         this.lastAccessTime = lastAccessTime;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
+    }
+
+    public long getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(long permissions) {
+        this.permissions = permissions;
     }
 
 }

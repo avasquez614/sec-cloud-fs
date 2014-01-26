@@ -1,7 +1,8 @@
 package org.avasquez.seccloudfs.filesystem.content;
 
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+
 import java.io.IOException;
-import java.nio.channels.SeekableByteChannel;
 
 /**
  * Created by alfonsovasquez on 09/01/14.
@@ -12,8 +13,6 @@ public interface Content {
 
     long getSize() throws IOException;
 
-    SeekableByteChannel getByteChannel() throws IOException;
-
-    void copyTo(Content target) throws IOException;
+    FlushableByteChannel getByteChannel() throws IOException;
 
 }

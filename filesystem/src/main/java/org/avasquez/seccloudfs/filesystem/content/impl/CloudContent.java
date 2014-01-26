@@ -1,9 +1,9 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -51,36 +51,10 @@ public class CloudContent implements DeletableContent {
     }
 
     @Override
-    public SeekableByteChannel getByteChannel() throws IOException {
+    public FlushableByteChannel getByteChannel() throws IOException {
         checkDownloaded();
 
         return new ContentByteChannel();
-    }
-
-    @Override
-    public void copyTo(Content target) throws IOException {
-        if (!(target instanceof CloudContent)) {
-            throw new IllegalArgumentException("Target must be of type " + CloudContent.class.getName());
-        }
-
-        CloudContent targetContent = (CloudContent) target;
-        ReadWriteLock targetRwLock = targetContent.rwLock;
-
-        checkDownloaded();
-
-        rwLock.readLock().lock();
-        try {
-            targetRwLock.writeLock().lock();
-            try {
-                Files.copy(path, targetContent.path, StandardCopyOption.REPLACE_EXISTING);
-            } finally {
-                targetRwLock.writeLock().unlock();
-            }
-        } finally {
-            rwLock.readLock().unlock();
-        }
-
-        uploader.notifyUpdate();
     }
 
     @Override
@@ -131,11 +105,11 @@ public class CloudContent implements DeletableContent {
         }
     }
 
-    private class ContentByteChannel implements SeekableByteChannel {
+    private class ContentByteChannel implements FlushableByteChannel {
 
         private FileChannel fileChannel;
 
-        public ContentByteChannel() throws IOException {
+        private ContentByteChannel() throws IOException {
             fileChannel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
         }
 
@@ -209,6 +183,15 @@ public class CloudContent implements DeletableContent {
             return this;
         }
 
+        @Override
+        public void flush() throws IOException {
+            rwLock.writeLock().lock();
+            try {
+                fileChannel.force(true);
+            } finally {
+                rwLock.writeLock().unlock();
+            }
+        }
     }
 
 }
