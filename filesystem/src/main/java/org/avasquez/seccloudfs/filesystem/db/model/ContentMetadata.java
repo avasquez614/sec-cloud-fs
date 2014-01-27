@@ -49,4 +49,27 @@ public class ContentMetadata {
         this.markedAsDeleted = markedAsDeleted;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        ContentMetadata metadata = (ContentMetadata) o;
+
+        if (!id.equals(metadata.id)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
 }

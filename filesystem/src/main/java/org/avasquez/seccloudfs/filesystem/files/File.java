@@ -4,8 +4,6 @@ import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 
 import java.io.IOException;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Created by alfonsovasquez on 13/01/14.
@@ -16,11 +14,6 @@ public interface File {
      * Returns the file's ID.
      */
     String getId();
-
-    /**
-     * Returns the name of the file.
-     */
-    String getName();
 
     /**
      * Returns the parent's ID.
@@ -43,20 +36,52 @@ public interface File {
     boolean isDirectory();
 
     /**
+     * Returns true if the directory is empty.
+     */
+    boolean isEmpty() throws IOException;
+
+    /**
      * Returns the child with the specified name.
      */
     File getChild(String name) throws IOException;
 
     /**
-     * Returns a collection with all the children (not necessarily sorted).
+     * Returns the filename under the directory of the specified file ID, if the file is a child of
+     * the directory, or null if it's not a child or if this is not a directory.
      */
-    List<File> getChildren() throws IOException;
+    String getChildName(String fileId) throws IOException;
 
     /**
-     * Returns a map where the keys are the children's names and the values are the children's IDs, or
-     * null if the file is not a directory.
+     * Returns true if the directory contains a child with the specified name.
      */
-    Map<String, String> getChildrenMap() throws IOException;
+    boolean hasChild(String name) throws IOException;
+
+    /**
+     * Returns a list with the names of all the children (not necessarily sorted).
+     */
+    String[] getChildren() throws IOException;
+
+    /**
+     * Adds a child. If a child already exists for the specified name, it's replaced by the new one.
+     *
+     * @param name      the name of the child in the directory
+     * @param fileId    the file ID of the child
+     */
+    void addChild(String name, String fileId) throws IOException;
+
+    /**
+     * Removes a child from the directory.
+     *
+     * @param name  the name of the child to remove
+     */
+    void removeChild(String name) throws IOException;
+
+    /**
+     * Removes a child from the directory.
+     *
+     * @param id    the ID of the child to remove
+     */
+    void removeChildById(String id) throws IOException;
 
     /**
      * Returns a byte channel that can be used to read/write to the content.
@@ -69,7 +94,6 @@ public interface File {
      * <ul>
      *     <li>ownership</li>
      *     <li>permissions</li>
-     *     <li>rename or move</li>
      *     <li>content</li>
      * </ul>
      */

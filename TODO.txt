@@ -1,3 +1,5 @@
 * Work in FUSE implementation.
 * Work in Mongo DAOs.
-* Work in recovery service.
+* Work in recovery service:
+** If a file has a parent id but the parent doesn't have the file in its children, add the file to children.
+** If there are 2 entries in diff directories for same file, delete the oldest one.

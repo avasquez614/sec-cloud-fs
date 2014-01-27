@@ -11,6 +11,7 @@ import org.avasquez.seccloudfs.filesystem.exception.PermissionDeniedException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileStore;
 import org.avasquez.seccloudfs.filesystem.files.User;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
@@ -95,12 +96,10 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             public Integer call() throws Exception {
                 File dir = resolveFile(path);
 
-                checkIsDirectory(dir);
+                checkDirectory(dir);
                 checkReadPermission(dir);
 
-                for (File child : dir.getChildren()) {
-                    filler.add(child.getName());
-                }
+                filler.add(dir.getChildren());
 
                 return 0;
             }
@@ -116,13 +115,13 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             public Integer call() throws Exception {
                 File parent = resolveParent(path);
 
-                checkIsDirectory(parent);
+                checkDirectory(parent);
                 checkWritePermission(parent);
 
                 User owner = new User(getCurrentUid(), getCurrentGid());
                 long permissions = getPermissionsBits(mode.mode());
 
-                fileStore.create(parent.getId(), getFilename(path), true, owner, permissions);
+                fileStore.create(parent, getFilename(path), true, owner, permissions);
 
                 return 0;
             }
@@ -138,15 +137,79 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             public Integer call() throws Exception {
                 File dir = resolveFile(path);
 
-                checkIsDirectory(dir);
+                checkDirectory(dir);
                 checkWritePermission(dir.getParent());
 
-                fileStore.delete(dir.getId());
+                fileStore.delete(dir);
 
                 return 0;
             }
 
         }, "rmdir");
+    }
+
+    @Override
+    public int rename(final String path, final String newName) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkWritePermission(file.getParent());
+
+                File newParent = resolveParent(newName);
+
+                checkDirectory(newParent);
+                checkWritePermission(newParent);
+
+                fileStore.move(file, newParent, newName);
+
+                return 0;
+            }
+
+        }, "rename");
+    }
+
+    @Override
+    public int chmod(final String path, final ModeWrapper mode) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkWritePermission(file);
+
+                long permissions = getPermissionsBits(mode.mode());
+
+                file.setPermissions(permissions);
+                file.flushMetadata();
+
+                return 0;
+            }
+
+        }, "chmod");
+    }
+
+    @Override
+    public int truncate(final String path, final long offset) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkWritePermission(file);
+
+                try (FlushableByteChannel byteChannel = file.getByteChannel()) {
+                    byteChannel.truncate(offset);
+                }
+
+                return 0;
+            }
+
+        }, "truncate");
     }
 
     private int doWithErrorHandling(Callable<Integer> method, String methodName) {
@@ -207,7 +270,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             }
         }
 
-        throw new FileNotFoundException("Not file found at path " + path + " in dir '" + currentDir.getId() + "'");
+        throw new FileNotFoundException("No file found at path " + path + " in dir '" + currentDir.getId() + "'");
     }
 
     private File resolveParent(String path) throws PermissionDeniedException, IOException {
@@ -256,7 +319,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
         }
     }
 
-    private void checkIsDirectory(File file) throws NotADirectoryException {
+    private void checkDirectory(File file) throws NotADirectoryException {
         if (file.isDirectory()) {
             throw new NotADirectoryException("File '" + file.getId() + "' is not a directory");
         }

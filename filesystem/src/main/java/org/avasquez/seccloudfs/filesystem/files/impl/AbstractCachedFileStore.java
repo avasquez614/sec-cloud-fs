@@ -8,7 +8,6 @@ import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Created by alfonsovasquez on 19/01/14.
@@ -60,60 +59,34 @@ public abstract class AbstractCachedFileStore implements FileStore {
         }
     }
 
-    @Override
-    public List<File> findChildren(String id) throws IOException {
-        List<File> children = doFindChildren(id);
-        // Put the individual children in the cache, if not already in cache. If already in cache, replace the
-        // one in the list with the cached one (to avoid having several instances).
-        if (children != null) {
-            for (int i = 0; i < children.size(); i++) {
-                File child = children.get(i);
-                File cachedChild = CacheUtils.get(cache, child.getId());
 
-                if (cachedChild != null) {
-                    children.set(i, cachedChild);
-                } else {
-                    CacheUtils.put(cache, child.getId(), child);
-                }
-            }
-        }
-
-        return children;
-    }
 
     @Override
-    public synchronized File create(String parentId, String name, boolean dir, User owner, long permissions)
+    public synchronized File create(File parent, String name, boolean dir, User owner, long permissions)
             throws IOException {
-        File file = doCreate(parentId, name, dir, owner, permissions);
+        File file = doCreate(parent, name, dir, owner, permissions);
         CacheUtils.put(cache, file.getId(), file);
 
         return file;
     }
 
     @Override
-    public File rename(String id, String newName) throws IOException {
-        return doRename(id, newName);
+    public File move(File file, File newParent, String name) throws IOException {
+        return doMove(file, newParent, name);
     }
 
     @Override
-    public File move(String id, String newParentId, String newName) throws IOException {
-        return doMove(id, newParentId, newName);
-    }
+    public void delete(File file) throws IOException {
+        doDelete(file);
 
-    @Override
-    public void delete(String id) throws IOException {
-        doDelete(id);
-
-        cache.remove(id);
+        cache.remove(file.getId());
     }
 
     protected abstract File doGetRoot() throws IOException;
     protected abstract File doFind(String id) throws IOException;
-    protected abstract List<File> doFindChildren(String id) throws IOException;
-    protected abstract File doCreate(String parentId, String name, boolean dir, User owner, long permissions)
+    protected abstract File doCreate(File parent, String name, boolean dir, User owner, long permissions)
             throws IOException;
-    protected abstract File doRename(String parentId, String newName) throws IOException;
-    protected abstract File doMove(String id, String newParentId, String newName) throws IOException;
-    protected abstract void doDelete(String id) throws IOException;
+    protected abstract File doMove(File file, File newParent, String newName) throws IOException;
+    protected abstract void doDelete(File file) throws IOException;
 
 }

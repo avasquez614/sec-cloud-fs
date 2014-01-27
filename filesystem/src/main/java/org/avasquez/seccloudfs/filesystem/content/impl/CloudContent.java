@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
@@ -26,6 +27,8 @@ public class CloudContent implements DeletableContent {
     private Uploader uploader;
     private ReadWriteLock rwLock;
 
+    private AtomicInteger openChannels;
+
     public CloudContent(ContentMetadata metadata, ContentMetadataDao metadataDao, Path path, CloudStore cloudStore,
                         Uploader uploader, ReadWriteLock rwLock) throws IOException {
         this.metadata = metadata;
@@ -34,6 +37,7 @@ public class CloudContent implements DeletableContent {
         this.cloudStore = cloudStore;
         this.uploader = uploader;
         this.rwLock = rwLock;
+        this.openChannels = new AtomicInteger();
     }
 
     @Override
@@ -54,6 +58,10 @@ public class CloudContent implements DeletableContent {
     public FlushableByteChannel getByteChannel() throws IOException {
         checkDownloaded();
 
+        if (metadata.isMarkedAsDeleted()) {
+            throw new IOException("Content '" + metadata.getId() + "' deleted");
+        }
+
         return new ContentByteChannel();
     }
 
@@ -61,15 +69,6 @@ public class CloudContent implements DeletableContent {
     public void delete() throws IOException {
         metadata.setMarkedAsDeleted(true);
         metadataDao.update(metadata);
-
-        rwLock.writeLock().lock();
-        try {
-            Files.deleteIfExists(path);
-        } finally {
-            rwLock.writeLock().unlock();
-        }
-
-        uploader.notifyUpdate();
     }
 
     private void checkDownloaded() throws IOException {
@@ -111,6 +110,8 @@ public class CloudContent implements DeletableContent {
 
         private ContentByteChannel() throws IOException {
             fileChannel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+
+            openChannels.incrementAndGet();
         }
 
         @Override
@@ -125,12 +126,7 @@ public class CloudContent implements DeletableContent {
 
         @Override
         public long size() throws IOException {
-            rwLock.readLock().lock();
-            try {
-                return fileChannel.size();
-            } finally {
-                rwLock.readLock().unlock();
-            }
+            return fileChannel.size();
         }
 
         @Override
@@ -140,7 +136,20 @@ public class CloudContent implements DeletableContent {
 
         @Override
         public void close() throws IOException {
-            fileChannel.close();
+            openChannels.decrementAndGet();
+
+            rwLock.writeLock().lock();
+            try {
+                fileChannel.close();
+
+                if (metadata.isMarkedAsDeleted() && openChannels.get() <= 0) {
+                    Files.deleteIfExists(path);
+
+                    uploader.notifyUpdate();
+                }
+            } finally {
+                rwLock.writeLock().unlock();
+            }
         }
 
         @Override

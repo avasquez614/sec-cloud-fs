@@ -2,8 +2,8 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
+import org.avasquez.seccloudfs.filesystem.db.model.DirEntry;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
-import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileStore;
 import org.avasquez.seccloudfs.filesystem.files.User;
@@ -12,7 +12,10 @@ import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
-import java.util.*;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,8 +28,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     private FileMetadataDao metadataDao;
     private Content content;
 
-    private volatile Map<String, String> childrenMap;
-
     public FileImpl(FileStore fileStore, FileMetadata metadata, FileMetadataDao metadataDao, Content content) {
         this.fileStore = fileStore;
         this.metadata = metadata;
@@ -37,11 +38,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public String getId() {
         return metadata.getId();
-    }
-
-    @Override
-    public String getName() {
-        return metadata.getName();
     }
 
     @Override
@@ -69,13 +65,24 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     }
 
     @Override
+    public boolean isEmpty() throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
+
+        if (dirEntries != null) {
+            return dirEntries.isEmpty();
+        }
+
+        return true;
+    }
+
+    @Override
     public File getChild(String name) throws IOException {
-        getChildrenMap();
+        Map<String, DirEntry> dirEntries = getDirEntries();
 
-        if (childrenMap != null) {
-            String id = childrenMap.get(name);
-            if (id != null) {
-                return fileStore.find(id);
+        if (dirEntries != null) {
+            DirEntry entry = dirEntries.get(name);
+            if (entry != null) {
+                return fileStore.find(entry.getFileId());
             }
         }
 
@@ -83,46 +90,79 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     }
 
     @Override
-    public List<File> getChildren() throws IOException {
-        getChildrenMap();
+    public String getChildName(String fileId) throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
 
-        if (childrenMap != null) {
-            Collection<String> childIds = childrenMap.values();
-            List<File> children = new ArrayList<>();
-
-            for (String id : childIds) {
-                File child = fileStore.find(id);
-                if (child == null) {
-                    throw new FileNotFoundException("File '" + id + "' not found");
+        if (dirEntries != null) {
+            for (Map.Entry<String, DirEntry> entry : dirEntries.entrySet()) {
+                if (entry.getValue().getFileId().equals(fileId)) {
+                    return entry.getKey();
                 }
-
-                children.add(child);
             }
-
-            return children;
         }
 
         return null;
     }
 
     @Override
-    public Map<String, String> getChildrenMap() throws IOException {
-        if (childrenMap == null) {
-            synchronized (this) {
-                if (childrenMap == null) {
-                    childrenMap = new ConcurrentHashMap<>();
-                    List<File> children = fileStore.findChildren(getId());
+    public boolean hasChild(String name) throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
 
-                    if (children != null) {
-                        for (File child : children) {
-                            childrenMap.put(child.getName(), child.getId());
-                        }
-                    }
+        if (dirEntries != null) {
+            dirEntries.containsKey(name);
+        }
+
+        return false;
+    }
+
+    @Override
+    public String[] getChildren() throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
+
+        if (dirEntries != null) {
+            Set<String> childNames = dirEntries.keySet();
+
+            return childNames.toArray(new String[childNames.size()]);
+        }
+
+        return null;
+    }
+
+    @Override
+    public void addChild(String name, String fileId) throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
+
+        if (dirEntries != null) {
+            dirEntries.put(name, new DirEntry(fileId, new Date()));
+
+            metadataDao.update(metadata);
+        }
+    }
+
+    @Override
+    public void removeChild(String name) throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
+
+        if (dirEntries != null) {
+            dirEntries.remove(name);
+
+            metadataDao.update(metadata);
+        }
+    }
+
+    @Override
+    public void removeChildById(String id) throws IOException {
+        Map<String, DirEntry> dirEntries = getDirEntries();
+
+        if (dirEntries != null) {
+            for (Iterator<DirEntry> iter = dirEntries.values().iterator(); iter.hasNext();) {
+                if (iter.next().getFileId().equals(id)) {
+                    iter.remove();
+
+                    metadataDao.update(metadata);
                 }
             }
         }
-
-        return childrenMap;
     }
 
     @Override
@@ -184,6 +224,41 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public Content getContent() {
         return content;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        FileImpl file = (FileImpl) o;
+
+        if (!metadata.equals(file.metadata)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return metadata.hashCode();
+    }
+
+    private Map<String, DirEntry> getDirEntries() throws IOException {
+        if (isDirectory() && metadata.getDirEntries() == null) {
+            synchronized (this) {
+                if (metadata.getDirEntries() == null) {
+                    metadata.setDirEntries(new ConcurrentHashMap<String, DirEntry>());
+                }
+            }
+        }
+
+        return metadata.getDirEntries();
     }
 
     private class MetadataUpdaterByteChannel implements FlushableByteChannel {

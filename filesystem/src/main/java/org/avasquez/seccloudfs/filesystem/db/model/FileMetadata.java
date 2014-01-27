@@ -5,6 +5,7 @@ import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
 
 import java.util.Date;
+import java.util.Map;
 
 /**
  * The cloud file metadata. All fields are volatile since instances are normally used by multiple threads.
@@ -16,9 +17,9 @@ public class FileMetadata {
     @Id
     @ObjectId
     private String id;
-    private volatile String name;
-    private volatile String parentId;
+    private String parentId;
     private volatile boolean directory;
+    private volatile Map<String, DirEntry> dirEntries;
     private volatile String contentId;
     private volatile Date lastChangeTime;
     private volatile Date lastModifiedTime;
@@ -26,26 +27,12 @@ public class FileMetadata {
     private volatile User owner;
     private volatile long permissions;
 
-    /**
-     * Default constructor.
-     */
-    public FileMetadata() {
-    }
-
     public String getId() {
         return id;
     }
 
     public void setId(String id) {
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getParentId() {
@@ -62,6 +49,14 @@ public class FileMetadata {
 
     public void setDirectory(boolean directory) {
         this.directory = directory;
+    }
+
+    public Map<String, DirEntry> getDirEntries() {
+        return dirEntries;
+    }
+
+    public void setDirEntries(Map<String, DirEntry> dirEntries) {
+        this.dirEntries = dirEntries;
     }
 
     public String getContentId() {
@@ -110,6 +105,29 @@ public class FileMetadata {
 
     public void setPermissions(long permissions) {
         this.permissions = permissions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        FileMetadata metadata = (FileMetadata) o;
+
+        if (!id.equals(metadata.id)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
     }
 
 }

@@ -13,9 +13,7 @@ import org.avasquez.seccloudfs.filesystem.files.User;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -68,49 +66,20 @@ public class FileStoreImpl extends AbstractCachedFileStore {
     }
 
     @Override
-    protected List<File> doFindChildren(String id) throws IOException {
-        File file = find(id);
-
-        if (file == null) {
-            throw new FileNotFoundException("File '" + id + "' not found");
-        }
-        if (!file.isDirectory()) {
-            throw new NotADirectoryException("File '" + id + "' is not a directory");
-        }
-
-        List<File> children = new ArrayList<>();
-        List<FileMetadata> childrenMetadata = metadataDao.findChildren(id);
-
-        if (childrenMetadata != null) {
-            for (FileMetadata metadata : childrenMetadata) {
-                children.add(new FileImpl(this, metadata, metadataDao, getContent(metadata)));
-            }
-        }
-
-        return children;
-    }
-
-    @Override
-    protected File doCreate(String parentId, String name, boolean dir, User owner, long permissions)
+    protected File doCreate(File parent, String name, boolean dir, User owner, long permissions)
             throws IOException {
-        File parent = find(parentId);
-
-        if (parent == null) {
-            throw new FileNotFoundException("File '" + parentId + "' not found");
-        }
         if (!parent.isDirectory()) {
-            throw new NotADirectoryException("File '" + parentId + "' is not a directory");
+            throw new NotADirectoryException("File '" + parent.getId() + "' is not a directory");
         }
-        if (parent.getChildrenMap().containsKey(name)) {
-            throw new FileExistsException("Directory '" + parentId + "' already contains a file with name '" +
-                    name + "'");
+        if (parent.hasChild(name)) {
+            throw new FileExistsException("Directory '" + parent.getId() + "' already contains a file " +
+                    "with name '" + name + "'");
         }
 
         Date now = new Date();
 
         FileMetadata metadata = new FileMetadata();
-        metadata.setParentId(parentId);
-        metadata.setName(name);
+        metadata.setParentId(parent.getId());
         metadata.setDirectory(dir);
         metadata.setLastChangeTime(now);
         metadata.setLastModifiedTime(now);
@@ -128,53 +97,13 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
         File file = new FileImpl(this, metadata, metadataDao, content);
 
-        parent.getChildrenMap().put(name, file.getId());
+        parent.addChild(name, file.getId());
 
         return file;
     }
 
     @Override
-    protected File doRename(String id, String newName) throws IOException {
-        File file = find(id);
-
-        if (file != null) {
-            throw new FileNotFoundException("File '" + id + "' not found");
-        }
-
-        synchronized (file) {
-            File parent = find(file.getParentId());
-
-            if (parent == null) {
-                throw new FileNotFoundException("File '" + parent.getId() + "' not found");
-            }
-            if (parent.getChildrenMap().containsKey(newName)) {
-                throw new FileExistsException("Directory '" + parent.getId() + "' already contains a file " +
-                        "with name '" + newName + "'");
-            }
-
-            FileMetadata metadata = ((MetadataAwareFile) file).getMetadata();
-            String oldName = metadata.getName();
-
-            metadata.setName(newName);
-            metadata.setLastChangeTime(new Date());
-
-            metadataDao.update(metadata);
-
-            parent.getChildrenMap().put(newName, metadata.getId());
-            parent.getChildrenMap().remove(oldName);
-        }
-
-        return file;
-    }
-
-    @Override
-    protected File doMove(String id, String newParentId, String newName) throws IOException {
-        File file = find(id);
-
-        if (file != null) {
-            throw new FileNotFoundException("File '" + id + "' not found");
-        }
-
+    protected File doMove(File file, File newParent, String newName) throws IOException {
         synchronized (file) {
             File oldParent = find(file.getParentId());
 
@@ -182,44 +111,49 @@ public class FileStoreImpl extends AbstractCachedFileStore {
                 throw new FileNotFoundException("File '" + oldParent.getId() + "' not found");
             }
 
-            File newParent = find(newParentId);
+            String oldName = oldParent.getChildName(file.getId());
 
-            if (newParent == null) {
-                throw new FileNotFoundException("File '" + newParentId + "' not found");
+            if (oldName == null) {
+                throw new IOException("The file '" + file.getId() + "' was removed from directory '" +
+                        oldParent.getId() + "' before the move could be done");
             }
-            if (!newParent.isDirectory()) {
-                throw new NotADirectoryException("File '" + newParentId + "' is not a directory");
+
+            if (!oldParent.equals(newParent)) {
+                if (!newParent.isDirectory()) {
+                    throw new NotADirectoryException("File '" + newParent.getId() + "' is not a directory");
+                }
+            } else if (!oldName.equals(newName)) {
+                newParent = oldParent;
+            } else {
+                return file;
             }
-            if (newParent.getChildrenMap().containsKey(newName)) {
-                throw new FileExistsException("Directory '" + newParentId + "' already contains a file with " +
-                        "name '" + newName + "'");
+
+            File replacedFile = null;
+
+            if (newParent.hasChild(newName)) {
+                replacedFile = newParent.getChild(newName);
             }
 
             FileMetadata metadata = ((MetadataAwareFile) file).getMetadata();
-            String oldName = metadata.getName();
-
-            metadata.setParentId(newParentId);
-            metadata.setName(newName);
-            metadata.setLastChangeTime(new Date());
+            metadata.setParentId(newParent.getId());
 
             metadataDao.update(metadata);
 
-            newParent.getChildrenMap().put(newName, metadata.getId());
-            oldParent.getChildrenMap().remove(oldName);
+            newParent.addChild(newName, metadata.getId());
+            oldParent.removeChild(oldName);
+
+            if (replacedFile != null) {
+                delete(replacedFile);
+            }
         }
 
         return file;
     }
 
     @Override
-    protected void doDelete(String id) throws IOException {
-        ContentAwareFile file = (ContentAwareFile) find(id);
-
-        if (file == null) {
-            throw new FileNotFoundException("File '" + id + "' not found");
-        }
-        if (file.isDirectory() && !file.getChildrenMap().isEmpty()) {
-            throw new DirectoryNotEmptyException("Directory '" + id + "' should be empty before deleting");
+    protected void doDelete(File file) throws IOException {
+        if (file.isDirectory() && !file.isEmpty()) {
+            throw new DirectoryNotEmptyException("Directory '" + file.getId() + "' should be empty before deleting");
         }
 
         File parent = find(file.getParentId());
@@ -229,19 +163,19 @@ public class FileStoreImpl extends AbstractCachedFileStore {
         }
 
         synchronized (file) {
-            metadataDao.delete(id);
+            metadataDao.delete(file.getId());
 
             if (!file.isDirectory()) {
-                contentStore.delete(file.getContent().getId());
+                contentStore.delete(((ContentAwareFile) file).getContent().getId());
             }
 
-            parent.getChildren().remove(file.getName());
+            parent.removeChildById(file.getId());
         }
     }
 
     private FileMetadata createRootFileMetadata() {
         FileMetadata metadata = new FileMetadata();
-        metadata.setName("");
+        metadata.setParentId(null);
         metadata.setDirectory(true);
         metadata.setLastModifiedTime(new Date());
         metadata.setLastAccessTime(new Date());
