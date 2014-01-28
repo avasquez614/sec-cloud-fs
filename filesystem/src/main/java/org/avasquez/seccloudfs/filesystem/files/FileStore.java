@@ -9,6 +9,8 @@ public interface FileStore {
 
     File getRoot() throws IOException;
 
+    File createRoot(User owner, long permissions) throws IOException;
+
     File find(String id) throws IOException;
 
     File create(File parent, String name, boolean dir, User owner, long permissions) throws IOException;

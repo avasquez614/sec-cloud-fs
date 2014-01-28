@@ -4,23 +4,24 @@ import net.fusejna.DirectoryFiller;
 import net.fusejna.util.FuseFilesystemAdapterFull;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
-import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
-import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
-import org.avasquez.seccloudfs.filesystem.exception.NotADirectoryException;
-import org.avasquez.seccloudfs.filesystem.exception.PermissionDeniedException;
+import org.avasquez.seccloudfs.filesystem.exception.*;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileStore;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static net.fusejna.ErrorCodes.*;
+import static net.fusejna.StructFuseFileInfo.FileInfoWrapper;
 import static net.fusejna.StructStat.StatWrapper;
+import static net.fusejna.StructTimeBuffer.TimeBufferWrapper;
 import static net.fusejna.types.TypeMode.ModeWrapper;
 import static net.fusejna.types.TypeMode.NodeType;
 
@@ -28,6 +29,10 @@ import static net.fusejna.types.TypeMode.NodeType;
  * Created by alfonsovasquez on 25/01/14.
  */
 public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
+
+    public static final long DEFAULT_ROOT_PERMISSIONS = (7L << 6) | (5L << 3) | 5L;
+
+    public static final int DEFAULT_ROOT_UID =  0;
 
     /**
      * Separator for file path components.
@@ -37,9 +42,40 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
     private static final Logger logger = Logger.getLogger(SecCloudFilesystem.class.getName());
 
     private FileStore fileStore;
+    private FileHandleRegistry fileHandleRegistry;
+    private long rootPermissions;
+    private int rootUid;
+
+    public SecCloudFilesystem() {
+        rootPermissions = DEFAULT_ROOT_PERMISSIONS;
+        rootUid = DEFAULT_ROOT_UID;
+    }
 
     public void setFileStore(FileStore fileStore) {
         this.fileStore = fileStore;
+    }
+
+    public void setFileHandleRegistry(FileHandleRegistry fileHandleRegistry) {
+        this.fileHandleRegistry = fileHandleRegistry;
+    }
+
+    public void setRootPermissions(long rootPermissions) {
+        this.rootPermissions = rootPermissions;
+    }
+
+    public void setRootUid(int rootUid) {
+        this.rootUid = rootUid;
+    }
+
+    @Override
+    public void init() {
+        try {
+            if (fileStore.getRoot() == null) {
+                fileStore.createRoot(new User(getCurrentUid(), getCurrentGid()), rootPermissions);
+            }
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "The root dir couldn't be retrieved or created", e);
+        }
     }
 
     @Override
@@ -193,6 +229,26 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
     }
 
     @Override
+    public int chown(final String path, final long uid, final long gid) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                if (getCurrentUid() != rootUid) {
+                    throw new PermissionDeniedException("Only root can call chown");
+                }
+
+                File file = resolveFile(path);
+                file.setOwner(new User(uid, gid));
+                file.flushMetadata();
+
+                return 0;
+            }
+
+        }, "chown");
+    }
+
+    @Override
     public int truncate(final String path, final long offset) {
         return doWithErrorHandling(new Callable<Integer>() {
 
@@ -212,6 +268,96 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
         }, "truncate");
     }
 
+    @Override
+    public int utimens(final String path, final TimeBufferWrapper timeBuffer) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkWritePermission(file);
+
+                file.setLastAccessTime(new Date(secondsToMillis(timeBuffer.ac_sec())));
+                file.setLastModifiedTime(new Date(secondsToMillis(timeBuffer.mod_sec())));
+                file.flushMetadata();
+
+                return 0;
+            }
+
+        }, "utimens");
+    }
+
+    @Override
+    public int open(final String path, final FileInfoWrapper info) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkNotDirectory(file);
+
+                FlushableByteChannel handle = file.getByteChannel();
+                long handleId = fileHandleRegistry.addHandle(handle);
+
+                info.fh(handleId);
+
+                return 0;
+            }
+
+        }, "open");
+    }
+
+    @Override
+    public int read(final String path, final ByteBuffer buffer, final long size, final long offset,
+                    final FileInfoWrapper info) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkReadPermission(file);
+
+                buffer.limit(buffer.position() + (int) size);
+
+                FlushableByteChannel handle = getFileHandle(info.fh());
+                handle.position(offset);
+
+                int readBytes = handle.read(buffer);
+                if (readBytes > 0) {
+                    return readBytes;
+                } else {
+                    return 0;
+                }
+            }
+
+        }, "read");
+    }
+
+    @Override
+    public int write(final String path, final ByteBuffer buffer, final long size, final long offset,
+                     final FileInfoWrapper info) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File file = resolveFile(path);
+
+                checkWritePermission(file);
+
+                buffer.limit(buffer.position() + (int) size);
+
+                FlushableByteChannel handle = getFileHandle(info.fh());
+                handle.position(offset);
+
+                return handle.write(buffer);
+            }
+
+        }, "write");
+    }
+
     private int doWithErrorHandling(Callable<Integer> method, String methodName) {
         try {
             return method.call();
@@ -219,10 +365,14 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             logError(e, methodName);
 
             return -ENOENT();
-        } catch (NotADirectoryException e) {
+        } catch (FileNotDirectoryException e) {
             logError(e, methodName);
 
             return -ENOTDIR();
+        } catch (FileIsDirectoryException e) {
+            logError(e, methodName);
+
+            return -EISDIR();
         } catch (PermissionDeniedException e) {
             logError(e, methodName);
 
@@ -231,7 +381,11 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             logError(e, methodName);
 
             return -EEXIST();
-        } catch (Exception e) {
+        } catch (InvalidFileHandleException e) {
+            logError(e, methodName);
+
+            return -EBADF();
+        }catch (Exception e) {
             logError(e, methodName);
 
             return -EIO();
@@ -244,6 +398,10 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
     private long millisToSeconds(long millis) {
         return TimeUnit.MILLISECONDS.toSeconds(millis);
+    }
+
+    private long secondsToMillis(long secs) {
+        return TimeUnit.SECONDS.toMillis(secs);
     }
 
     private File resolveFile(String path) throws PermissionDeniedException, IOException {
@@ -292,9 +450,11 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
     }
 
     private boolean hasPermission(File file, int permission) {
-        if (file.getOwner().getUid() == getCurrentUid()) {
+        if (getCurrentUid() == rootUid) {
+            return true;
+        } else if (getCurrentUid() == file.getOwner().getUid()) {
             return (file.getPermissions() & (permission << 6)) > 0;
-        } else if (file.getOwner().getGid() == getCurrentGid()) {
+        } else if (getCurrentGid() == file.getOwner().getGid()) {
             return (file.getPermissions() & (permission << 3)) > 0;
         } else {
             return (file.getPermissions() & permission) > 0;
@@ -319,10 +479,25 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
         }
     }
 
-    private void checkDirectory(File file) throws NotADirectoryException {
-        if (file.isDirectory()) {
-            throw new NotADirectoryException("File '" + file.getId() + "' is not a directory");
+    private void checkDirectory(File file) throws FileNotDirectoryException {
+        if (!file.isDirectory()) {
+            throw new FileNotDirectoryException("File '" + file.getId() + "' is not a directory");
         }
+    }
+
+    private void checkNotDirectory(File file) throws FileIsDirectoryException {
+        if (file.isDirectory()) {
+            throw new FileIsDirectoryException("File '" + file.getId() + "' is a directory");
+        }
+    }
+    
+    private FlushableByteChannel getFileHandle(long handleId) throws InvalidFileHandleException {
+        FlushableByteChannel handle = fileHandleRegistry.getHandle(handleId);
+        if (handle == null || !handle.isOpen()) {
+            throw new InvalidFileHandleException("Non-existing or closed file handle " + handleId);
+        }
+
+        return handle;
     }
 
     private long getPermissionsBits(long mode) {

@@ -110,6 +110,16 @@ public interface File {
     Date getLastModifiedTime();
 
     /**
+     * Sets the time of the last access (read).
+     */
+    void setLastAccessTime(Date lastAccessTime);
+
+    /**
+     * Sets the time of the last file modification (write).
+     */
+    void setLastModifiedTime(Date lastModifiedTime);
+
+    /**
      * Returns the file's owner.
      */
     User getOwner();

@@ -6,12 +6,11 @@ import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
+import org.avasquez.seccloudfs.filesystem.exception.FileNotDirectoryException;
 import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
-import org.avasquez.seccloudfs.filesystem.exception.NotADirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.User;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.Date;
 import java.util.logging.Level;
@@ -35,22 +34,30 @@ public class FileStoreImpl extends AbstractCachedFileStore {
         this.contentStore = contentStore;
     }
 
-    @PostConstruct
-    public void init() {
-        if (metadataDao.getRoot() == null) {
-            createRootFileMetadata();
+    @Override
+    protected File doGetRoot() throws IOException {
+        FileMetadata metadata = metadataDao.getRoot();
+        if (metadata != null) {
+            return new FileImpl(this, metadata, metadataDao, null);
+        } else {
+            return null;
         }
     }
 
     @Override
-    protected File doGetRoot() throws IOException {
-        FileMetadata metadata = metadataDao.getRoot();
+    protected File doCreateRoot(User owner, long permissions) throws IOException {
+        Date now = new Date();
 
-        if (metadata == null) {
-            logger.info("No root directory found. Creating root directory");
+        FileMetadata metadata = new FileMetadata();
+        metadata.setParentId(null);
+        metadata.setDirectory(true);
+        metadata.setLastChangeTime(now);
+        metadata.setLastModifiedTime(now);
+        metadata.setLastAccessTime(now);
+        metadata.setOwner(owner);
+        metadata.setPermissions(permissions);
 
-            metadata = createRootFileMetadata();
-        }
+        metadataDao.insert(metadata);
 
         return new FileImpl(this, metadata, metadataDao, null);
     }
@@ -69,7 +76,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
     protected File doCreate(File parent, String name, boolean dir, User owner, long permissions)
             throws IOException {
         if (!parent.isDirectory()) {
-            throw new NotADirectoryException("File '" + parent.getId() + "' is not a directory");
+            throw new FileNotDirectoryException("File '" + parent.getId() + "' is not a directory");
         }
         if (parent.hasChild(name)) {
             throw new FileExistsException("Directory '" + parent.getId() + "' already contains a file " +
@@ -106,13 +113,11 @@ public class FileStoreImpl extends AbstractCachedFileStore {
     protected File doMove(File file, File newParent, String newName) throws IOException {
         synchronized (file) {
             File oldParent = find(file.getParentId());
-
             if (oldParent == null) {
                 throw new FileNotFoundException("File '" + oldParent.getId() + "' not found");
             }
 
             String oldName = oldParent.getChildName(file.getId());
-
             if (oldName == null) {
                 throw new IOException("The file '" + file.getId() + "' was removed from directory '" +
                         oldParent.getId() + "' before the move could be done");
@@ -120,7 +125,7 @@ public class FileStoreImpl extends AbstractCachedFileStore {
 
             if (!oldParent.equals(newParent)) {
                 if (!newParent.isDirectory()) {
-                    throw new NotADirectoryException("File '" + newParent.getId() + "' is not a directory");
+                    throw new FileNotDirectoryException("File '" + newParent.getId() + "' is not a directory");
                 }
             } else if (!oldName.equals(newName)) {
                 newParent = oldParent;
@@ -157,7 +162,6 @@ public class FileStoreImpl extends AbstractCachedFileStore {
         }
 
         File parent = find(file.getParentId());
-
         if (parent == null) {
             throw new FileNotFoundException("File '" + parent.getId() + "' not found");
         }
@@ -173,24 +177,12 @@ public class FileStoreImpl extends AbstractCachedFileStore {
         }
     }
 
-    private FileMetadata createRootFileMetadata() {
-        FileMetadata metadata = new FileMetadata();
-        metadata.setParentId(null);
-        metadata.setDirectory(true);
-        metadata.setLastModifiedTime(new Date());
-        metadata.setLastAccessTime(new Date());
-
-        metadataDao.insert(metadata);
-
-        return metadata;
-    }
-
     private Content getContent(FileMetadata metadata) throws IOException {
         if (!metadata.isDirectory()) {
             Content content = contentStore.find(metadata.getContentId());
             if (content == null) {
                 logger.log(Level.INFO, "Content '{0}' not found for file '{1}'. Creating new one...",
-                        new Object[] {metadata.getContentId(), metadata.getId()});
+                        new Object[]{metadata.getContentId(), metadata.getId()});
 
                 content = contentStore.create();
 

@@ -71,6 +71,29 @@ public class CloudContent implements DeletableContent {
         metadataDao.update(metadata);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        CloudContent content = (CloudContent) o;
+
+        if (!metadata.equals(content.metadata)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return metadata.hashCode();
+    }
+
     private void checkDownloaded() throws IOException {
         if (!metadata.isMarkedAsDeleted() && !Files.exists(path)) {
             if (metadata.getLastUploadTime() != null) {

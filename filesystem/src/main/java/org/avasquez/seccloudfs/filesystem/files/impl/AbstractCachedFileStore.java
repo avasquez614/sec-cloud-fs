@@ -14,7 +14,7 @@ import java.io.IOException;
  */
 public abstract class AbstractCachedFileStore implements FileStore {
 
-    public static final String FILE_CACHE_NAME =    "files";
+    public static final String FILE_CACHE_NAME = "files";
 
     private volatile File root;
     private Cache<String, File> cache;
@@ -35,6 +35,13 @@ public abstract class AbstractCachedFileStore implements FileStore {
                 }
             }
         }
+
+        return root;
+    }
+
+    @Override
+    public synchronized File createRoot(User owner, long permissions) throws IOException {
+        root = doCreateRoot(owner, permissions);
 
         return root;
     }
@@ -83,6 +90,7 @@ public abstract class AbstractCachedFileStore implements FileStore {
     }
 
     protected abstract File doGetRoot() throws IOException;
+    protected abstract File doCreateRoot(User owner, long permissions) throws IOException;
     protected abstract File doFind(String id) throws IOException;
     protected abstract File doCreate(File parent, String name, boolean dir, User owner, long permissions)
             throws IOException;

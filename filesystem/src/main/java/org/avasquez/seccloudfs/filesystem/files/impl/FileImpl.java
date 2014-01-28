@@ -67,7 +67,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public boolean isEmpty() throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             return dirEntries.isEmpty();
         }
@@ -78,7 +77,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public File getChild(String name) throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             DirEntry entry = dirEntries.get(name);
             if (entry != null) {
@@ -92,7 +90,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public String getChildName(String fileId) throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             for (Map.Entry<String, DirEntry> entry : dirEntries.entrySet()) {
                 if (entry.getValue().getFileId().equals(fileId)) {
@@ -107,7 +104,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public boolean hasChild(String name) throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             dirEntries.containsKey(name);
         }
@@ -118,7 +114,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public String[] getChildren() throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             Set<String> childNames = dirEntries.keySet();
 
@@ -131,7 +126,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public void addChild(String name, String fileId) throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             dirEntries.put(name, new DirEntry(fileId, new Date()));
 
@@ -142,7 +136,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public void removeChild(String name) throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             dirEntries.remove(name);
 
@@ -153,7 +146,6 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public void removeChildById(String id) throws IOException {
         Map<String, DirEntry> dirEntries = getDirEntries();
-
         if (dirEntries != null) {
             for (Iterator<DirEntry> iter = dirEntries.values().iterator(); iter.hasNext();) {
                 if (iter.next().getFileId().equals(id)) {
@@ -187,6 +179,16 @@ public class FileImpl implements MetadataAwareFile, ContentAwareFile {
     @Override
     public Date getLastModifiedTime() {
         return metadata.getLastModifiedTime();
+    }
+
+    @Override
+    public void setLastAccessTime(Date lastAccessTime) {
+        metadata.setLastAccessTime(lastAccessTime);
+    }
+
+    @Override
+    public void setLastModifiedTime(Date lastModifiedTime) {
+        metadata.setLastModifiedTime(lastModifiedTime);
     }
 
     @Override
