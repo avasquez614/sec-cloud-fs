@@ -1,15 +1,7 @@
-repositories {
-    maven {
-        url "http://oss.sonatype.org"
-    }
-}
-
 dependencies {
     compile project(':commons')
     compile project(':secure-cloud-storage')
     compile fileTree(dir: 'libs', include: '*.jar')
     compile 'org.infinispan:infinispan-core:6.0.1.Final'
     compile 'net.java.dev.jna:jna:3.5.2'
-    compile 'org.mongodb:mongo-java-driver:2.11.3'
-    compile 'org.jongo:jongo:1.0'
 }

@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.db.dao;
 
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 
 /**
@@ -8,38 +9,33 @@ import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 public interface FileMetadataDao {
 
     /**
-     * Returns the root metadata.
-     */
-    FileMetadata getRoot();
-
-    /**
      * Returns the file metadata with the specified ID in the database.
      *
      * @param id  the ID of the file metadata to look for
      *
      * @return the file metadata, or null if not found
      */
-    FileMetadata find(String id);
+    FileMetadata find(String id) throws DbException;
 
     /**
      * Inserts the file metadata in the database.
      *
      * @param metadata  the metadata to insert
      */
-    void insert(FileMetadata metadata);
+    void insert(FileMetadata metadata) throws DbException;
 
     /**
      * Saves the specified metadata in the database.
      *
      * @param metadata  the metadata to update
      */
-    void save(FileMetadata metadata);
+    void save(FileMetadata metadata) throws DbException;
 
     /**
      * Deletes the file metadata for the specified ID in the database.
      *
      * @param id    the ID the file metadata to delete
      */
-    void delete(String id);
+    void delete(String id) throws DbException;
 
 }

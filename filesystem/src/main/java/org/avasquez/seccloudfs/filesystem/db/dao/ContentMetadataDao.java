@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.db.dao;
 
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
 
 /**
@@ -7,12 +8,12 @@ import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
  */
 public interface ContentMetadataDao {
 
-    ContentMetadata find(String id);
+    ContentMetadata find(String id) throws DbException;
 
-    void insert(ContentMetadata metadata);
+    void insert(ContentMetadata metadata) throws DbException;
 
-    void save(ContentMetadata metadata);
+    void save(ContentMetadata metadata) throws DbException;
 
-    void delete(String id);
+    void delete(String id) throws DbException;
 
 }

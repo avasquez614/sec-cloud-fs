@@ -7,7 +7,7 @@ import org.jongo.marshall.jackson.oid.ObjectId;
 import java.util.Date;
 
 /**
- * The cloud file metadata. All fields are volatile since instances are normally used by multiple threads.
+ * The file metadata. All fields are volatile since instances are normally used by multiple threads.
  *
  * @author avasquez
  */

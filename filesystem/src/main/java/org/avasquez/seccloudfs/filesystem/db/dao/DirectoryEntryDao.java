@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.db.dao;
 
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 
 /**
@@ -7,14 +8,12 @@ import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
  */
 public interface DirectoryEntryDao {
 
-    DirectoryEntry find(String id);
+    Iterable<DirectoryEntry> findByDirectoryId(String dirId) throws DbException;
 
-    Iterable<DirectoryEntry> findByDirectoryId(String dirId);
+    void insert(DirectoryEntry entry) throws DbException;
 
-    void insert(DirectoryEntry metadata);
+    void save(DirectoryEntry entry) throws DbException;
 
-    void save(DirectoryEntry metadata);
-
-    void delete(String id);
+    void delete(String id) throws DbException;
 
 }

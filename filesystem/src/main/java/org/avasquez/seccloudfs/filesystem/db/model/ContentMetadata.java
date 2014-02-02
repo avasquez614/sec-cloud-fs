@@ -72,4 +72,14 @@ public class ContentMetadata {
         return id.hashCode();
     }
 
+    @Override
+    public String toString() {
+        return "ContentMetadata{" +
+                "id='" + id + '\'' +
+                ", uploadedSize=" + uploadedSize +
+                ", lastUploadTime=" + lastUploadTime +
+                ", markedAsDeleted=" + markedAsDeleted +
+                '}';
+    }
+
 }

@@ -2,9 +2,9 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import org.avasquez.seccloudfs.filesystem.db.dao.DirectoryEntryDao;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
+import org.avasquez.seccloudfs.utils.CollectionUtils;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -21,8 +21,9 @@ public class DirectoryEntries {
         this.directoryId = directoryId;
         this.entries = new ConcurrentHashMap<>();
 
-        Iterable<DirectoryEntry> entries = entryDao.findByDirectoryId(directoryId);
+        List<DirectoryEntry> entries = CollectionUtils.asList(entryDao.findByDirectoryId(directoryId));
         if (entries != null) {
+            entries = deleteDuplicateEntries(entries);
             for (DirectoryEntry entry : entries) {
                 this.entries.put(entry.getFileName(), entry);
             }
@@ -48,7 +49,7 @@ public class DirectoryEntries {
     }
 
     public DirectoryEntry createEntry(String fileName, String fileId) {
-        DirectoryEntry entry = new DirectoryEntry(directoryId, fileName, fileId);
+        DirectoryEntry entry = new DirectoryEntry(directoryId, fileName, fileId, new Date());
 
         entryDao.insert(entry);
 
@@ -64,7 +65,8 @@ public class DirectoryEntries {
             DirectoryEntry movedEntry = new DirectoryEntry(entry.getId(),
                     dst.directoryId,
                     newFileName,
-                    entry.getFileId());
+                    entry.getFileId(),
+                    new Date());
 
             entryDao.save(movedEntry);
 
@@ -92,6 +94,54 @@ public class DirectoryEntries {
                 "directoryId='" + directoryId + '\'' +
                 ", entries=" + entries +
                 '}';
+    }
+
+    private List<DirectoryEntry> deleteDuplicateEntries(List<DirectoryEntry> entries) {
+        List<DirectoryEntry> nonDupEntries = new ArrayList<>();
+        List<DirectoryEntry> dupEntries = new ArrayList<>();
+
+        for (DirectoryEntry entry : entries) {
+            if (!hasEntryWithSameName(nonDupEntries, entry)) {
+                DirectoryEntry dupEntry = getDuplicateEntry(entries, entry);
+                if (dupEntry != null) {
+                    if (dupEntry.getAddedDate().after(entry.getAddedDate())) {
+                        nonDupEntries.add(dupEntry);
+                        dupEntries.add(entry);
+                    } else {
+                        nonDupEntries.add(entry);
+                        dupEntries.add(dupEntry);
+                    }
+                } else {
+                    nonDupEntries.add(entry);
+                }
+            }
+        }
+
+        for (DirectoryEntry dupEntry : dupEntries) {
+            entryDao.delete(dupEntry.getId());
+        }
+
+        return nonDupEntries;
+    }
+
+    private boolean hasEntryWithSameName(List<DirectoryEntry> entries, DirectoryEntry entry) {
+        for (DirectoryEntry ent : entries) {
+            if (ent.getFileName().equals(entry.getFileName())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private DirectoryEntry getDuplicateEntry(List<DirectoryEntry> entries, DirectoryEntry entry) {
+        for (DirectoryEntry ent : entries) {
+            if (ent.getFileName().equals(entry.getFileName())) {
+                return ent;
+            }
+        }
+
+        return null;
     }
 
 }

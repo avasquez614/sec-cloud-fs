@@ -12,7 +12,7 @@ import java.nio.channels.WritableByteChannel;
 public interface CloudStore {
 
     /**
-     * Uploads the given data securely in the cloud.
+     * Uploads the given data in the cloud.
      *
      * @param dataId    the ID used to identify the data
      * @param input     the input where the data can be retrieved
