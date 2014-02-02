@@ -474,7 +474,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
                 return 0;
             }
 
-        }, "release");
+        }, "releasedir");
     }
 
     @Override
