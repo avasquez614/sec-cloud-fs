@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.content;
 
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
 
 import java.io.IOException;
 
@@ -13,6 +13,6 @@ public interface Content {
 
     long getSize() throws IOException;
 
-    FlushableByteChannel getByteChannel() throws IOException;
+    SyncAwareByteChannel getByteChannel() throws IOException;
 
 }

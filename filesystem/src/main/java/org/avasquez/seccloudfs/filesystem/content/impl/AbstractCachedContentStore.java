@@ -2,7 +2,6 @@ package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
-import org.avasquez.seccloudfs.filesystem.util.CacheUtils;
 import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
 
@@ -28,17 +27,18 @@ public abstract class AbstractCachedContentStore implements ContentStore {
     public Content find(String id) throws IOException {
         Content content;
 
-        if ((content = CacheUtils.get(cache, id)) != null) {
+        if ((content = cache.get(id)) != null) {
             return content;
         } else {
             synchronized (this) {
-                if ((content = CacheUtils.get(cache, id)) != null) {
+                if ((content = cache.get(id)) != null) {
                     return content;
                 }
 
                 content = doFind(id);
-
-                CacheUtils.put(cache, id, content);
+                if (content != null) {
+                    cache.put(id, content);
+                }
 
                 return content;
             }
@@ -49,20 +49,20 @@ public abstract class AbstractCachedContentStore implements ContentStore {
     public Content create() throws IOException {
         Content content = doCreate();
 
-        CacheUtils.put(cache, content.getId(), content);
+        cache.put(content.getId(), content);
 
         return content;
     }
 
     @Override
-    public void delete(String id) throws IOException {
-        doDelete(id);
+    public void delete(Content content) throws IOException {
+        doDelete(content);
 
-        cache.remove(id);
+        cache.remove(content.getId());
     }
 
     protected abstract Content doFind(String id) throws IOException;
     protected abstract Content doCreate() throws IOException;
-    protected abstract void doDelete(String id) throws IOException;
+    protected abstract void doDelete(Content content) throws IOException;
 
 }

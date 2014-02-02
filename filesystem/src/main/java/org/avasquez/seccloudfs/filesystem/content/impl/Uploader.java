@@ -3,6 +3,8 @@ package org.avasquez.seccloudfs.filesystem.content.impl;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -13,15 +15,13 @@ import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Created by alfonsovasquez on 11/01/14.
  */
 public class Uploader {
 
-    private static final Logger logger = Logger.getLogger(Uploader.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(Uploader.class);
 
     private static final String SNAPSHOT_PREFIX_FORMAT = ".%s.snapshot";
 
@@ -76,8 +76,8 @@ public class Uploader {
                     wait(timeoutForNextUpdate);
                 }
             } catch (InterruptedException e) {
-                logger.log(Level.WARNING, "Thread [" + Thread.currentThread().getName() + "] was interrupted " +
-                        "while waiting for timeout for next update to occur", e);
+                logger.error("Thread [" + Thread.currentThread().getName() + "] was interrupted while waiting for " +
+                        "timeout for next update to occur", e);
             }
         }
 
@@ -85,7 +85,7 @@ public class Uploader {
             try {
                 cloudStore.delete(metadata.getId());
             } catch (IOException e) {
-                logger.log(Level.WARNING, "Error while deleting content '" + metadata.getId() + "' from cloud", e);
+                logger.error("Error while deleting content '" + metadata.getId() + "' from cloud", e);
             }
 
             metadataDao.delete(metadata.getId());
@@ -104,7 +104,7 @@ public class Uploader {
             try {
                 Files.copy(contentPath, snapshotPath);
             } catch (IOException e) {
-                logger.log(Level.WARNING, "Error while trying to create snapshot file '" + snapshotPath + "'", e);
+                logger.error("Error while trying to create snapshot file '" + snapshotPath + "'", e);
 
                 return;
             }
@@ -115,7 +115,7 @@ public class Uploader {
         try (FileChannel snapshotChannel = FileChannel.open(snapshotPath, StandardOpenOption.READ)) {
             cloudStore.upload(metadata.getId(), snapshotChannel, snapshotChannel.size());
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Error while uploading content '" + metadata.getId() + "' to cloud", e);
+            logger.error("Error while uploading content '" + metadata.getId() + "' to cloud", e);
 
             return;
         }
@@ -124,7 +124,7 @@ public class Uploader {
             metadata.setUploadedSize(Files.size(snapshotPath));
             metadata.setLastUploadTime(new Date());
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Unable to retrieve file size for '" + snapshotPath + "'", e);
+            logger.error("Unable to retrieve file size for '" + snapshotPath + "'", e);
 
             return;
         }
@@ -132,10 +132,10 @@ public class Uploader {
         try {
             Files.delete(snapshotPath);
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Unable to delete snapshot file '" + snapshotPath + "'", e);
+            logger.error("Unable to delete snapshot file '" + snapshotPath + "'", e);
         }
 
-        metadataDao.update(metadata);
+        metadataDao.save(metadata);
 
         // Check if content was deleted or if there where new updates while uploading
         if (metadata.isMarkedAsDeleted() || getContentLastModifiedTime() > snapshotTime) {
@@ -154,7 +154,7 @@ public class Uploader {
         try {
             return Files.getLastModifiedTime(contentPath).toMillis();
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Unable to retrieve last modified time for '" + contentPath + "'", e);
+            logger.error("Unable to retrieve last modified time for '" + contentPath + "'", e);
 
             return 0;
         }

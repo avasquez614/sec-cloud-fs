@@ -1,9 +1,10 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -16,7 +17,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 /**
  * Created by alfonsovasquez on 11/01/14.
  */
-public class CloudContent implements DeletableContent {
+public class CloudContent implements Content {
 
     private static final String TMP_PATH_SUFFIX = ".download";
 
@@ -55,7 +56,7 @@ public class CloudContent implements DeletableContent {
     }
 
     @Override
-    public FlushableByteChannel getByteChannel() throws IOException {
+    public SyncAwareByteChannel getByteChannel() throws IOException {
         checkDownloaded();
 
         if (metadata.isMarkedAsDeleted()) {
@@ -65,10 +66,9 @@ public class CloudContent implements DeletableContent {
         return new ContentByteChannel();
     }
 
-    @Override
     public void delete() throws IOException {
         metadata.setMarkedAsDeleted(true);
-        metadataDao.update(metadata);
+        metadataDao.save(metadata);
     }
 
     @Override
@@ -127,7 +127,7 @@ public class CloudContent implements DeletableContent {
         }
     }
 
-    private class ContentByteChannel implements FlushableByteChannel {
+    private class ContentByteChannel implements SyncAwareByteChannel {
 
         private FileChannel fileChannel;
 
@@ -216,7 +216,7 @@ public class CloudContent implements DeletableContent {
         }
 
         @Override
-        public void flush() throws IOException {
+        public void sync() throws IOException {
             rwLock.writeLock().lock();
             try {
                 fileChannel.force(true);

@@ -6,8 +6,8 @@ import java.nio.channels.SeekableByteChannel;
 /**
  * Created by alfonsovasquez on 25/01/14.
  */
-public interface FlushableByteChannel extends SeekableByteChannel {
+public interface SyncAwareByteChannel extends SeekableByteChannel {
 
-    void flush() throws IOException;
+    void sync() throws IOException;
 
 }

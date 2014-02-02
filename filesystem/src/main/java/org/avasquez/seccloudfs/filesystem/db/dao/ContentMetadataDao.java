@@ -11,7 +11,7 @@ public interface ContentMetadataDao {
 
     void insert(ContentMetadata metadata);
 
-    void update(ContentMetadata metadata);
+    void save(ContentMetadata metadata);
 
     void delete(String id);
 

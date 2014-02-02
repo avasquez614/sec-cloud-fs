@@ -62,12 +62,11 @@ public class CloudContentStore extends AbstractCachedContentStore {
     }
 
     @Override
-    protected void doDelete(String id) throws IOException {
-        DeletableContent content = (DeletableContent) find(id);
-        content.delete();
+    protected void doDelete(Content content) throws IOException {
+        ((CloudContent) content).delete();
     }
 
-    private DeletableContent createContentObject(ContentMetadata metadata) throws IOException {
+    private Content createContentObject(ContentMetadata metadata) throws IOException {
         Path contentPath = Paths.get(cacheContentDir, metadata.getId());
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         Uploader uploader = new Uploader(metadata, metadataDao, contentPath, timeoutForNextUpdate,

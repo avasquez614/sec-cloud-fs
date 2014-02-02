@@ -11,6 +11,6 @@ public interface ContentStore {
 
     Content create() throws IOException;
 
-    void delete(String id) throws IOException;
+    void delete(Content content) throws IOException;
 
 }

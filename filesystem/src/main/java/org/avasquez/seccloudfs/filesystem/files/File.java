@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.files;
 
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
 
 import java.io.IOException;
 import java.util.Date;
@@ -9,21 +9,6 @@ import java.util.Date;
  * Created by alfonsovasquez on 13/01/14.
  */
 public interface File {
-
-    /**
-     * Returns the file's ID.
-     */
-    String getId();
-
-    /**
-     * Returns the parent's ID.
-     */
-    String getParentId();
-
-    /**
-     * Returns the parent directory.
-     */
-    File getParent() throws IOException;
 
     /**
      * Returns the file's size.
@@ -46,12 +31,6 @@ public interface File {
     File getChild(String name) throws IOException;
 
     /**
-     * Returns the filename under the directory of the specified file ID, if the file is a child of
-     * the directory, or null if it's not a child or if this is not a directory.
-     */
-    String getChildName(String fileId) throws IOException;
-
-    /**
      * Returns true if the directory contains a child with the specified name.
      */
     boolean hasChild(String name) throws IOException;
@@ -62,60 +41,65 @@ public interface File {
     String[] getChildren() throws IOException;
 
     /**
-     * Adds a child. If a child already exists for the specified name, it's replaced by the new one.
+     * Creates a new file under this directory
      *
-     * @param name      the name of the child in the directory
-     * @param fileId    the file ID of the child
+     * @param name          the file's name
+     * @param dir           if the file should be a directory
+     * @param owner         the file's owner
+     * @param permissions   the file's permissions
+     *
+     * @return the created file
      */
-    void addChild(String name, String fileId) throws IOException;
+    File createFile(String name, boolean dir, User owner, long permissions) throws IOException;
 
     /**
-     * Removes a child from the directory.
+     * Moves the child of the specified name under the specified directory with the new name.
      *
-     * @param name  the name of the child to remove
+     * @param name      the child's name
+     * @param newParent the new parent
+     * @param newName   the new name
      */
-    void removeChild(String name) throws IOException;
+    File moveFileTo(String name, File newParent, String newName) throws IOException;
 
     /**
-     * Removes a child from the directory.
+     * Deletes the file with the specified name under this directory.
      *
-     * @param id    the ID of the child to remove
+     * @param name  the child's name
      */
-    void removeChildById(String id) throws IOException;
+    void delete(String name) throws IOException;
 
     /**
      * Returns a byte channel that can be used to read/write to the content.
      */
-    FlushableByteChannel getByteChannel() throws IOException;
+    SyncAwareByteChannel getByteChannel() throws IOException;
 
     /**
-     * Returns the time of the last of these changes:
-     *
-     * <ul>
-     *     <li>ownership</li>
-     *     <li>permissions</li>
-     *     <li>content</li>
-     * </ul>
+     * Returns the time of the last metadata or content (in case of dir, it's children) changes.
      */
     Date getLastChangeTime();
 
     /**
-     * Returns the time of the last access (read).
+     * Returns the time of the last access (read or dir get children).
      */
     Date getLastAccessTime();
 
     /**
-     * Returns the time of the last file modification (write).
+     * Returns the time of the last file modification (write or dir add/remove).
      */
     Date getLastModifiedTime();
 
     /**
-     * Sets the time of the last access (read).
+     * Returns the time of the last metadata or content (in case of dir, it's children) changes.
+     */
+    void setLastChangeTime(Date lastChangeTime);
+
+    /**
+     * Sets the time of the last access (read or dir get children).
      */
     void setLastAccessTime(Date lastAccessTime);
 
     /**
-     * Sets the time of the last file modification (write).
+     * Sets the time of the last file modification (write or dir add/remove).
      */
     void setLastModifiedTime(Date lastModifiedTime);
 
@@ -146,6 +130,6 @@ public interface File {
     /**
      * Flushes any metadata changes to the underlying storage.
      */
-    void flushMetadata() throws IOException;
+    void syncMetadata() throws IOException;
 
 }

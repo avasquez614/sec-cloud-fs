@@ -4,9 +4,13 @@ import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.files.File;
 
 /**
- * Created by alfonsovasquez on 19/01/14.
+ * Created by alfonsovasquez on 01/02/14.
  */
-public interface ContentAwareFile extends File {
+public interface FileNode extends File {
+
+    String getId();
+
+    DirectoryEntries getEntries();
 
     Content getContent();
 

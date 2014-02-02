@@ -2,8 +2,6 @@ package org.avasquez.seccloudfs.filesystem.db.dao;
 
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 
-import java.util.List;
-
 /**
  * Data Access Object for {@link org.avasquez.seccloudfs.filesystem.db.model.FileMetadata}s.
  */
@@ -24,15 +22,6 @@ public interface FileMetadataDao {
     FileMetadata find(String id);
 
     /**
-     * Returns the children metadata of the directory specified by the ID.
-     *
-     * @param id  the ID of the directory
-     *
-     * @return the children metadata, or null if directory metadata not found
-     */
-    List<FileMetadata> findChildren(String id);
-
-    /**
      * Inserts the file metadata in the database.
      *
      * @param metadata  the metadata to insert
@@ -40,11 +29,11 @@ public interface FileMetadataDao {
     void insert(FileMetadata metadata);
 
     /**
-     * Updates the specified metadata in the database.
+     * Saves the specified metadata in the database.
      *
      * @param metadata  the metadata to update
      */
-    void update(FileMetadata metadata);
+    void save(FileMetadata metadata);
 
     /**
      * Deletes the file metadata for the specified ID in the database.

@@ -5,7 +5,6 @@ import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
 
 import java.util.Date;
-import java.util.Map;
 
 /**
  * The cloud file metadata. All fields are volatile since instances are normally used by multiple threads.
@@ -17,9 +16,7 @@ public class FileMetadata {
     @Id
     @ObjectId
     private String id;
-    private String parentId;
     private volatile boolean directory;
-    private volatile Map<String, DirEntry> dirEntries;
     private volatile String contentId;
     private volatile Date lastChangeTime;
     private volatile Date lastModifiedTime;
@@ -35,28 +32,12 @@ public class FileMetadata {
         this.id = id;
     }
 
-    public String getParentId() {
-        return parentId;
-    }
-
-    public void setParentId(String parentId) {
-        this.parentId = parentId;
-    }
-
     public boolean isDirectory() {
         return directory;
     }
 
     public void setDirectory(boolean directory) {
         this.directory = directory;
-    }
-
-    public Map<String, DirEntry> getDirEntries() {
-        return dirEntries;
-    }
-
-    public void setDirEntries(Map<String, DirEntry> dirEntries) {
-        this.dirEntries = dirEntries;
     }
 
     public String getContentId() {
@@ -128,6 +109,20 @@ public class FileMetadata {
     @Override
     public int hashCode() {
         return id.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "FileMetadata{" +
+                "id='" + id + '\'' +
+                ", directory=" + directory +
+                ", contentId='" + contentId + '\'' +
+                ", lastChangeTime=" + lastChangeTime +
+                ", lastModifiedTime=" + lastModifiedTime +
+                ", lastAccessTime=" + lastAccessTime +
+                ", owner=" + owner +
+                ", permissions=" + permissions +
+                '}';
     }
 
 }
