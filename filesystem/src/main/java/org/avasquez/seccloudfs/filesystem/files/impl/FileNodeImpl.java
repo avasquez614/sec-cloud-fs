@@ -147,9 +147,9 @@ public class FileNodeImpl implements FileNode {
                 throw new DirectoryNotEmptyException("Directory '" + file + "' should be empty before deleting");
             }
 
-            fileNodeStore.delete(file);
-
             entries.deleteEntry(name);
+
+            fileNodeStore.delete(file);
         }
     }
 

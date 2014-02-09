@@ -1,3 +1,2 @@
-* Work in file cache eviction.
-* Work in recovery service.
 * Make uploader retry on fail.
+* Work in fs repair service (optional).
