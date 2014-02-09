@@ -8,20 +8,21 @@ import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.Executor;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by alfonsovasquez on 12/01/14.
  */
-public class CloudContentStore extends AbstractCachedContentStore {
+public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
     private ContentMetadataDao metadataDao;
     private CloudStore cloudStore;
-    private String cacheContentDir;
+    private Path downloadsDir;
+    private Path snapshotDir;
     private long timeoutForNextUpdate;
-    private Executor threadPool;
+    private ScheduledExecutorService executorService;
 
     public void setMetadataDao(ContentMetadataDao metadataDao) {
         this.metadataDao = metadataDao;
@@ -31,16 +32,20 @@ public class CloudContentStore extends AbstractCachedContentStore {
         this.cloudStore = cloudStore;
     }
 
-    public void setCacheContentDir(String cacheContentDir) {
-        this.cacheContentDir = cacheContentDir;
+    public void setDownloadsDir(String downloadsDir) {
+        this.downloadsDir = Paths.get(downloadsDir);
+    }
+
+    public void setSnapshotDir(String snapshotDir) {
+        this.snapshotDir = Paths.get(snapshotDir);
     }
 
     public void setTimeoutForNextUpdate(long timeoutForNextUpdate) {
         this.timeoutForNextUpdate = timeoutForNextUpdate;
     }
 
-    public void setThreadPool(Executor threadPool) {
-        this.threadPool = threadPool;
+    public void setExecutorService(ScheduledExecutorService executorService) {
+        this.executorService = executorService;
     }
 
     @Override
@@ -63,16 +68,16 @@ public class CloudContentStore extends AbstractCachedContentStore {
 
     @Override
     protected void doDelete(Content content) throws IOException {
-        ((CloudContent) content).delete();
+        ((CloudContentImpl) content).delete();
     }
 
     private Content createContentObject(ContentMetadata metadata) throws IOException {
-        Path contentPath = Paths.get(cacheContentDir, metadata.getId());
-        ReadWriteLock rwLock = new ReentrantReadWriteLock();
-        Uploader uploader = new Uploader(metadata, metadataDao, contentPath, timeoutForNextUpdate,
-                threadPool, rwLock, cloudStore);
+        Path downloadPath = downloadsDir.resolve(metadata.getId());
+        Lock accessLock = new ReentrantLock();
+        Uploader uploader = new Uploader(metadata, metadataDao, downloadPath, accessLock, snapshotDir,
+                timeoutForNextUpdate, executorService, cloudStore);
 
-        return new CloudContent(metadata, metadataDao, contentPath, cloudStore, uploader, rwLock);
+        return new CloudContentImpl(metadata, metadataDao, downloadPath, accessLock, cloudStore, uploader);
     }
 
 }

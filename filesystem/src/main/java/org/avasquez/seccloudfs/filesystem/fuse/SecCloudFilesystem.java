@@ -8,7 +8,7 @@ import org.avasquez.seccloudfs.filesystem.exception.*;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.Filesystem;
 import org.avasquez.seccloudfs.filesystem.files.User;
-import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,6 +130,24 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
     }
 
     @Override
+    public int opendir(final String path, final FileInfoWrapper info) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                File dir = resolveFile(path);
+
+                checkDirectory(dir);
+
+                updateLastAccessTime(dir, false);
+
+                return 0;
+            }
+
+        }, "opendir");
+    }
+
+    @Override
     public int readdir(final String path, final DirectoryFiller filler) {
         return doWithErrorHandling(new Callable<Integer>() {
 
@@ -141,8 +159,6 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
                 checkReadPermission(dir);
 
                 filler.add(dir.getChildren());
-
-                updateLastAccessTime(dir, false);
 
                 return 0;
             }
@@ -293,7 +309,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
                     file = parent.getChild(name);
                 }
 
-                SyncAwareByteChannel handle = file.getByteChannel();
+                FlushableByteChannel handle = file.getByteChannel();
                 long handleId = fileHandleRegistry.add(handle);
 
                 info.fh(handleId);
@@ -336,7 +352,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
                 checkWritePermission(file);
 
-                try (SyncAwareByteChannel handle = file.getByteChannel()) {
+                try (FlushableByteChannel handle = file.getByteChannel()) {
                     handle.truncate(offset);
                 }
 
@@ -378,10 +394,12 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
                 checkNotDirectory(file);
 
-                SyncAwareByteChannel handle = file.getByteChannel();
+                FlushableByteChannel handle = file.getByteChannel();
                 long handleId = fileHandleRegistry.add(handle);
 
                 info.fh(handleId);
+
+                updateLastAccessTime(file, false);
 
                 return 0;
             }
@@ -402,13 +420,10 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
                 buffer.limit(buffer.position() + (int) size);
 
-                SyncAwareByteChannel handle = getFileHandle(info.fh());
+                FlushableByteChannel handle = getFileHandle(info.fh());
                 handle.position(offset);
 
                 int readBytes = handle.read(buffer);
-
-                updateLastAccessTime(file, false);
-
                 if (readBytes > 0) {
                     return readBytes;
                 } else {
@@ -432,7 +447,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
 
                 buffer.limit(buffer.position() + (int) size);
 
-                SyncAwareByteChannel handle = getFileHandle(info.fh());
+                FlushableByteChannel handle = getFileHandle(info.fh());
                 handle.position(offset);
 
                 int writtenBytes = handle.write(buffer);
@@ -484,13 +499,13 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
             @Override
             public Integer call() throws Exception {
                 File file = resolveFile(path);
-                SyncAwareByteChannel handle = getFileHandle(info.fh());
+                FlushableByteChannel handle = getFileHandle(info.fh());
 
                 if (datasync == 0) {
                     file.syncMetadata();
                 }
 
-                handle.sync();
+                handle.flush();
 
                 return 0;
             }
@@ -643,8 +658,8 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
         }
     }
     
-    private SyncAwareByteChannel getFileHandle(long handleId) throws InvalidFileHandleException {
-        SyncAwareByteChannel handle = fileHandleRegistry.get(handleId);
+    private FlushableByteChannel getFileHandle(long handleId) throws InvalidFileHandleException {
+        FlushableByteChannel handle = fileHandleRegistry.get(handleId);
         if (handle == null || !handle.isOpen()) {
             throw new InvalidFileHandleException("Non-existing or closed file handle " + handleId);
         }

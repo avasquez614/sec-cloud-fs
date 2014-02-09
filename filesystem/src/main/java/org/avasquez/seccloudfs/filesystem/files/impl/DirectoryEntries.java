@@ -1,9 +1,11 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.dao.DirectoryEntryDao;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.utils.CollectionUtils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,7 +18,7 @@ public class DirectoryEntries {
     private String directoryId;
     private Map<String, DirectoryEntry> entries;
 
-    public DirectoryEntries(DirectoryEntryDao entryDao, String directoryId) {
+    public DirectoryEntries(DirectoryEntryDao entryDao, String directoryId) throws IOException {
         this.entryDao = entryDao;
         this.directoryId = directoryId;
         this.entries = new ConcurrentHashMap<>();
@@ -48,7 +50,7 @@ public class DirectoryEntries {
         return fileNames.toArray(new String[fileNames.size()]);
     }
 
-    public DirectoryEntry createEntry(String fileName, String fileId) {
+    public DirectoryEntry createEntry(String fileName, String fileId) throws IOException {
         DirectoryEntry entry = new DirectoryEntry(directoryId, fileName, fileId, new Date());
 
         entryDao.insert(entry);
@@ -58,7 +60,7 @@ public class DirectoryEntries {
         return entry;
     }
 
-    public void moveEntryTo(String fileName, DirectoryEntries dst, String newFileName) {
+    public void moveEntryTo(String fileName, DirectoryEntries dst, String newFileName) throws IOException {
         DirectoryEntry entry = getEntry(fileName);
         if (entry != null) {
             DirectoryEntry replacedEntry = dst.entries.get(fileName);
@@ -79,7 +81,7 @@ public class DirectoryEntries {
         }
     }
 
-    public void deleteEntry(String fileName) {
+    public void deleteEntry(String fileName) throws IOException {
         DirectoryEntry entry = getEntry(fileName);
         if (entry != null) {
             entryDao.delete(entry.getId());
@@ -96,7 +98,7 @@ public class DirectoryEntries {
                 '}';
     }
 
-    private List<DirectoryEntry> deleteDuplicateEntries(List<DirectoryEntry> entries) {
+    private List<DirectoryEntry> deleteDuplicateEntries(List<DirectoryEntry> entries) throws DbException {
         List<DirectoryEntry> nonDupEntries = new ArrayList<>();
         List<DirectoryEntry> dupEntries = new ArrayList<>();
 

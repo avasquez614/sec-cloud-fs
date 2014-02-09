@@ -18,6 +18,13 @@ public interface FileMetadataDao {
     FileMetadata find(String id) throws DbException;
 
     /**
+     * Returns the metadata of all files, sorted by descending last access time.
+     *
+     * @return the sorted file metadata list
+     */
+    Iterable<FileMetadata> findAllSortedByDescLastAccessTime() throws DbException;
+
+    /**
      * Inserts the file metadata in the database.
      *
      * @param metadata  the metadata to insert

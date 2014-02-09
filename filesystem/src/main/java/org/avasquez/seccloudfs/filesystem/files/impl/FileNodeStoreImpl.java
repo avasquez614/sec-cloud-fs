@@ -81,7 +81,7 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
         }
     }
 
-    private DirectoryEntries getDirectoryEntries(FileMetadata metadata) {
+    private DirectoryEntries getDirectoryEntries(FileMetadata metadata) throws IOException {
         if (metadata.isDirectory()) {
             return new DirectoryEntries(entryDao, metadata.getId());
         } else {

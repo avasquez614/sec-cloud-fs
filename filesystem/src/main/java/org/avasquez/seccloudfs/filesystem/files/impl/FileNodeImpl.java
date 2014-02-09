@@ -8,7 +8,7 @@ import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileNotDirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.User;
-import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 
 import java.io.IOException;
 import java.util.Date;
@@ -159,7 +159,7 @@ public class FileNodeImpl implements FileNode {
     }
 
     @Override
-    public SyncAwareByteChannel getByteChannel() throws IOException {
+    public FlushableByteChannel getByteChannel() throws IOException {
         if (!isDirectory()) {
             return content.getByteChannel();
         } else {

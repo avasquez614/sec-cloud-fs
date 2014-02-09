@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.files;
 
-import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 
 import java.io.IOException;
 import java.util.Date;
@@ -71,7 +71,7 @@ public interface File {
     /**
      * Returns a byte channel that can be used to read/write to the content.
      */
-    SyncAwareByteChannel getByteChannel() throws IOException;
+    FlushableByteChannel getByteChannel() throws IOException;
 
     /**
      * Returns the time of the last metadata or content (in case of dir, it's children) changes.
@@ -128,7 +128,7 @@ public interface File {
     void setPermissions(long permissions);
 
     /**
-     * Flushes any metadata changes to the underlying storage.
+     * Sync any metadata changes to the underlying storage.
      */
     void syncMetadata() throws IOException;
 

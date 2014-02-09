@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.fuse;
 
-import org.avasquez.seccloudfs.filesystem.util.SyncAwareByteChannel;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
 import org.infinispan.notifications.Listener;
@@ -24,7 +24,7 @@ public class FileHandleRegistry {
 
     private static final String FILE_HANDLE_CACHE_NAME = "fileHandles";
 
-    private Cache<Long, SyncAwareByteChannel> cache;
+    private Cache<Long, FlushableByteChannel> cache;
 
     private AtomicLong handleIdGenerator;
 
@@ -41,11 +41,11 @@ public class FileHandleRegistry {
         cache.addListener(new CacheListener());
     }
 
-    public SyncAwareByteChannel get(long id) {
+    public FlushableByteChannel get(long id) {
         return cache.get(id);
     }
 
-    public long add(SyncAwareByteChannel handle) {
+    public long add(FlushableByteChannel handle) {
         long id = handleIdGenerator.getAndIncrement();
 
         cache.put(id, handle);
@@ -53,7 +53,7 @@ public class FileHandleRegistry {
         return id;
     }
 
-    public SyncAwareByteChannel destroy(long id) {
+    public FlushableByteChannel destroy(long id) {
         return cache.remove(id);
     }
 
@@ -65,18 +65,18 @@ public class FileHandleRegistry {
     public static class CacheListener {
 
         @CacheEntryRemoved
-        public void onCacheRemove(CacheEntryRemovedEvent<Long, SyncAwareByteChannel> event) {
+        public void onCacheRemove(CacheEntryRemovedEvent<Long, FlushableByteChannel> event) {
             closeHandle(event.getKey(), event.getValue());
         }
 
         @CacheEntriesEvicted
-        public void onCacheEviction(CacheEntriesEvictedEvent<Long, SyncAwareByteChannel> event) {
-            for (Map.Entry<Long, SyncAwareByteChannel> entry : event.getEntries().entrySet()) {
+        public void onCacheEviction(CacheEntriesEvictedEvent<Long, FlushableByteChannel> event) {
+            for (Map.Entry<Long, FlushableByteChannel> entry : event.getEntries().entrySet()) {
                 closeHandle(entry.getKey(), entry.getValue());
             }
         }
 
-        private void closeHandle(Long id, SyncAwareByteChannel handle) {
+        private void closeHandle(Long id, FlushableByteChannel handle) {
             try {
                 if (handle.isOpen()) {
                     handle.close();
