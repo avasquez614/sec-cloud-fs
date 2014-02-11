@@ -83,6 +83,8 @@
     <bean id="fuseFilesystem" class="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFuseFilesystem">
         <property name="fileHandleRegistry" ref="fileHandleRegistry"/>
         <property name="filesystem" ref="filesystem"/>
+        <property name="rootUid" value="${filesystem.root.uid}"/>
+        <property name="rootPermissions" value="${filesystem.root.permissions}"/>
     </bean>
 
     <import resource="classpath*:custom-filesystem-context.xml"/>

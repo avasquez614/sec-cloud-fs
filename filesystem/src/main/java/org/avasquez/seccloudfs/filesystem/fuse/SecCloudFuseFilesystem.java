@@ -31,20 +31,12 @@ import static net.fusejna.types.TypeMode.NodeType;
  */
 public class SecCloudFuseFilesystem extends FuseFilesystemAdapterFull {
 
-    public static final long DEFAULT_ROOT_PERMISSIONS = (7L << 6) | (5L << 3) | 5L;
-    public static final int DEFAULT_ROOT_UID =          0;
-
     private static final Logger logger = LoggerFactory.getLogger(SecCloudFuseFilesystem.class);
 
     private Filesystem filesystem;
     private FileHandleRegistry fileHandleRegistry;
     private long rootPermissions;
     private int rootUid;
-
-    public SecCloudFuseFilesystem() {
-        rootPermissions = DEFAULT_ROOT_PERMISSIONS;
-        rootUid = DEFAULT_ROOT_UID;
-    }
 
     @Required
     public void setFilesystem(Filesystem filesystem) {
@@ -56,10 +48,12 @@ public class SecCloudFuseFilesystem extends FuseFilesystemAdapterFull {
         this.fileHandleRegistry = fileHandleRegistry;
     }
 
-    public void setRootPermissions(long rootPermissions) {
-        this.rootPermissions = rootPermissions;
+    @Required
+    public void setRootPermissions(String octalPermissions) {
+        this.rootPermissions = Long.valueOf(octalPermissions, 8);
     }
 
+    @Required
     public void setRootUid(int rootUid) {
         this.rootUid = rootUid;
     }
