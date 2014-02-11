@@ -89,12 +89,12 @@ public class Uploader {
             }
         }
 
-        logger.info("Upload for content {} started", metadata);
-
         try {
-            upload();
-
-            logger.info("Upload for content {} finished", metadata);
+            if (metadata.isMarkedAsDeleted() && metadata.getLastUploadTime() != null) {
+                delete();
+            } else {
+                upload();
+            }
         } catch (UploadFailedException e) {
             logger.error("Upload for content " + metadata + " failed. Retrying in " + retryDelaySecs + " seconds", e);
 
@@ -102,22 +102,28 @@ public class Uploader {
         }
     }
 
-    private void upload() throws UploadFailedException {
-        if (!metadata.isMarkedAsDeleted() && metadata.getLastUploadTime() != null) {
-            try {
-                cloudStore.delete(metadata.getId());
+    private void delete() throws UploadFailedException {
+        try {
+            logger.debug("Delete for content {} started", metadata);
 
-                metadataRepository.delete(metadata.getId());
+            cloudStore.delete(metadata.getId());
 
-                logger.info("Content {} deleted", metadata);
+            logger.info("Content {} deleted from cloud", metadata);
 
-                return;
-            } catch (DbException e) {
-                throw new UploadFailedException("Error while deleting content from DB", e);
-            } catch (IOException e) {
-                throw new UploadFailedException("Error while deleting content from cloud", e);
-            }
+            metadataRepository.delete(metadata.getId());
+
+            logger.debug("Delete for content {} finished", metadata);
+
+            return;
+        } catch (DbException e) {
+            throw new UploadFailedException("Error while deleting content from DB", e);
+        } catch (IOException e) {
+            throw new UploadFailedException("Error while deleting content from cloud", e);
         }
+    }
+
+    private void upload() throws UploadFailedException {
+        logger.debug("Upload for content {} started", metadata);
 
         long snapshotTime;
         Path snapshotPath;
@@ -144,7 +150,7 @@ public class Uploader {
             throw new UploadFailedException("Error while uploading content to cloud", e);
         }
 
-        logger.info("Content {} uploaded", metadata);
+        logger.info("Content {} uploaded to cloud", metadata);
 
         try {
             metadata.setUploadedSize(Files.size(snapshotPath));
@@ -166,6 +172,8 @@ public class Uploader {
         } catch (DbException e) {
             throw new UploadFailedException("Error while saving content metadata to DB", e);
         }
+
+        logger.debug("Upload for content {} finished", metadata);
 
         // Check if content was deleted or if there where new updates while uploading
         if (metadata.isMarkedAsDeleted() || getContentLastModifiedTime() > snapshotTime) {
