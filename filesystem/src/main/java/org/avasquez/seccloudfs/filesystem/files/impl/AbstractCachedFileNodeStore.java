@@ -3,6 +3,7 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 
@@ -11,14 +12,15 @@ import java.io.IOException;
  */
 public abstract class AbstractCachedFileNodeStore implements FileNodeStore {
 
-    public static final String FILE_CACHE_NAME = "files";
+    public static final String FILE_NODE_CACHE_NAME = "fileNodes";
 
     private Cache<String, FileNode> cache;
 
+    @Required
     public void setCacheContainer(CacheContainer cacheContainer) {
-        cache = cacheContainer.getCache(FILE_CACHE_NAME);
+        cache = cacheContainer.getCache(FILE_NODE_CACHE_NAME);
         if (cache == null) {
-            throw new IllegalArgumentException("No '" + FILE_CACHE_NAME + "' cache found");
+            throw new IllegalArgumentException("No '" + FILE_NODE_CACHE_NAME + "' cache found");
         }
     }
 

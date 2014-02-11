@@ -10,6 +10,7 @@ import org.infinispan.notifications.cachelistener.event.CacheEntriesEvictedEvent
 import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 import java.util.Map;
@@ -32,6 +33,7 @@ public class FileHandleRegistry {
         handleIdGenerator = new AtomicLong();
     }
 
+    @Required
     public void setCacheContainer(CacheContainer cacheContainer) {
         cache = cacheContainer.getCache(FILE_HANDLE_CACHE_NAME);
         if (cache == null) {

@@ -4,6 +4,7 @@ import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 
@@ -16,6 +17,7 @@ public abstract class AbstractCachedContentStore implements ContentStore {
 
     private Cache<String, Content> cache;
 
+    @Required
     public void setCacheContainer(CacheContainer cacheContainer) {
         cache = cacheContainer.getCache(CONTENT_CACHE_NAME);
         if (cache == null) {

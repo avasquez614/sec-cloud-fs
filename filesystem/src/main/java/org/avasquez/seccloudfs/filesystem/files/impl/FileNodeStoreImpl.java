@@ -8,6 +8,7 @@ import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 import java.util.Date;
@@ -23,14 +24,17 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
     private DirectoryEntryDao entryDao;
     private ContentStore contentStore;
 
+    @Required
     public void setMetadataDao(FileMetadataDao metadataDao) {
         this.metadataDao = metadataDao;
     }
 
+    @Required
     public void setEntryDao(DirectoryEntryDao entryDao) {
         this.entryDao = entryDao;
     }
 
+    @Required
     public void setContentStore(ContentStore contentStore) {
         this.contentStore = contentStore;
     }

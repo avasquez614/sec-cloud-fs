@@ -11,6 +11,7 @@ import org.avasquez.seccloudfs.filesystem.files.User;
 import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,33 +29,29 @@ import static net.fusejna.types.TypeMode.NodeType;
 /**
  * Created by alfonsovasquez on 25/01/14.
  */
-public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
+public class SecCloudFuseFilesystem extends FuseFilesystemAdapterFull {
 
     public static final long DEFAULT_ROOT_PERMISSIONS = (7L << 6) | (5L << 3) | 5L;
+    public static final int DEFAULT_ROOT_UID =          0;
 
-    public static final int DEFAULT_ROOT_UID =  0;
-
-    /**
-     * Separator for file path components.
-     */
-    public static final String PATH_SEPARATOR = "/";
-
-    private static final Logger logger = LoggerFactory.getLogger(SecCloudFilesystem.class);
+    private static final Logger logger = LoggerFactory.getLogger(SecCloudFuseFilesystem.class);
 
     private Filesystem filesystem;
     private FileHandleRegistry fileHandleRegistry;
     private long rootPermissions;
     private int rootUid;
 
-    public SecCloudFilesystem() {
+    public SecCloudFuseFilesystem() {
         rootPermissions = DEFAULT_ROOT_PERMISSIONS;
         rootUid = DEFAULT_ROOT_UID;
     }
 
+    @Required
     public void setFilesystem(Filesystem filesystem) {
         this.filesystem = filesystem;
     }
 
+    @Required
     public void setFileHandleRegistry(FileHandleRegistry fileHandleRegistry) {
         this.fileHandleRegistry = fileHandleRegistry;
     }
@@ -570,7 +567,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
     }
 
     private File resolveFile(File currentDir, String path) throws PermissionDeniedException, IOException {
-        path = StringUtils.strip(path, PATH_SEPARATOR);
+        path = StringUtils.strip(path, Constants.PATH_SEPARATOR);
 
         if (path.isEmpty()) {
             return currentDir;
@@ -579,7 +576,7 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
         // Execute permission means the user can search the directory
         checkExecutePermission(currentDir);
 
-        int indexOfSep = path.indexOf(PATH_SEPARATOR);
+        int indexOfSep = path.indexOf(Constants.PATH_SEPARATOR);
         if (indexOfSep < 0) {
             return getChild(currentDir, path);
         } else {
@@ -590,13 +587,13 @@ public class SecCloudFilesystem extends FuseFilesystemAdapterFull {
     }
 
     private File resolveParent(String path) throws PermissionDeniedException, IOException {
-        String parentPath = StringUtils.stripEnd(FilenameUtils.getPath(path), PATH_SEPARATOR);
+        String parentPath = StringUtils.stripEnd(FilenameUtils.getPath(path), Constants.PATH_SEPARATOR);
 
         return resolveFile(parentPath);
     }
 
     private String getFilename(String path) {
-        return StringUtils.stripEnd(FilenameUtils.getName(path), PATH_SEPARATOR);
+        return StringUtils.stripEnd(FilenameUtils.getName(path), Constants.PATH_SEPARATOR);
     }
 
     private File getChild(File parent, String name) throws IOException {

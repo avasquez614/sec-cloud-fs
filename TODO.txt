@@ -1,2 +1,2 @@
-* Make uploader retry on fail.
+* Test FUSE filesystem.
 * Work in fs repair service (optional).

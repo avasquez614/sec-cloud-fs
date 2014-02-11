@@ -3,6 +3,7 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.Filesystem;
 import org.avasquez.seccloudfs.filesystem.files.User;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 
@@ -14,6 +15,7 @@ public class FilesystemImpl implements Filesystem {
     private FileNodeStore fileNodeStore;
     private File root;
 
+    @Required
     public void setFileNodeStore(FileNodeStore fileNodeStore) {
         this.fileNodeStore = fileNodeStore;
     }

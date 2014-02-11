@@ -32,6 +32,11 @@ public class Constants {
             TypeMode.S_IROTH | TypeMode.S_IWOTH | TypeMode.S_IXOTH;
 
 
+    /**
+     * The path separator
+     */
+    public static final String PATH_SEPARATOR = "/";
+
     private Constants() {
     }
 

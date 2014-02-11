@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<infinispan
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:infinispan:config:6.0 http://www.infinispan.org/schemas/infinispan-config-6.0.xsd"
+        xmlns="urn:infinispan:config:6.0">
+
+    <namedCache name="content">
+        <eviction maxEntries="100" />
+    </namedCache>
+
+    <namedCache name="fileNodes">
+        <eviction maxEntries="100" />
+    </namedCache>
+
+    <namedCache name="fileHandles">
+        <!-- Expire idle file handles in 15 mins -->
+        <expiration maxIdle="900000" />
+    </namedCache>
+
+</infinispan>

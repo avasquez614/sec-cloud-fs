@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -27,26 +28,28 @@ public class Uploader {
 
     private ContentMetadata metadata;
     private ContentMetadataDao metadataDao;
+    private CloudStore cloudStore;
     private Path downloadPath;
     private Lock accessLock;
     private Path snapshotDir;
-    private long timeoutForNextUpdate;
     private ScheduledExecutorService executorService;
-    private CloudStore cloudStore;
+    private long timeoutForNextUpdateSecs;
+    private long retryDelaySecs;
 
     private boolean uploading;
 
-    public Uploader(ContentMetadata metadata, ContentMetadataDao metadataDao, Path downloadPath, Lock accessLock,
-                    Path snapshotDir, long timeoutForNextUpdate, ScheduledExecutorService executorService,
-                    CloudStore cloudStore) {
+    public Uploader(ContentMetadata metadata, ContentMetadataDao metadataDao, CloudStore cloudStore,
+                    Path downloadPath, Lock accessLock, Path snapshotDir, ScheduledExecutorService executorService,
+                    long timeoutForNextUpdateSecs, long retryDelaySecs) {
         this.metadata = metadata;
         this.metadataDao = metadataDao;
+        this.cloudStore = cloudStore;
         this.downloadPath = downloadPath;
         this.snapshotDir = snapshotDir;
-        this.timeoutForNextUpdate = timeoutForNextUpdate;
+        this.timeoutForNextUpdateSecs = timeoutForNextUpdateSecs;
         this.executorService = executorService;
         this.accessLock = accessLock;
-        this.cloudStore = cloudStore;
+        this.retryDelaySecs = retryDelaySecs;
     }
 
     public synchronized void notifyUpdate() {
@@ -64,7 +67,14 @@ public class Uploader {
             public void run() {
                 uploading = true;
 
-                upload();
+                try {
+                    upload();
+                } catch (UploadFailedException e) {
+                    logger.error("Upload for content '" + metadata.getId() + "' failed. Retrying in " +
+                            retryDelaySecs + " seconds", e);
+
+                    retryUpload();
+                }
 
                 uploading = false;
             }
@@ -72,15 +82,15 @@ public class Uploader {
         });
     }
 
-    private void upload() {
+    private void upload() throws UploadFailedException {
         synchronized (this) {
             try {
                 while (!metadata.isMarkedAsDeleted() && !hasTimeoutOccurred()) {
-                    wait(timeoutForNextUpdate);
+                    wait(TimeUnit.SECONDS.toMillis(timeoutForNextUpdateSecs));
                 }
             } catch (InterruptedException e) {
-                logger.error("Thread [" + Thread.currentThread().getName() + "] was interrupted while waiting for " +
-                        "timeout for next update to occur", e);
+                throw new UploadFailedException("Thread [" + Thread.currentThread().getName() + "] was interrupted " +
+                        "while waiting for timeout for next update to occur", e);
             }
         }
 
@@ -91,13 +101,13 @@ public class Uploader {
                 metadataDao.delete(metadata.getId());
 
                 logger.info("Content '{}' deleted", metadata.getId());
-            } catch (DbException e) {
-                logger.error("Error while deleting content metadata '" + metadata.getId() + "' from DB", e);
-            } catch (IOException e) {
-                logger.error("Error while deleting content '" + metadata.getId() + "' from cloud", e);
-            }
 
-            return;
+                return;
+            } catch (DbException e) {
+                throw new UploadFailedException("Error while deleting content from DB", e);
+            } catch (IOException e) {
+                throw new UploadFailedException("Error while deleting content from cloud", e);
+            }
         }
 
         long snapshotTime;
@@ -111,9 +121,7 @@ public class Uploader {
             try {
                 Files.copy(downloadPath, snapshotPath);
             } catch (IOException e) {
-                logger.error("Error while trying to create snapshot file " + snapshotPath, e);
-
-                return;
+                throw new UploadFailedException("Error while trying to create snapshot file " + snapshotPath, e);
             }
         } finally {
             accessLock.unlock();
@@ -124,9 +132,7 @@ public class Uploader {
         try (FileChannel snapshotChannel = FileChannel.open(snapshotPath, StandardOpenOption.READ)) {
             cloudStore.upload(metadata.getId(), snapshotChannel, snapshotChannel.size());
         } catch (IOException e) {
-            logger.error("Error while uploading content '" + metadata.getId() + "' to cloud", e);
-
-            return;
+            throw new UploadFailedException("Error while uploading content to cloud", e);
         }
 
         logger.info("Content '{}' uploaded", metadata.getId());
@@ -135,15 +141,13 @@ public class Uploader {
             metadata.setUploadedSize(Files.size(snapshotPath));
             metadata.setLastUploadTime(new Date());
         } catch (IOException e) {
-            logger.error("Unable to retrieve file size for '" + snapshotPath + "'", e);
-
-            return;
+            throw new UploadFailedException("Unable to retrieve file size for '" + snapshotPath + "'", e);
         }
 
         try {
             Files.delete(snapshotPath);
         } catch (IOException e) {
-            logger.error("Unable to delete snapshot file '" + snapshotPath + "'", e);
+            logger.warn("Unable to delete snapshot file '" + snapshotPath + "'", e);
         }
 
         logger.debug("Snapshot file {} deleted", snapshotPath);
@@ -151,9 +155,7 @@ public class Uploader {
         try {
             metadataDao.save(metadata);
         } catch (DbException e) {
-            logger.error("Error while saving content metadata '" + metadata.getId() + "' to DB", e);
-
-            return;
+            throw new UploadFailedException("Error while saving content metadata to DB", e);
         }
 
         // Check if content was deleted or if there where new updates while uploading
@@ -162,21 +164,40 @@ public class Uploader {
         }
     }
 
-    private boolean hasTimeoutOccurred() {
+    private boolean hasTimeoutOccurred() throws UploadFailedException {
         long now = System.currentTimeMillis();
         long lastModified = getContentLastModifiedTime();
 
-        return (now - lastModified) >= timeoutForNextUpdate;
+        return (now - lastModified) >= timeoutForNextUpdateSecs;
     }
 
-    private long getContentLastModifiedTime() {
+    private long getContentLastModifiedTime() throws UploadFailedException {
         try {
             return Files.getLastModifiedTime(downloadPath).toMillis();
         } catch (IOException e) {
-            logger.error("Unable to retrieve last modified time for '" + downloadPath + "'", e);
-
-            return 0;
+            throw new UploadFailedException("Unable to retrieve last modified time for '" + downloadPath + "'", e);
         }
+    }
+
+    private void retryUpload() {
+        executorService.schedule(new Runnable() {
+
+            @Override
+            public void run() {
+                logger.info("Retrying upload for content '{}'", metadata.getId());
+
+                notifyUpdate();
+            }
+
+        }, retryDelaySecs, TimeUnit.SECONDS);
+    }
+
+    private static class UploadFailedException extends IOException {
+
+        private UploadFailedException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
     }
 
 }

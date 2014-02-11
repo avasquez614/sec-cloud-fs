@@ -4,6 +4,7 @@ import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -21,31 +22,43 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     private CloudStore cloudStore;
     private Path downloadsDir;
     private Path snapshotDir;
-    private long timeoutForNextUpdate;
     private ScheduledExecutorService executorService;
+    private long timeoutForNextUpdateSecs;
+    private long retryUploadDelaySecs;
 
+    @Required
     public void setMetadataDao(ContentMetadataDao metadataDao) {
         this.metadataDao = metadataDao;
     }
 
+    @Required
     public void setCloudStore(CloudStore cloudStore) {
         this.cloudStore = cloudStore;
     }
 
+    @Required
     public void setDownloadsDir(String downloadsDir) {
         this.downloadsDir = Paths.get(downloadsDir);
     }
 
+    @Required
     public void setSnapshotDir(String snapshotDir) {
         this.snapshotDir = Paths.get(snapshotDir);
     }
 
-    public void setTimeoutForNextUpdate(long timeoutForNextUpdate) {
-        this.timeoutForNextUpdate = timeoutForNextUpdate;
-    }
-
+    @Required
     public void setExecutorService(ScheduledExecutorService executorService) {
         this.executorService = executorService;
+    }
+
+    @Required
+    public void setTimeoutForNextUpdateSecs(long timeoutForNextUpdateSecs) {
+        this.timeoutForNextUpdateSecs = timeoutForNextUpdateSecs;
+    }
+
+    @Required
+    public void setRetryUploadDelaySecs(long retryUploadDelaySecs) {
+        this.retryUploadDelaySecs = retryUploadDelaySecs;
     }
 
     @Override
@@ -74,8 +87,8 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     private Content createContentObject(ContentMetadata metadata) throws IOException {
         Path downloadPath = downloadsDir.resolve(metadata.getId());
         Lock accessLock = new ReentrantLock();
-        Uploader uploader = new Uploader(metadata, metadataDao, downloadPath, accessLock, snapshotDir,
-                timeoutForNextUpdate, executorService, cloudStore);
+        Uploader uploader = new Uploader(metadata, metadataDao, cloudStore, downloadPath, accessLock, snapshotDir,
+                executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
 
         return new CloudContentImpl(metadata, metadataDao, downloadPath, accessLock, cloudStore, uploader);
     }
