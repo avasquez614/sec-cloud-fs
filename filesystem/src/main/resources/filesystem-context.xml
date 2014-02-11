@@ -28,15 +28,15 @@
         <property name="mongoClient" ref="mongoClient" />
     </bean>
 
-    <bean id="contentMetadataDao" class="org.avasquez.seccloudfs.filesystem.db.dao.impl.JongoContentMetadataDao">
+    <bean id="contentMetadataDao" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoContentMetadataRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
-    <bean id="directoryEntryDaoDao" class="org.avasquez.seccloudfs.filesystem.db.dao.impl.JongoDirectoryEntryDao">
+    <bean id="directoryEntryDaoDao" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoDirectoryEntryRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
-    <bean id="fileMetadataDao" class="org.avasquez.seccloudfs.filesystem.db.dao.impl.JongoFileMetadataDao">
+    <bean id="fileMetadataDao" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoFileMetadataRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
@@ -54,7 +54,7 @@
 
     <bean id="contentStore" class="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentStoreImpl">
         <property name="cacheContainer" ref="cacheManager"/>
-        <property name="metadataDao" ref="contentMetadataDao"/>
+        <property name="metadataRepository" ref="contentMetadataDao"/>
         <property name="cloudStore" ref="cloudStore"/>
         <property name="downloadsDir" value="${filesystem.content.downloads.dir}"/>
         <property name="snapshotDir" value="${filesystem.content.snapshots.dir}"/>
@@ -67,7 +67,7 @@
 
     <bean id="fileNodeStore" class="org.avasquez.seccloudfs.filesystem.files.impl.FileNodeStoreImpl">
         <property name="cacheContainer" ref="cacheManager"/>
-        <property name="metadataDao" ref="fileMetadataDao"/>
+        <property name="metadataRepository" ref="fileMetadataDao"/>
         <property name="entryDao" ref="directoryEntryDaoDao"/>
         <property name="contentStore" ref="contentStore"/>
     </bean>

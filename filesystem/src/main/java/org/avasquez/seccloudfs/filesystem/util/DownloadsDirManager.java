@@ -3,8 +3,8 @@ package org.avasquez.seccloudfs.filesystem.util;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.content.CloudContent;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
-import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.FileMetadataRepository;
 import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +23,7 @@ public class DownloadsDirManager {
 
     private Path downloadsDir;
     private long maxDirSize;
-    private FileMetadataDao fileMetadataDao;
+    private FileMetadataRepository fileMetadataRepository;
     private ContentStore contentStore;
 
     public void setDownloadsDir(String downloadsDir) {
@@ -34,8 +34,8 @@ public class DownloadsDirManager {
         this.maxDirSize = maxDirSize;
     }
 
-    public void setFileMetadataDao(FileMetadataDao fileMetadataDao) {
-        this.fileMetadataDao = fileMetadataDao;
+    public void setFileMetadataRepository(FileMetadataRepository fileMetadataRepository) {
+        this.fileMetadataRepository = fileMetadataRepository;
     }
 
     public void setContentStore(ContentStore contentStore) {
@@ -57,7 +57,7 @@ public class DownloadsDirManager {
 
             Iterable<FileMetadata> lruMetadata;
             try {
-                lruMetadata = fileMetadataDao.findAllSortedByDescLastAccessTime();
+                lruMetadata = fileMetadataRepository.findAllSortedByDescLastAccessTime();
             } catch (DbException e) {
                 logger.error("Error while retrieving file metadata sorted by desc last access time", e);
 

@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.filesystem.db.dao;
+package org.avasquez.seccloudfs.filesystem.db.repos;
 
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
@@ -6,7 +6,7 @@ import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 /**
  * Data Access Object for {@link org.avasquez.seccloudfs.filesystem.db.model.FileMetadata}s.
  */
-public interface FileMetadataDao {
+public interface FileMetadataRepository {
 
     /**
      * Returns the file metadata with the specified ID in the database.

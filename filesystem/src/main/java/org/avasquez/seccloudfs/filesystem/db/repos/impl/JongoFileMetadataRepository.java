@@ -1,21 +1,21 @@
-package org.avasquez.seccloudfs.filesystem.db.dao.impl;
+package org.avasquez.seccloudfs.filesystem.db.repos.impl;
 
 import com.mongodb.MongoException;
-import org.avasquez.seccloudfs.db.mongo.JongoDao;
+import org.avasquez.seccloudfs.db.mongo.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.FileMetadataRepository;
 import org.jongo.Jongo;
 
 /**
  * Created by alfonsovasquez on 02/02/14.
  */
-public class JongoFileMetadataDao extends JongoDao<FileMetadata> implements FileMetadataDao {
+public class JongoFileMetadataRepository extends JongoRepository<FileMetadata> implements FileMetadataRepository {
 
     public static final String FILE_METADATA_COLLECTION_NAME =  "fileMetadata";
     public static final String LAST_ACCESS_TIME_DESC_SORT =     "{lastAccessTime: -1}";
 
-    public JongoFileMetadataDao(Jongo jongo) {
+    public JongoFileMetadataRepository(Jongo jongo) {
         super(FILE_METADATA_COLLECTION_NAME, jongo);
     }
 

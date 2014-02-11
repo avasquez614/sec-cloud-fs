@@ -2,8 +2,8 @@ package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.filesystem.content.CloudContent;
-import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
 import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +30,7 @@ public class CloudContentImpl implements CloudContent {
     private static final String TMP_FILE_SUFFIX =   ".download";
 
     private ContentMetadata metadata;
-    private ContentMetadataDao metadataDao;
+    private ContentMetadataRepository metadataRepository;
     private Path downloadPath;
     private CloudStore cloudStore;
     private Uploader uploader;
@@ -38,10 +38,10 @@ public class CloudContentImpl implements CloudContent {
 
     private volatile int openChannels;
 
-    public CloudContentImpl(ContentMetadata metadata, ContentMetadataDao metadataDao, Path downloadPath,
+    public CloudContentImpl(ContentMetadata metadata, ContentMetadataRepository metadataRepository, Path downloadPath,
                             Lock accessLock, CloudStore cloudStore, Uploader uploader) throws IOException {
         this.metadata = metadata;
-        this.metadataDao = metadataDao;
+        this.metadataRepository = metadataRepository;
         this.downloadPath = downloadPath;
         this.accessLock = accessLock;
         this.cloudStore = cloudStore;
@@ -65,7 +65,7 @@ public class CloudContentImpl implements CloudContent {
     @Override
     public FlushableByteChannel getByteChannel() throws IOException {
         if (metadata.isMarkedAsDeleted()) {
-            throw new IOException("Content '" + metadata.getId() + "' deleted");
+            throw new IOException("Content " + metadata + " deleted");
         }
 
         return new ContentByteChannel();
@@ -100,7 +100,7 @@ public class CloudContentImpl implements CloudContent {
 
     public void delete() throws IOException {
         metadata.setMarkedAsDeleted(true);
-        metadataDao.save(metadata);
+        metadataRepository.save(metadata);
 
         accessLock.lock();
         try {
@@ -166,9 +166,9 @@ public class CloudContentImpl implements CloudContent {
 
             Files.move(tmpPath, downloadPath, StandardCopyOption.ATOMIC_MOVE);
 
-            logger.info("Content '{}' downloaded", metadata.getId());
+            logger.info("Content {} downloaded", metadata);
         } catch (IOException e) {
-            throw new IOException("Error while trying to download content '" + metadata.getId() + "' from cloud", e);
+            throw new IOException("Error while trying to download content " + metadata + " from cloud", e);
         }
     }
 

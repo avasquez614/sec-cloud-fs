@@ -1,9 +1,9 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import org.avasquez.seccloudfs.filesystem.content.Content;
-import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.FileMetadataRepository;
 import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
 import org.avasquez.seccloudfs.filesystem.exception.FileNotDirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
@@ -20,17 +20,15 @@ public class FileNodeImpl implements FileNode {
 
     private FileNodeStore fileNodeStore;
     private FileMetadata metadata;
-    private FileMetadataDao metadataDao;
+    private FileMetadataRepository metadataRepository;
     private DirectoryEntries entries;
     private Content content;
 
-    private volatile String parentId;
-
-    public FileNodeImpl(FileNodeStore fileNodeStore, FileMetadata metadata, FileMetadataDao metadataDao,
+    public FileNodeImpl(FileNodeStore fileNodeStore, FileMetadata metadata, FileMetadataRepository metadataRepository,
                         DirectoryEntries entries, Content content) {
         this.fileNodeStore = fileNodeStore;
         this.metadata = metadata;
-        this.metadataDao = metadataDao;
+        this.metadataRepository = metadataRepository;
         this.entries = entries;
         this.content = content;
     }
@@ -219,7 +217,7 @@ public class FileNodeImpl implements FileNode {
 
     @Override
     public void syncMetadata() throws IOException {
-        metadataDao.save(metadata);
+        metadataRepository.save(metadata);
     }
 
     @Override

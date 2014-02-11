@@ -1,8 +1,8 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.db.dao.DirectoryEntryDao;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
+import org.avasquez.seccloudfs.filesystem.db.repos.DirectoryEntryRepository;
 import org.avasquez.seccloudfs.utils.CollectionUtils;
 
 import java.io.IOException;
@@ -14,16 +14,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DirectoryEntries {
 
-    private DirectoryEntryDao entryDao;
+    private DirectoryEntryRepository entryRepository;
     private String directoryId;
     private Map<String, DirectoryEntry> entries;
 
-    public DirectoryEntries(DirectoryEntryDao entryDao, String directoryId) throws IOException {
-        this.entryDao = entryDao;
+    public DirectoryEntries(DirectoryEntryRepository entryRepository, String directoryId) throws IOException {
+        this.entryRepository = entryRepository;
         this.directoryId = directoryId;
         this.entries = new ConcurrentHashMap<>();
 
-        List<DirectoryEntry> entries = CollectionUtils.asList(entryDao.findByDirectoryId(directoryId));
+        List<DirectoryEntry> entries = CollectionUtils.asList(entryRepository.findByDirectoryId(directoryId));
         if (entries != null) {
             entries = deleteDuplicateEntries(entries);
             for (DirectoryEntry entry : entries) {
@@ -53,7 +53,7 @@ public class DirectoryEntries {
     public DirectoryEntry createEntry(String fileName, String fileId) throws IOException {
         DirectoryEntry entry = new DirectoryEntry(directoryId, fileName, fileId, new Date());
 
-        entryDao.insert(entry);
+        entryRepository.insert(entry);
 
         entries.put(fileName, entry);
 
@@ -70,13 +70,13 @@ public class DirectoryEntries {
                     entry.getFileId(),
                     new Date());
 
-            entryDao.save(movedEntry);
+            entryRepository.save(movedEntry);
 
             entries.remove(fileName);
             dst.entries.put(newFileName, movedEntry);
 
             if (replacedEntry != null) {
-                entryDao.delete(replacedEntry.getId());
+                entryRepository.delete(replacedEntry.getId());
             }
         }
     }
@@ -84,7 +84,7 @@ public class DirectoryEntries {
     public void deleteEntry(String fileName) throws IOException {
         DirectoryEntry entry = getEntry(fileName);
         if (entry != null) {
-            entryDao.delete(entry.getId());
+            entryRepository.delete(entry.getId());
 
             entries.remove(fileName);
         }
@@ -120,7 +120,7 @@ public class DirectoryEntries {
         }
 
         for (DirectoryEntry dupEntry : dupEntries) {
-            entryDao.delete(dupEntry.getId());
+            entryRepository.delete(dupEntry.getId());
         }
 
         return nonDupEntries;

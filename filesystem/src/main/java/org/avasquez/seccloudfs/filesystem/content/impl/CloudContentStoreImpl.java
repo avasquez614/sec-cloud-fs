@@ -2,8 +2,8 @@ package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.filesystem.content.Content;
-import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
 import org.springframework.beans.factory.annotation.Required;
 
 import java.io.IOException;
@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
-    private ContentMetadataDao metadataDao;
+    private ContentMetadataRepository metadataRepository;
     private CloudStore cloudStore;
     private Path downloadsDir;
     private Path snapshotDir;
@@ -27,8 +27,8 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     private long retryUploadDelaySecs;
 
     @Required
-    public void setMetadataDao(ContentMetadataDao metadataDao) {
-        this.metadataDao = metadataDao;
+    public void setMetadataRepository(ContentMetadataRepository metadataRepository) {
+        this.metadataRepository = metadataRepository;
     }
 
     @Required
@@ -63,7 +63,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
     @Override
     protected Content doFind(String id) throws IOException {
-        ContentMetadata metadata = metadataDao.find(id);
+        ContentMetadata metadata = metadataRepository.find(id);
         if (metadata != null) {
             return createContentObject(metadata);
         } else {
@@ -74,7 +74,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     @Override
     protected Content doCreate() throws IOException {
         ContentMetadata metadata = new ContentMetadata();
-        metadataDao.insert(metadata);
+        metadataRepository.insert(metadata);
 
         return createContentObject(metadata);
     }
@@ -87,10 +87,10 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     private Content createContentObject(ContentMetadata metadata) throws IOException {
         Path downloadPath = downloadsDir.resolve(metadata.getId());
         Lock accessLock = new ReentrantLock();
-        Uploader uploader = new Uploader(metadata, metadataDao, cloudStore, downloadPath, accessLock, snapshotDir,
-                executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
+        Uploader uploader = new Uploader(metadata, metadataRepository, cloudStore, downloadPath, accessLock,
+                snapshotDir, executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
 
-        return new CloudContentImpl(metadata, metadataDao, downloadPath, accessLock, cloudStore, uploader);
+        return new CloudContentImpl(metadata, metadataRepository, downloadPath, accessLock, cloudStore, uploader);
     }
 
 }

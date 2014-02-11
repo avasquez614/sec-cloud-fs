@@ -1,21 +1,21 @@
-package org.avasquez.seccloudfs.filesystem.db.dao.impl;
+package org.avasquez.seccloudfs.filesystem.db.repos.impl;
 
 import com.mongodb.MongoException;
-import org.avasquez.seccloudfs.db.mongo.JongoDao;
+import org.avasquez.seccloudfs.db.mongo.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.db.dao.DirectoryEntryDao;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
+import org.avasquez.seccloudfs.filesystem.db.repos.DirectoryEntryRepository;
 import org.jongo.Jongo;
 
 /**
  * Created by alfonsovasquez on 02/02/14.
  */
-public class JongoDirectoryEntryDao extends JongoDao<DirectoryEntry> implements DirectoryEntryDao {
+public class JongoDirectoryEntryRepository extends JongoRepository<DirectoryEntry> implements DirectoryEntryRepository {
 
     public static final String DIRECTORY_ENTRIES_COLLECTION_NAME =  "directoryEntries";
     public static final String FIND_BY_DIRECTORY_ID_QUERY =         "{directoryId: #}";
 
-    public JongoDirectoryEntryDao(Jongo jongo) {
+    public JongoDirectoryEntryRepository(Jongo jongo) {
         super(DIRECTORY_ENTRIES_COLLECTION_NAME, jongo);
     }
 

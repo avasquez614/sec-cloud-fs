@@ -9,11 +9,11 @@ import org.jongo.MongoCollection;
 /**
  * Created by alfonsovasquez on 02/02/14.
  */
-public abstract class JongoDao<T> {
+public abstract class JongoRepository<T> {
 
     protected MongoCollection collection;
 
-    protected JongoDao(String collectionName, Jongo jongo) {
+    protected JongoRepository(String collectionName, Jongo jongo) {
         collection = jongo.getCollection(collectionName);
     }
 

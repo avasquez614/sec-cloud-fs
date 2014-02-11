@@ -2,8 +2,8 @@ package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.db.dao.ContentMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +27,7 @@ public class Uploader {
     private static final String SNAPSHOT_FILE_FORMAT = "%s.%d.snapshot";
 
     private ContentMetadata metadata;
-    private ContentMetadataDao metadataDao;
+    private ContentMetadataRepository metadataRepository;
     private CloudStore cloudStore;
     private Path downloadPath;
     private Lock accessLock;
@@ -38,11 +38,11 @@ public class Uploader {
 
     private boolean uploading;
 
-    public Uploader(ContentMetadata metadata, ContentMetadataDao metadataDao, CloudStore cloudStore,
+    public Uploader(ContentMetadata metadata, ContentMetadataRepository metadataRepository, CloudStore cloudStore,
                     Path downloadPath, Lock accessLock, Path snapshotDir, ScheduledExecutorService executorService,
                     long timeoutForNextUpdateSecs, long retryDelaySecs) {
         this.metadata = metadata;
-        this.metadataDao = metadataDao;
+        this.metadataRepository = metadataRepository;
         this.cloudStore = cloudStore;
         this.downloadPath = downloadPath;
         this.snapshotDir = snapshotDir;
@@ -67,14 +67,7 @@ public class Uploader {
             public void run() {
                 uploading = true;
 
-                try {
-                    upload();
-                } catch (UploadFailedException e) {
-                    logger.error("Upload for content '" + metadata.getId() + "' failed. Retrying in " +
-                            retryDelaySecs + " seconds", e);
-
-                    retryUpload();
-                }
+                uploadUntilNoUpdatesReceived();
 
                 uploading = false;
             }
@@ -82,25 +75,41 @@ public class Uploader {
         });
     }
 
-    private void upload() throws UploadFailedException {
+    private void uploadUntilNoUpdatesReceived() {
         synchronized (this) {
             try {
                 while (!metadata.isMarkedAsDeleted() && !hasTimeoutOccurred()) {
+                    logger.debug("Update received for content {}. Waiting {} secs for next update", metadata,
+                            timeoutForNextUpdateSecs);
+
                     wait(TimeUnit.SECONDS.toMillis(timeoutForNextUpdateSecs));
                 }
-            } catch (InterruptedException e) {
-                throw new UploadFailedException("Thread [" + Thread.currentThread().getName() + "] was interrupted " +
-                        "while waiting for timeout for next update to occur", e);
+            } catch (InterruptedException | UploadFailedException e) {
+                logger.error("Error while waiting for content " + metadata + " updates before upload", e);
             }
         }
 
+        logger.info("Upload for content {} started", metadata);
+
+        try {
+            upload();
+
+            logger.info("Upload for content {} finished", metadata);
+        } catch (UploadFailedException e) {
+            logger.error("Upload for content " + metadata + " failed. Retrying in " + retryDelaySecs + " seconds", e);
+
+            retryUpload();
+        }
+    }
+
+    private void upload() throws UploadFailedException {
         if (!metadata.isMarkedAsDeleted() && metadata.getLastUploadTime() != null) {
             try {
                 cloudStore.delete(metadata.getId());
 
-                metadataDao.delete(metadata.getId());
+                metadataRepository.delete(metadata.getId());
 
-                logger.info("Content '{}' deleted", metadata.getId());
+                logger.info("Content {} deleted", metadata);
 
                 return;
             } catch (DbException e) {
@@ -135,32 +144,32 @@ public class Uploader {
             throw new UploadFailedException("Error while uploading content to cloud", e);
         }
 
-        logger.info("Content '{}' uploaded", metadata.getId());
+        logger.info("Content {} uploaded", metadata);
 
         try {
             metadata.setUploadedSize(Files.size(snapshotPath));
             metadata.setLastUploadTime(new Date());
         } catch (IOException e) {
-            throw new UploadFailedException("Unable to retrieve file size for '" + snapshotPath + "'", e);
+            throw new UploadFailedException("Unable to retrieve file size for " + snapshotPath, e);
         }
 
         try {
             Files.delete(snapshotPath);
         } catch (IOException e) {
-            logger.warn("Unable to delete snapshot file '" + snapshotPath + "'", e);
+            logger.warn("Unable to delete snapshot file " + snapshotPath, e);
         }
 
         logger.debug("Snapshot file {} deleted", snapshotPath);
 
         try {
-            metadataDao.save(metadata);
+            metadataRepository.save(metadata);
         } catch (DbException e) {
             throw new UploadFailedException("Error while saving content metadata to DB", e);
         }
 
         // Check if content was deleted or if there where new updates while uploading
         if (metadata.isMarkedAsDeleted() || getContentLastModifiedTime() > snapshotTime) {
-            upload();
+            uploadUntilNoUpdatesReceived();
         }
     }
 
@@ -184,7 +193,7 @@ public class Uploader {
 
             @Override
             public void run() {
-                logger.info("Retrying upload for content '{}'", metadata.getId());
+                logger.info("Retrying upload for content {}", metadata);
 
                 notifyUpdate();
             }

@@ -2,9 +2,9 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
-import org.avasquez.seccloudfs.filesystem.db.dao.DirectoryEntryDao;
-import org.avasquez.seccloudfs.filesystem.db.dao.FileMetadataDao;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.DirectoryEntryRepository;
+import org.avasquez.seccloudfs.filesystem.db.repos.FileMetadataRepository;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,17 +20,17 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
 
     private static final Logger logger = LoggerFactory.getLogger(FileNodeStoreImpl.class);
 
-    private FileMetadataDao metadataDao;
-    private DirectoryEntryDao entryDao;
+    private FileMetadataRepository metadataRepository;
+    private DirectoryEntryRepository entryDao;
     private ContentStore contentStore;
 
     @Required
-    public void setMetadataDao(FileMetadataDao metadataDao) {
-        this.metadataDao = metadataDao;
+    public void setMetadataRepository(FileMetadataRepository metadataRepository) {
+        this.metadataRepository = metadataRepository;
     }
 
     @Required
-    public void setEntryDao(DirectoryEntryDao entryDao) {
+    public void setEntryDao(DirectoryEntryRepository entryDao) {
         this.entryDao = entryDao;
     }
 
@@ -41,9 +41,10 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
 
     @Override
     protected FileNode doFind(String id) throws IOException {
-        FileMetadata metadata = metadataDao.find(id);
+        FileMetadata metadata = metadataRepository.find(id);
         if (metadata != null) {
-            return new FileNodeImpl(this, metadata, metadataDao, getDirectoryEntries(metadata), getContent(metadata));
+            return new FileNodeImpl(this, metadata, metadataRepository, getDirectoryEntries(metadata),
+                    getContent(metadata));
         } else {
             return null;
         }
@@ -71,14 +72,14 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
             metadata.setContentId(content.getId());
         }
 
-        metadataDao.insert(metadata);
+        metadataRepository.insert(metadata);
 
-        return new FileNodeImpl(this, metadata, metadataDao, entries, content);
+        return new FileNodeImpl(this, metadata, metadataRepository, entries, content);
     }
 
     @Override
     protected void doDelete(FileNode file) throws IOException {
-        metadataDao.delete(file.getId());
+        metadataRepository.delete(file.getId());
 
         if (!file.isDirectory()) {
             contentStore.delete(file.getContent());
@@ -104,7 +105,7 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
                 content = contentStore.create();
 
                 metadata.setContentId(content.getId());
-                metadataDao.save(metadata);
+                metadataRepository.save(metadata);
             }
 
             return content;

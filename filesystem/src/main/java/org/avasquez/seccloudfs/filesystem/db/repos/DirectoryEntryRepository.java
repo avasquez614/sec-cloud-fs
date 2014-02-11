@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.filesystem.db.dao;
+package org.avasquez.seccloudfs.filesystem.db.repos;
 
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
@@ -6,7 +6,7 @@ import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 /**
  * Created by alfonsovasquez on 01/02/14.
  */
-public interface DirectoryEntryDao {
+public interface DirectoryEntryRepository {
 
     Iterable<DirectoryEntry> findByDirectoryId(String dirId) throws DbException;
 
