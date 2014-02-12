@@ -8,6 +8,8 @@ import org.avasquez.seccloudfs.filesystem.db.repos.FileMetadataRepository;
 import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -26,23 +28,28 @@ public class DownloadsDirManager {
     private FileMetadataRepository fileMetadataRepository;
     private ContentStore contentStore;
 
+    @Required
     public void setDownloadsDir(String downloadsDir) {
         this.downloadsDir = Paths.get(downloadsDir);
     }
 
-    public void setMaxDirSize(long maxDirSize) {
-        this.maxDirSize = maxDirSize;
+    @Required
+    public void setMaxDirSize(String maxDirSize) {
+        this.maxDirSize = FileUtils.humanReadableByteSizeToByteCount(maxDirSize);
     }
 
+    @Required
     public void setFileMetadataRepository(FileMetadataRepository fileMetadataRepository) {
         this.fileMetadataRepository = fileMetadataRepository;
     }
 
+    @Required
     public void setContentStore(ContentStore contentStore) {
         this.contentStore = contentStore;
     }
 
-    public void deleteDownloadsOnMaxDirSize() {
+    @Scheduled(fixedDelayString = "${filesystem.content.downloads.dir.maxSize.checkDelayMillis}")
+    public void checkMaxSize() {
         long dirSize;
         try {
             dirSize = FileUtils.sizeOfDirectory(downloadsDir);

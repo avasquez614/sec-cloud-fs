@@ -3,6 +3,7 @@ package org.avasquez.seccloudfs.filesystem.fuse;
 import net.fusejna.DirectoryFiller;
 import net.fusejna.util.FuseFilesystemAdapterFull;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.avasquez.seccloudfs.filesystem.exception.*;
 import org.avasquez.seccloudfs.filesystem.files.File;
@@ -12,6 +13,8 @@ import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,14 +32,40 @@ import static net.fusejna.types.TypeMode.NodeType;
 /**
  * Created by alfonsovasquez on 25/01/14.
  */
-public class SecCloudFuseFilesystem extends FuseFilesystemAdapterFull {
+public class SecCloudFS extends FuseFilesystemAdapterFull {
 
-    private static final Logger logger = LoggerFactory.getLogger(SecCloudFuseFilesystem.class);
+    private static final Logger logger = LoggerFactory.getLogger(SecCloudFS.class);
 
+    public static final String APP_CONTEXT_LOCATION = "classpath:filesystem-context.xml";
+
+    private String[] options;
     private Filesystem filesystem;
     private FileHandleRegistry fileHandleRegistry;
     private long rootPermissions;
     private int rootUid;
+
+    public static void main(String... args) throws Exception {
+        if (args.length != 1) {
+            System.err.println("Usage: SecCloudFS <mountpoint>");
+            System.exit(1);
+        }
+
+        ApplicationContext context = new ClassPathXmlApplicationContext(APP_CONTEXT_LOCATION);
+
+        context.getBean(SecCloudFS.class).log(logger).mount(args[0]);
+    }
+
+    @Override
+    protected String[] getOptions() {
+        return options;
+    }
+
+    @Required
+    public void setOptions(String[] options) {
+        if (ArrayUtils.isNotEmpty(options)) {
+            this.options = options;
+        }
+    }
 
     @Required
     public void setFilesystem(Filesystem filesystem) {
