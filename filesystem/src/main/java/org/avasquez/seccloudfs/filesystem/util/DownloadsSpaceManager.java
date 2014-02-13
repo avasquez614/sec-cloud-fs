@@ -19,9 +19,9 @@ import java.util.Iterator;
 /**
  * Created by alfonsovasquez on 09/02/14.
  */
-public class DownloadsDirManager {
+public class DownloadsSpaceManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(DownloadsDirManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(DownloadsSpaceManager.class);
 
     private Path downloadsDir;
     private long maxDirSize;
@@ -48,7 +48,7 @@ public class DownloadsDirManager {
         this.contentStore = contentStore;
     }
 
-    @Scheduled(fixedDelayString = "${filesystem.content.downloads.dir.maxSize.checkDelayMillis}")
+    @Scheduled(fixedDelayString = "${cloud.content.downloads.dir.maxSize.checkDelayMillis}")
     public void checkMaxSize() {
         long dirSize;
         try {

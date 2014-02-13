@@ -15,7 +15,7 @@
     <!-- Cache -->
 
     <bean id="cacheManager" class="org.infinispan.manager.DefaultCacheManager">
-        <constructor-arg value="${filesystem.cache.config.file}" />
+        <constructor-arg value="${cache.config.file}" />
     </bean>
 
     <!-- DB -->
@@ -45,7 +45,7 @@
     <!-- Thread Pool -->
 
     <bean id="threadPool" class="java.util.concurrent.ScheduledThreadPoolExecutor">
-        <constructor-arg value="${filesystem.threads.pool.coreSize}"/>
+        <constructor-arg value="${threads.pool.coreSize}"/>
     </bean>
 
     <!-- Content Store -->
@@ -58,11 +58,11 @@
         <property name="cacheContainer" ref="cacheManager"/>
         <property name="metadataRepository" ref="contentMetadataRepo"/>
         <property name="cloudStore" ref="cloudStore"/>
-        <property name="downloadsDir" value="${filesystem.content.downloads.dir}"/>
-        <property name="snapshotDir" value="${filesystem.content.snapshots.dir}"/>
+        <property name="downloadsDir" value="${cloud.content.downloads.dir}"/>
+        <property name="snapshotDir" value="${cloud.content.snapshots.dir}"/>
         <property name="executorService" ref="threadPool"/>
-        <property name="timeoutForNextUpdateSecs" value="${filesystem.content.uploader.timeoutForNextUpdateSecs}"/>
-        <property name="retryUploadDelaySecs" value="${filesystem.content.uploader.retryDelaySecs}"/>
+        <property name="timeoutForNextUpdateSecs" value="${cloud.content.uploader.timeoutForNextUpdateSecs}"/>
+        <property name="retryUploadDelaySecs" value="${cloud.content.uploader.retryDelaySecs}"/>
     </bean>
 
     <!-- File System -->
@@ -83,18 +83,18 @@
     </bean>
 
     <bean id="fuseFilesystem" class="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS">
-        <property name="options" value="${filesystem.fuse.options}"/>
+        <property name="options" value="${fuse.options}"/>
         <property name="fileHandleRegistry" ref="fileHandleRegistry"/>
         <property name="filesystem" ref="filesystem"/>
-        <property name="rootUid" value="${filesystem.root.uid}"/>
+        <property name="rootUid" value="${users.root.uid}"/>
         <property name="rootPermissions" value="${filesystem.root.permissions}"/>
     </bean>
 
     <!-- Download Dir Manager -->
 
-    <bean id="downloadDirManager" class="org.avasquez.seccloudfs.filesystem.util.DownloadsDirManager">
-        <property name="downloadsDir" value="${filesystem.content.downloads.dir}"/>
-        <property name="maxDirSize" value="${filesystem.content.downloads.maxSize}"/>
+    <bean id="downloadDirManager" class="org.avasquez.seccloudfs.filesystem.util.DownloadsSpaceManager">
+        <property name="downloadsDir" value="${cloud.content.downloads.dir}"/>
+        <property name="maxDirSize" value="${cloud.content.downloads.maxSize}"/>
         <property name="fileMetadataRepository" ref="fileMetadataRepo"/>
         <property name="contentStore" ref="contentStore"/>
     </bean>
@@ -102,7 +102,7 @@
     <!-- Scheduling -->
 
     <task:annotation-driven scheduler="scheduler"/>
-    <task:scheduler id="scheduler" pool-size="${filesystem.threads.pool.size}"/>
+    <task:scheduler id="scheduler" pool-size="${scheduler.threads.pool.size}"/>
 
     <import resource="classpath*:conf/filesystem-context.xml"/>
 
