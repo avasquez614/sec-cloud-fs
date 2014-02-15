@@ -1,1 +1,1 @@
-include "commons", "filesystem", "secure-cloud-storage"
+include "sec-cloud-commons", "sec-cloud-filesystem"

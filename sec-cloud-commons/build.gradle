@@ -1,5 +1,10 @@
+configurations {
+    all*.exclude module: 'commons-logging'
+}
+
 dependencies {
     compile 'org.springframework:spring-context:4.0.1.RELEASE'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.6'
     compile 'org.mongodb:mongo-java-driver:2.11.3'
     compile 'org.jongo:jongo:1.0'
 }
