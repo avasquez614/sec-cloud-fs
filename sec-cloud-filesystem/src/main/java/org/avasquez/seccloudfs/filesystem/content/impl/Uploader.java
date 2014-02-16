@@ -183,7 +183,7 @@ public class Uploader {
         long now = System.currentTimeMillis();
         long lastModified = getContentLastModifiedTime();
 
-        return (now - lastModified) >= timeoutForNextUpdateSecs;
+        return TimeUnit.MILLISECONDS.toSeconds(now - lastModified) >= timeoutForNextUpdateSecs;
     }
 
     private long getContentLastModifiedTime() throws UploadFailedException {

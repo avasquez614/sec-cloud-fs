@@ -28,7 +28,7 @@ public class LocalCloudStore implements CloudStore {
     public void upload(String dataId, ReadableByteChannel src, long length) throws IOException {
         Path dataFile = storeDir.resolve(dataId);
 
-        try (FileChannel fileChannel = FileChannel.open(dataFile, StandardOpenOption.WRITE)) {
+        try (FileChannel fileChannel = FileChannel.open(dataFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
             fileChannel.transferFrom(src, 0, length);
         }
     }

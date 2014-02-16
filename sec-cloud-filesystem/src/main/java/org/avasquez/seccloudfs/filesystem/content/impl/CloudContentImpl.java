@@ -224,17 +224,15 @@ public class CloudContentImpl implements CloudContent {
 
         @Override
         public boolean isOpen() {
-            if (fileChannel != null) {
-                return fileChannel.isOpen();
-            } else {
-                return false;
-            }
+            return open;
         }
 
         @Override
         public void close() throws IOException {
-            if (!open) {
-                fileChannel.close();
+            if (open) {
+                if (fileChannel != null) {
+                    fileChannel.close();
+                }
 
                 accessLock.lock();
                 try {

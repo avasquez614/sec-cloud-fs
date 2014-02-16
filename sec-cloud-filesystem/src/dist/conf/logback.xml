@@ -21,6 +21,7 @@
 
     <logger name="net.fusejna" level="DEBUG"/>
     <logger name="org.avasquez.seccloudfs" level="INFO"/>
+    <logger name="org.avasquez.seccloudfs.filesystem.fuse.FileHandleRegistry" level="DEBUG"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

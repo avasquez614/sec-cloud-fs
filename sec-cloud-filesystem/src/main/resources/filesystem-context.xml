@@ -55,7 +55,7 @@
     <!-- Content Store -->
 
     <bean id="cloudStore" class="org.avasquez.seccloudfs.utils.testing.LocalCloudStore">
-        <property name="storeDir" value="./cloud-store"/>
+        <property name="storeDir" value="${cloud.store.local.dir}"/>
     </bean>
 
     <bean id="contentStore" class="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentStoreImpl">

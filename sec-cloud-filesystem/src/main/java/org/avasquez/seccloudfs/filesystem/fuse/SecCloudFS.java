@@ -53,7 +53,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         AbstractApplicationContext context = new ClassPathXmlApplicationContext(APP_CONTEXT_LOCATION);
         context.registerShutdownHook();
 
-        context.getBean(SecCloudFS.class).log(logger).mount(args[0]);
+        context.getBean(SecCloudFS.class).log(true).mount(args[0]);
     }
 
     @Override
@@ -347,7 +347,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 }
 
                 FlushableByteChannel handle = file.getByteChannel();
-                long handleId = fileHandleRegistry.add(handle);
+                long handleId = fileHandleRegistry.register(handle);
 
                 info.fh(handleId);
 
@@ -438,7 +438,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 checkNotDirectory(file);
 
                 FlushableByteChannel handle = file.getByteChannel();
-                long handleId = fileHandleRegistry.add(handle);
+                long handleId = fileHandleRegistry.register(handle);
 
                 info.fh(handleId);
 
@@ -713,8 +713,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     
     private FlushableByteChannel getFileHandle(long handleId) throws InvalidFileHandleException {
         FlushableByteChannel handle = fileHandleRegistry.get(handleId);
-        if (handle == null || !handle.isOpen()) {
-            throw new InvalidFileHandleException("Non-existing or closed file handle " + handleId);
+        if (handle == null) {
+            throw new InvalidFileHandleException("Non-existing file handle " + handleId);
         }
 
         return handle;

@@ -47,10 +47,12 @@ public class FileHandleRegistry {
         return cache.get(id);
     }
 
-    public long add(FlushableByteChannel handle) {
+    public long register(FlushableByteChannel handle) {
         long id = handleIdGenerator.getAndIncrement();
 
         cache.put(id, handle);
+
+        logger.debug("Handle {} registered", id);
 
         return id;
     }
@@ -74,20 +76,24 @@ public class FileHandleRegistry {
         @CacheEntriesEvicted
         public void onCacheEviction(CacheEntriesEvictedEvent<Long, FlushableByteChannel> event) {
             for (Map.Entry<Long, FlushableByteChannel> entry : event.getEntries().entrySet()) {
+                logger.debug("Evicting handle {} from cache", entry.getKey());
+
                 destroyHandle(entry.getKey(), entry.getValue());
             }
         }
 
         private void destroyHandle(Long id, FlushableByteChannel handle) {
-            try {
-                if (handle.isOpen()) {
-                    handle.close();
+            if (handle != null) {
+                try {
+                    if (handle.isOpen()) {
+                        handle.close();
 
-                    logger.debug("Handle {} destroyed", id);
-                }
-            } catch (IOException e) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Unable to destroy handle " + id + " correctly", e);
+                        logger.debug("Handle {} destroyed", id);
+                    }
+                } catch (IOException e) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Unable to destroy handle " + id + " correctly", e);
+                    }
                 }
             }
         }
