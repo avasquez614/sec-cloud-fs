@@ -13,7 +13,7 @@ import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
-import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.IOException;
@@ -50,7 +50,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
             System.exit(1);
         }
 
-        ApplicationContext context = new ClassPathXmlApplicationContext(APP_CONTEXT_LOCATION);
+        AbstractApplicationContext context = new ClassPathXmlApplicationContext(APP_CONTEXT_LOCATION);
+        context.registerShutdownHook();
 
         context.getBean(SecCloudFS.class).log(logger).mount(args[0]);
     }
@@ -102,6 +103,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
     @Override
     public void destroy() {
+        logger.info("Destroying all remaining file handles");
+
         fileHandleRegistry.destroyAll();
     }
 

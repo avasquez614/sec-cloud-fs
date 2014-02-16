@@ -7,6 +7,10 @@ import java.io.IOException;
  */
 public class DbException extends IOException {
 
+    public DbException(String message) {
+        super(message);
+    }
+
     public DbException(String message, Throwable cause) {
         super(message, cause);
     }

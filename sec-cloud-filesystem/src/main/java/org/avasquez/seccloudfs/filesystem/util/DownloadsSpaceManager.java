@@ -82,14 +82,10 @@ public class DownloadsSpaceManager {
                     boolean deleted = content.deleteDownload();
 
                     if (deleted) {
-                        logger.info("Download for content '{}' deleted", fileMetadata);
-
                         dirSize -= size;
-                    } else {
-                        logger.info("Download for content {} couldn't be deleted (probably being used)");
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to delete download of content '" + contentId + "'", e);
+                    logger.error("Unable to delete download for content '" + contentId + "'", e);
                 }
             }
 

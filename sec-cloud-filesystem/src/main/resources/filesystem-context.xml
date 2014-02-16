@@ -42,6 +42,10 @@
         <constructor-arg ref="jongo"/>
     </bean>
 
+    <bean id="fileSystemInfoRepo" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoFileSystemInfoRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
     <!-- Thread Pool -->
 
     <bean id="threadPool" class="java.util.concurrent.ScheduledThreadPoolExecutor">
@@ -74,7 +78,8 @@
         <property name="contentStore" ref="contentStore"/>
     </bean>
 
-    <bean id="filesystem" class="org.avasquez.seccloudfs.filesystem.files.impl.FileSystemImpl">
+    <bean id="fileSystem" class="org.avasquez.seccloudfs.filesystem.files.impl.FileSystemImpl">
+        <property name="fileSystemInfoRepo" ref="fileSystemInfoRepo"/>
         <property name="fileObjectStore" ref="fileObjectStore"/>
     </bean>
 
@@ -82,10 +87,10 @@
         <property name="cacheContainer" ref="cacheManager"/>
     </bean>
 
-    <bean id="fuseFilesystem" class="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS">
+    <bean id="fuseFileSystem" class="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS">
         <property name="options" value="${fuse.options}"/>
         <property name="fileHandleRegistry" ref="fileHandleRegistry"/>
-        <property name="fileSystem" ref="filesystem"/>
+        <property name="fileSystem" ref="fileSystem"/>
         <property name="rootUid" value="${users.root.uid}"/>
         <property name="rootPermissions" value="${filesystem.root.permissions}"/>
     </bean>
