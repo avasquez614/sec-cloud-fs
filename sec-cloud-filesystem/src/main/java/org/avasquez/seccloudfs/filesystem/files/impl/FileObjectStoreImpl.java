@@ -16,22 +16,22 @@ import java.util.Date;
 /**
  * Created by alfonsovasquez on 19/01/14.
  */
-public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
+public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
 
-    private static final Logger logger = LoggerFactory.getLogger(FileNodeStoreImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(FileObjectStoreImpl.class);
 
-    private FileMetadataRepository metadataRepository;
-    private DirectoryEntryRepository entryDao;
+    private FileMetadataRepository metadataRepo;
+    private DirectoryEntryRepository entryRepo;
     private ContentStore contentStore;
 
     @Required
-    public void setMetadataRepository(FileMetadataRepository metadataRepository) {
-        this.metadataRepository = metadataRepository;
+    public void setMetadataRepo(FileMetadataRepository metadataRepo) {
+        this.metadataRepo = metadataRepo;
     }
 
     @Required
-    public void setEntryDao(DirectoryEntryRepository entryDao) {
-        this.entryDao = entryDao;
+    public void setEntryRepo(DirectoryEntryRepository entryRepo) {
+        this.entryRepo = entryRepo;
     }
 
     @Required
@@ -40,10 +40,10 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
     }
 
     @Override
-    protected FileNode doFind(String id) throws IOException {
-        FileMetadata metadata = metadataRepository.find(id);
+    protected FileObject doFind(String id) throws IOException {
+        FileMetadata metadata = metadataRepo.find(id);
         if (metadata != null) {
-            return new FileNodeImpl(this, metadata, metadataRepository, getDirectoryEntries(metadata),
+            return new FileObjectImpl(this, metadata, metadataRepo, getDirectoryEntries(metadata),
                     getContent(metadata));
         } else {
             return null;
@@ -51,7 +51,7 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
     }
 
     @Override
-    protected FileNode doCreate(boolean dir, User owner, long permissions) throws IOException {
+    protected FileObject doCreate(boolean dir, User owner, long permissions) throws IOException {
         Date now = new Date();
 
         FileMetadata metadata = new FileMetadata();
@@ -65,21 +65,29 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
         DirectoryEntries entries = null;
         Content content = null;
 
-        if (dir) {
-            entries = new DirectoryEntries(entryDao, metadata.getId());
-        } else {
+        if (!dir) {
             content = contentStore.create();
             metadata.setContentId(content.getId());
         }
 
-        metadataRepository.insert(metadata);
+        metadataRepo.insert(metadata);
 
-        return new FileNodeImpl(this, metadata, metadataRepository, entries, content);
+        if (dir) {
+            entries = new DirectoryEntries(entryRepo, metadata.getId());
+        }
+
+        FileObject file = new FileObjectImpl(this, metadata, metadataRepo, entries, content);
+
+        logger.info("{} created", file);
+
+        return file;
     }
 
     @Override
-    protected void doDelete(FileNode file) throws IOException {
-        metadataRepository.delete(file.getId());
+    protected void doDelete(FileObject file) throws IOException {
+        metadataRepo.delete(file.getId());
+
+        logger.info("{} deleted", file);
 
         if (!file.isDirectory()) {
             contentStore.delete(file.getContent());
@@ -88,7 +96,7 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
 
     private DirectoryEntries getDirectoryEntries(FileMetadata metadata) throws IOException {
         if (metadata.isDirectory()) {
-            return new DirectoryEntries(entryDao, metadata.getId());
+            return new DirectoryEntries(entryRepo, metadata.getId());
         } else {
             return null;
         }
@@ -98,14 +106,14 @@ public class FileNodeStoreImpl extends AbstractCachedFileNodeStore {
         if (!metadata.isDirectory()) {
             Content content = contentStore.find(metadata.getContentId());
             if (content == null) {
-                logger.info("Content '{}' not found for file '{}'. Creating new one...",
+                logger.warn("Content '{}' not found for file '{}'. Creating new one...",
                         metadata.getContentId(),
                         metadata.getId());
 
                 content = contentStore.create();
 
                 metadata.setContentId(content.getId());
-                metadataRepository.save(metadata);
+                metadataRepo.save(metadata);
             }
 
             return content;

@@ -7,7 +7,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.avasquez.seccloudfs.filesystem.exception.*;
 import org.avasquez.seccloudfs.filesystem.files.File;
-import org.avasquez.seccloudfs.filesystem.files.Filesystem;
+import org.avasquez.seccloudfs.filesystem.files.FileSystem;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.slf4j.Logger;
@@ -39,14 +39,14 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     public static final String APP_CONTEXT_LOCATION = "classpath:filesystem-context.xml";
 
     private String[] options;
-    private Filesystem filesystem;
+    private FileSystem fileSystem;
     private FileHandleRegistry fileHandleRegistry;
     private long rootPermissions;
     private int rootUid;
 
     public static void main(String... args) throws Exception {
         if (args.length != 1) {
-            System.err.println("Usage: SecCloudFS <mountpoint>");
+            System.err.println("Usage: seccloudfs <mountpoint>");
             System.exit(1);
         }
 
@@ -68,8 +68,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     }
 
     @Required
-    public void setFilesystem(Filesystem filesystem) {
-        this.filesystem = filesystem;
+    public void setFileSystem(FileSystem fileSystem) {
+        this.fileSystem = fileSystem;
     }
 
     @Required
@@ -90,8 +90,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     @Override
     public void init() {
         try {
-            if (filesystem.getRoot() == null) {
-                filesystem.createRoot(new User(getCurrentUid(), getCurrentGid()), rootPermissions);
+            if (fileSystem.getRoot() == null) {
+                File root = fileSystem.createRoot(new User(getMountUid(), getMountGid()), rootPermissions);
+
+                logger.info("Filesystem root folder created: {}", root);
             }
         } catch (IOException e) {
             logger.error("The root dir couldn't be retrieved or created", e);
@@ -200,8 +202,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 User owner = new User(getCurrentUid(), getCurrentGid());
                 long permissions = getPermissionsBits(mode.mode());
 
-                parent.createFile(getFilename(path), true, owner, permissions);
+                File dir = parent.createFile(getFilename(path), true, owner, permissions);
                 updateLastModifiedTime(parent, true);
+
+                logger.info("{} created {} at {}", getCurrentUser(), dir, path);
 
                 return 0;
             }
@@ -225,6 +229,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 parent.delete(name);
                 updateLastModifiedTime(parent, true);
 
+                logger.info("{} removed {} at {}", getCurrentUser(), dir, path);
+
                 return 0;
             }
 
@@ -246,10 +252,12 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 checkDirectory(newParent);
                 checkWritePermission(newParent);
 
-                parent.moveFileTo(getFilename(path), newParent, getFilename(newName));
+                File file = parent.moveFileTo(getFilename(path), newParent, getFilename(newName));
 
                 updateLastModifiedTime(parent, true);
                 updateLastModifiedTime(newParent, true);
+
+                logger.info("{} moved {} from {} to {}", getCurrentUser(), file, path, newName);
 
                 return 0;
             }
@@ -272,6 +280,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 file.setPermissions(permissions);
                 updateLastChangeTime(file, true);
 
+                logger.info("{} changed permissions of {} at {}", getCurrentUser(), file, path);
+
                 return 0;
             }
 
@@ -292,6 +302,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 file.setOwner(new User(uid, gid));
                 updateLastChangeTime(file, true);
+
+                logger.info("{} changed owner of {} at {}", getCurrentUser(), file, path);
 
                 return 0;
             }
@@ -321,6 +333,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                             file = parent.createFile(name, false, owner, permissions);
                             updateLastModifiedTime(parent, true);
+
+                            logger.info("{} created {} at {}", getCurrentUser(), file, path);
                         }
                     }
                 }
@@ -356,6 +370,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 parent.delete(name);
                 updateLastModifiedTime(parent, true);
 
+                logger.info("{} removed {} at {}", getCurrentUser(), file, path);
+
                 return 0;
             }
 
@@ -378,6 +394,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 updateLastModifiedTime(file, true);
 
+                logger.info("{} truncated {} at {}", getCurrentUser(), file, path, offset);
+
                 return 0;
             }
 
@@ -397,6 +415,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 file.setLastAccessTime(new Date(secondsToMillis(timeBuffer.ac_sec())));
                 file.setLastModifiedTime(new Date(secondsToMillis(timeBuffer.mod_sec())));
                 file.syncMetadata();
+
+                logger.info("{} updated last access and last modified time of {} at {}", getCurrentUser(), file, path);
 
                 return 0;
             }
@@ -474,6 +494,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 updateLastModifiedTime(file, false);
 
+                logger.info("{} updated contents of {} at {}", getCurrentUser(), file, path);
+
                 return writtenBytes;
             }
 
@@ -523,9 +545,13 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 if (datasync == 0) {
                     file.syncMetadata();
+
+                    logger.info("{} flushed metadata of {} at {} to storage", getCurrentUser(), file, path);
                 }
 
                 handle.flush();
+
+                logger.info("{} flushed data of {} at {} to storage", getCurrentUser(), file, path);
 
                 return 0;
             }
@@ -540,11 +566,11 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
             logError(e, methodName, true);
 
             return -ENOENT();
-        } catch (FileNotDirectoryException e) {
+        } catch (NotDirectoryException e) {
             logError(e, methodName, true);
 
             return -ENOTDIR();
-        } catch (FileIsDirectoryException e) {
+        } catch (IsDirectoryException e) {
             logError(e, methodName, true);
 
             return -EISDIR();
@@ -586,7 +612,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     }
 
     private File resolveFile(String path) throws PermissionDeniedException, IOException {
-        return resolveFile(filesystem.getRoot(), path);
+        return resolveFile(fileSystem.getRoot(), path);
     }
 
     private File resolveFile(File currentDir, String path) throws PermissionDeniedException, IOException {
@@ -628,6 +654,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         return file;
     }
 
+    private User getCurrentUser() {
+        return new User(getCurrentUid(), getCurrentGid());
+    }
+
     private int getCurrentUid() {
         return getFuseContextUid().intValue();
     }
@@ -666,15 +696,15 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         }
     }
 
-    private void checkDirectory(File file) throws FileNotDirectoryException {
+    private void checkDirectory(File file) throws NotDirectoryException {
         if (!file.isDirectory()) {
-            throw new FileNotDirectoryException("File '" + file + "' is not a directory");
+            throw new NotDirectoryException("File '" + file + "' is not a directory");
         }
     }
 
-    private void checkNotDirectory(File file) throws FileIsDirectoryException {
+    private void checkNotDirectory(File file) throws IsDirectoryException {
         if (file.isDirectory()) {
-            throw new FileIsDirectoryException("File '" + file + "' is a directory");
+            throw new IsDirectoryException("File '" + file + "' is a directory");
         }
     }
     

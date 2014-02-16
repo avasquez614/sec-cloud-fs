@@ -10,11 +10,11 @@ import java.io.IOException;
 /**
  * Created by alfonsovasquez on 19/01/14.
  */
-public abstract class AbstractCachedFileNodeStore implements FileNodeStore {
+public abstract class AbstractCachedFileObjectStore implements FileObjectStore {
 
     public static final String FILE_NODE_CACHE_NAME = "fileNodes";
 
-    private Cache<String, FileNode> cache;
+    private Cache<String, FileObject> cache;
 
     @Required
     public void setCacheContainer(CacheContainer cacheContainer) {
@@ -25,8 +25,8 @@ public abstract class AbstractCachedFileNodeStore implements FileNodeStore {
     }
 
     @Override
-    public FileNode find(String id) throws IOException {
-        FileNode file;
+    public FileObject find(String id) throws IOException {
+        FileObject file;
 
         if ((file = cache.get(id)) != null) {
             return file;
@@ -47,8 +47,8 @@ public abstract class AbstractCachedFileNodeStore implements FileNodeStore {
     }
 
     @Override
-    public FileNode create(boolean dir, User owner, long permissions) throws IOException {
-        FileNode file = doCreate(dir, owner, permissions);
+    public FileObject create(boolean dir, User owner, long permissions) throws IOException {
+        FileObject file = doCreate(dir, owner, permissions);
 
         cache.put(file.getId(), file);
 
@@ -56,14 +56,14 @@ public abstract class AbstractCachedFileNodeStore implements FileNodeStore {
     }
 
     @Override
-    public void delete(FileNode file) throws IOException {
+    public void delete(FileObject file) throws IOException {
         doDelete(file);
 
         cache.remove(file.getId());
     }
 
-    protected abstract FileNode doFind(String id) throws IOException;
-    protected abstract FileNode doCreate(boolean dir, User owner, long permissions) throws IOException;
-    protected abstract void doDelete(FileNode file) throws IOException;
+    protected abstract FileObject doFind(String id) throws IOException;
+    protected abstract FileObject doCreate(boolean dir, User owner, long permissions) throws IOException;
+    protected abstract void doDelete(FileObject file) throws IOException;
 
 }

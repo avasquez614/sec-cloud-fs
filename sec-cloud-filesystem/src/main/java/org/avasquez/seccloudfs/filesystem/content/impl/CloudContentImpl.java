@@ -30,7 +30,7 @@ public class CloudContentImpl implements CloudContent {
     private static final String TMP_FILE_SUFFIX =   ".download";
 
     private ContentMetadata metadata;
-    private ContentMetadataRepository metadataRepository;
+    private ContentMetadataRepository metadataRepo;
     private Path downloadPath;
     private CloudStore cloudStore;
     private Uploader uploader;
@@ -38,10 +38,10 @@ public class CloudContentImpl implements CloudContent {
 
     private volatile int openChannels;
 
-    public CloudContentImpl(ContentMetadata metadata, ContentMetadataRepository metadataRepository, Path downloadPath,
+    public CloudContentImpl(ContentMetadata metadata, ContentMetadataRepository metadataRepo, Path downloadPath,
                             Lock accessLock, CloudStore cloudStore, Uploader uploader) throws IOException {
         this.metadata = metadata;
-        this.metadataRepository = metadataRepository;
+        this.metadataRepo = metadataRepo;
         this.downloadPath = downloadPath;
         this.accessLock = accessLock;
         this.cloudStore = cloudStore;
@@ -65,7 +65,7 @@ public class CloudContentImpl implements CloudContent {
     @Override
     public FlushableByteChannel getByteChannel() throws IOException {
         if (metadata.isMarkedAsDeleted()) {
-            throw new IOException("Content " + metadata + " deleted");
+            throw new IOException("Content " + this + " deleted");
         }
 
         return new ContentByteChannel();
@@ -88,6 +88,8 @@ public class CloudContentImpl implements CloudContent {
                 if (lastModifiedTime.compareTo(lastUploadTime) < 0 && openChannels == 0) {
                     Files.deleteIfExists(downloadPath);
 
+                    logger.info("Download for {} deleted", this);
+
                     return true;
                 }
             } finally {
@@ -100,7 +102,9 @@ public class CloudContentImpl implements CloudContent {
 
     public void delete() throws IOException {
         metadata.setMarkedAsDeleted(true);
-        metadataRepository.save(metadata);
+        metadataRepo.save(metadata);
+
+        logger.info("{} marked as deleted", this);
 
         accessLock.lock();
         try {
@@ -108,6 +112,8 @@ public class CloudContentImpl implements CloudContent {
                 Files.deleteIfExists(downloadPath);
 
                 uploader.notifyUpdate();
+
+                logger.info("Download for {} deleted", this);
             }
         } finally {
             accessLock.unlock();
@@ -135,6 +141,14 @@ public class CloudContentImpl implements CloudContent {
     @Override
     public int hashCode() {
         return metadata.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "CloudContentImpl{" +
+                "metadata=" + metadata +
+                ", downloadPath=" + downloadPath +
+                '}';
     }
 
     private void checkDownloaded() throws IOException {
@@ -166,9 +180,9 @@ public class CloudContentImpl implements CloudContent {
 
             Files.move(tmpPath, downloadPath, StandardCopyOption.ATOMIC_MOVE);
 
-            logger.info("Content {} downloaded", metadata);
+            logger.info("{} downloaded", this);
         } catch (IOException e) {
-            throw new IOException("Error while trying to download content " + metadata + " from cloud", e);
+            throw new IOException("Error while trying to download " + this + " from cloud", e);
         }
     }
 
@@ -229,6 +243,8 @@ public class CloudContentImpl implements CloudContent {
                             Files.deleteIfExists(downloadPath);
 
                             uploader.notifyUpdate();
+
+                            logger.info("Download for {} deleted", this);
                         }
                     } finally {
                         openChannels--;

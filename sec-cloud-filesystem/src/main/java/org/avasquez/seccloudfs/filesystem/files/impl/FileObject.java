@@ -6,7 +6,7 @@ import org.avasquez.seccloudfs.filesystem.files.File;
 /**
  * Created by alfonsovasquez on 01/02/14.
  */
-public interface FileNode extends File {
+public interface FileObject extends File {
 
     String getId();
 

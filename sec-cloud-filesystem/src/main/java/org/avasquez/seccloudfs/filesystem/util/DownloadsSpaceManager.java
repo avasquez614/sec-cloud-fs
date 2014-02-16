@@ -25,7 +25,7 @@ public class DownloadsSpaceManager {
 
     private Path downloadsDir;
     private long maxDirSize;
-    private FileMetadataRepository fileMetadataRepository;
+    private FileMetadataRepository fileMetadataRepo;
     private ContentStore contentStore;
 
     @Required
@@ -39,8 +39,8 @@ public class DownloadsSpaceManager {
     }
 
     @Required
-    public void setFileMetadataRepository(FileMetadataRepository fileMetadataRepository) {
-        this.fileMetadataRepository = fileMetadataRepository;
+    public void setFileMetadataRepo(FileMetadataRepository fileMetadataRepo) {
+        this.fileMetadataRepo = fileMetadataRepo;
     }
 
     @Required
@@ -64,7 +64,7 @@ public class DownloadsSpaceManager {
 
             Iterable<FileMetadata> lruMetadata;
             try {
-                lruMetadata = fileMetadataRepository.findAllSortedByDescLastAccessTime();
+                lruMetadata = fileMetadataRepo.findAllSortedByDescLastAccessTime();
             } catch (DbException e) {
                 logger.error("Error while retrieving file metadata sorted by desc last access time", e);
 

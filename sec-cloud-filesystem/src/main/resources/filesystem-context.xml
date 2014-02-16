@@ -56,7 +56,7 @@
 
     <bean id="contentStore" class="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentStoreImpl">
         <property name="cacheContainer" ref="cacheManager"/>
-        <property name="metadataRepository" ref="contentMetadataRepo"/>
+        <property name="metadataRepo" ref="contentMetadataRepo"/>
         <property name="cloudStore" ref="cloudStore"/>
         <property name="downloadsDir" value="${cloud.content.downloads.dir}"/>
         <property name="snapshotDir" value="${cloud.content.snapshots.dir}"/>
@@ -67,15 +67,15 @@
 
     <!-- File System -->
 
-    <bean id="fileNodeStore" class="org.avasquez.seccloudfs.filesystem.files.impl.FileNodeStoreImpl">
+    <bean id="fileObjectStore" class="org.avasquez.seccloudfs.filesystem.files.impl.FileObjectStoreImpl">
         <property name="cacheContainer" ref="cacheManager"/>
-        <property name="metadataRepository" ref="fileMetadataRepo"/>
-        <property name="entryDao" ref="directoryEntryRepo"/>
+        <property name="metadataRepo" ref="fileMetadataRepo"/>
+        <property name="entryRepo" ref="directoryEntryRepo"/>
         <property name="contentStore" ref="contentStore"/>
     </bean>
 
-    <bean id="filesystem" class="org.avasquez.seccloudfs.filesystem.files.impl.FilesystemImpl">
-        <property name="fileNodeStore" ref="fileNodeStore"/>
+    <bean id="filesystem" class="org.avasquez.seccloudfs.filesystem.files.impl.FileSystemImpl">
+        <property name="fileObjectStore" ref="fileObjectStore"/>
     </bean>
 
     <bean id="fileHandleRegistry" class="org.avasquez.seccloudfs.filesystem.fuse.FileHandleRegistry">
@@ -85,17 +85,17 @@
     <bean id="fuseFilesystem" class="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS">
         <property name="options" value="${fuse.options}"/>
         <property name="fileHandleRegistry" ref="fileHandleRegistry"/>
-        <property name="filesystem" ref="filesystem"/>
+        <property name="fileSystem" ref="filesystem"/>
         <property name="rootUid" value="${users.root.uid}"/>
         <property name="rootPermissions" value="${filesystem.root.permissions}"/>
     </bean>
 
     <!-- Download Dir Manager -->
 
-    <bean id="downloadDirManager" class="org.avasquez.seccloudfs.filesystem.util.DownloadsSpaceManager">
+    <bean id="downloadsSpaceManager" class="org.avasquez.seccloudfs.filesystem.util.DownloadsSpaceManager">
         <property name="downloadsDir" value="${cloud.content.downloads.dir}"/>
         <property name="maxDirSize" value="${cloud.content.downloads.maxSize}"/>
-        <property name="fileMetadataRepository" ref="fileMetadataRepo"/>
+        <property name="fileMetadataRepo" ref="fileMetadataRepo"/>
         <property name="contentStore" ref="contentStore"/>
     </bean>
 

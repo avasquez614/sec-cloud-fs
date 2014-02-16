@@ -10,7 +10,7 @@
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>seccloudfs.log</file>
+        <file>logs/seccloudfs.log</file>
         <append>true</append>
         <!-- encoders are assigned the type
              ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
@@ -19,9 +19,12 @@
         </encoder>
     </appender>
 
+    <logger name="net.fusejna" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs" level="INFO"/>
+
     <root level="INFO">
-        <appender-ref ref="STDOUT" />
-        <appender-ref ref="FILE" />
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
     </root>
 
 </configuration>

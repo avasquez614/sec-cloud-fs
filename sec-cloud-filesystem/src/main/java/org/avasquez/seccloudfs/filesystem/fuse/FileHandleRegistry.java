@@ -68,26 +68,26 @@ public class FileHandleRegistry {
 
         @CacheEntryRemoved
         public void onCacheRemove(CacheEntryRemovedEvent<Long, FlushableByteChannel> event) {
-            closeHandle(event.getKey(), event.getValue());
+            destroyHandle(event.getKey(), event.getValue());
         }
 
         @CacheEntriesEvicted
         public void onCacheEviction(CacheEntriesEvictedEvent<Long, FlushableByteChannel> event) {
             for (Map.Entry<Long, FlushableByteChannel> entry : event.getEntries().entrySet()) {
-                closeHandle(entry.getKey(), entry.getValue());
+                destroyHandle(entry.getKey(), entry.getValue());
             }
         }
 
-        private void closeHandle(Long id, FlushableByteChannel handle) {
+        private void destroyHandle(Long id, FlushableByteChannel handle) {
             try {
                 if (handle.isOpen()) {
                     handle.close();
 
-                    logger.debug("Handle {} closed", id);
+                    logger.debug("Handle {} destroyed", id);
                 }
             } catch (IOException e) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Unable to close handle " + id + " correctly", e);
+                    logger.debug("Unable to destroy handle " + id + " correctly", e);
                 }
             }
         }

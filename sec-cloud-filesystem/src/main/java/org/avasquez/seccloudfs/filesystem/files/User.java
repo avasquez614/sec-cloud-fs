@@ -27,4 +27,12 @@ public class User {
         return gid;
     }
 
+    @Override
+    public String toString() {
+        return "User{" +
+                "uid=" + uid +
+                ", gid=" + gid +
+                '}';
+    }
+
 }

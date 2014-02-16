@@ -5,9 +5,9 @@ import java.io.IOException;
 /**
  * Created by alfonsovasquez on 27/01/14.
  */
-public class FileIsDirectoryException extends IOException {
+public class IsDirectoryException extends IOException {
 
-    public FileIsDirectoryException(String message) {
+    public IsDirectoryException(String message) {
         super(message);
     }
 

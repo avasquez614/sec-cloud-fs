@@ -5,7 +5,7 @@ import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 import org.avasquez.seccloudfs.filesystem.db.repos.FileMetadataRepository;
 import org.avasquez.seccloudfs.filesystem.exception.DirectoryNotEmptyException;
-import org.avasquez.seccloudfs.filesystem.exception.FileNotDirectoryException;
+import org.avasquez.seccloudfs.filesystem.exception.NotDirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
@@ -16,19 +16,19 @@ import java.util.Date;
 /**
  * Created by alfonsovasquez on 19/01/14.
  */
-public class FileNodeImpl implements FileNode {
+public class FileObjectImpl implements FileObject {
 
-    private FileNodeStore fileNodeStore;
+    private FileObjectStore fileObjectStore;
     private FileMetadata metadata;
-    private FileMetadataRepository metadataRepository;
+    private FileMetadataRepository metadataRepo;
     private DirectoryEntries entries;
     private Content content;
 
-    public FileNodeImpl(FileNodeStore fileNodeStore, FileMetadata metadata, FileMetadataRepository metadataRepository,
-                        DirectoryEntries entries, Content content) {
-        this.fileNodeStore = fileNodeStore;
+    public FileObjectImpl(FileObjectStore fileObjectStore, FileMetadata metadata, FileMetadataRepository metadataRepo,
+                          DirectoryEntries entries, Content content) {
+        this.fileObjectStore = fileObjectStore;
         this.metadata = metadata;
-        this.metadataRepository = metadataRepository;
+        this.metadataRepo = metadataRepo;
         this.entries = entries;
         this.content = content;
     }
@@ -66,7 +66,7 @@ public class FileNodeImpl implements FileNode {
         if (entries != null) {
             DirectoryEntry entry = entries.getEntry(name);
             if (entry != null) {
-                return fileNodeStore.find(entry.getFileId());
+                return fileObjectStore.find(entry.getFileId());
             }
         }
 
@@ -98,7 +98,7 @@ public class FileNodeImpl implements FileNode {
 
     @Override
     public synchronized File createFile(String name, boolean dir, User owner, long permissions) throws IOException {
-        FileNode file = fileNodeStore.create(dir, owner, permissions);
+        FileObject file = fileObjectStore.create(dir, owner, permissions);
 
         entries.createEntry(name, file.getId());
 
@@ -107,13 +107,13 @@ public class FileNodeImpl implements FileNode {
 
     @Override
     public synchronized File moveFileTo(String name, File newParent, String newName) throws IOException {
-        FileNode file = (FileNode) getChild(name);
+        FileObject file = (FileObject) getChild(name);
         if (file != null) {
-            FileNode newParentFile = (FileNode) newParent;
+            FileObject newParentFile = (FileObject) newParent;
 
             if (!equals(newParentFile)) {
                 if (!newParentFile.isDirectory()) {
-                    throw new FileNotDirectoryException("File " + newParentFile + " is not a directory");
+                    throw new NotDirectoryException("File " + newParentFile + " is not a directory");
                 }
             } else if (!name.equals(newName)) {
                 newParentFile = this;
@@ -121,16 +121,16 @@ public class FileNodeImpl implements FileNode {
                 return file;
             }
 
-            FileNode replacedFile = null;
+            FileObject replacedFile = null;
 
             if (newParentFile.hasChild(newName)) {
-                replacedFile = (FileNode) newParentFile.getChild(newName);
+                replacedFile = (FileObject) newParentFile.getChild(newName);
             }
 
             entries.moveEntryTo(name, newParentFile.getEntries(), newName);
 
             if (replacedFile != null) {
-                fileNodeStore.delete(replacedFile);
+                fileObjectStore.delete(replacedFile);
             }
         }
 
@@ -139,7 +139,7 @@ public class FileNodeImpl implements FileNode {
 
     @Override
     public synchronized void delete(String name) throws IOException {
-        FileNode file = (FileNode) getChild(name);
+        FileObject file = (FileObject) getChild(name);
         if (file != null) {
             if (file.isDirectory() && !file.isEmpty()) {
                 throw new DirectoryNotEmptyException("Directory '" + file + "' should be empty before deleting");
@@ -147,7 +147,7 @@ public class FileNodeImpl implements FileNode {
 
             entries.deleteEntry(name);
 
-            fileNodeStore.delete(file);
+            fileObjectStore.delete(file);
         }
     }
 
@@ -217,7 +217,7 @@ public class FileNodeImpl implements FileNode {
 
     @Override
     public void syncMetadata() throws IOException {
-        metadataRepository.save(metadata);
+        metadataRepo.save(metadata);
     }
 
     @Override
@@ -229,7 +229,7 @@ public class FileNodeImpl implements FileNode {
             return false;
         }
 
-        FileNodeImpl file = (FileNodeImpl) o;
+        FileObjectImpl file = (FileObjectImpl) o;
 
         if (!metadata.equals(file.metadata)) {
             return false;
@@ -245,7 +245,7 @@ public class FileNodeImpl implements FileNode {
 
     @Override
     public String toString() {
-        return "FileNodeImpl{" +
+        return "FileObjectImpl{" +
                 "metadata=" + metadata +
                 ", entries=" + entries +
                 '}';
