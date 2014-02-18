@@ -17,11 +17,19 @@ public abstract class JongoRepository<T> {
         collection = jongo.getCollection(collectionName);
     }
 
+    public long count() throws DbException {
+        try {
+            return collection.count();
+        } catch (MongoException e) {
+            throw new DbException("[" + collection.getName() + "] Count failed", e);
+        }
+    }
+
     public T find(String id) throws DbException {
         try {
             return collection.findOne(new ObjectId(id)).as(getPojoClass());
         } catch (MongoException e) {
-            throw new DbException("Find for ID '" + id + "' failed", e);
+            throw new DbException("[" + collection.getName() + "] Find for ID '" + id + "' failed", e);
         }
     }
 
@@ -29,7 +37,7 @@ public abstract class JongoRepository<T> {
         try {
             collection.insert(pojo);
         } catch (MongoException e) {
-            throw new DbException("Insert for " + pojo + " failed", e);
+            throw new DbException("[" + collection.getName() + "] Insert for " + pojo + " failed", e);
         }
     }
 
@@ -37,7 +45,7 @@ public abstract class JongoRepository<T> {
         try {
             collection.save(pojo);
         } catch (MongoException e) {
-            throw new DbException("Save for " + pojo + " failed", e);
+            throw new DbException("[" + collection.getName() + "] Save for " + pojo + " failed", e);
         }
     }
 
@@ -45,7 +53,7 @@ public abstract class JongoRepository<T> {
         try {
             collection.remove(new ObjectId(id));
         } catch (MongoException e) {
-            throw new DbException("Delete for ID '" + id + "' failed", e);
+            throw new DbException("[" + collection.getName() + "] Delete for ID '" + id + "' failed", e);
         }
     }
 

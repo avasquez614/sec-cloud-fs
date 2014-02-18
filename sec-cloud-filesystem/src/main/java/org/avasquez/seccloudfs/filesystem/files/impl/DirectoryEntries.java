@@ -61,7 +61,7 @@ public class DirectoryEntries {
 
         entries.put(fileName, entry);
 
-        logger.info("{} created", entry);
+        logger.debug("{} created", entry);
 
         return entry;
     }
@@ -81,12 +81,12 @@ public class DirectoryEntries {
             entries.remove(fileName);
             dst.entries.put(newFileName, movedEntry);
 
-            logger.info("{} moved from {} with name '{}'", movedEntry, this, fileName);
+            logger.debug("{} moved from {} with name '{}'", movedEntry, this, fileName);
 
             if (replacedEntry != null) {
                 entryRepo.delete(replacedEntry.getId());
 
-                logger.info("{} deleted", replacedEntry);
+                logger.debug("{} deleted", replacedEntry);
             }
         }
     }
@@ -98,7 +98,7 @@ public class DirectoryEntries {
 
             entries.remove(fileName);
 
-            logger.info("{} deleted", entry);
+            logger.debug("{} deleted", entry);
         }
     }
 

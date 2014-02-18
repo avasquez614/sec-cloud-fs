@@ -28,16 +28,18 @@ public class JongoFileSystemInfoRepository extends JongoRepository<FileSystemInf
         try {
             return collection.findOne().as(FileSystemInfo.class);
         } catch (MongoException e) {
-            throw new DbException("Get singleton " + FileSystemInfo.class.getName() + " failed", e);
+            throw new DbException("[" + collection.getName() + "] Get singleton " + FileSystemInfo.class.getName() +
+                    " failed", e);
         }
     }
 
     @Override
     public void insert(FileSystemInfo pojo) throws DbException {
-        if (getSingleton() == null) {
+        if (count() == 0) {
             super.insert(pojo);
         } else {
-            throw new DbException("An instance of " + FileSystemInfo.class.getName() + " already exists in the DB");
+            throw new DbException("[" + collection.getName() + "] An instance of " + FileSystemInfo.class.getName() +
+                    " already exists in the DB");
         }
     }
 

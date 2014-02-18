@@ -29,7 +29,8 @@ public class JongoFileMetadataRepository extends JongoRepository<FileMetadata> i
         try {
             return collection.find().sort(LAST_ACCESS_TIME_DESC_SORT).as(FileMetadata.class);
         } catch (MongoException e) {
-            throw new DbException("Find all sorted by descending last access time failed", e);
+            throw new DbException("[" + collection.getName() + "] Find all sorted by descending last access " +
+                    "time failed", e);
         }
     }
 

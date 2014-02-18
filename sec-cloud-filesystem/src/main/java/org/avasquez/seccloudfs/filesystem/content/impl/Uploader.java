@@ -79,7 +79,7 @@ public class Uploader {
         synchronized (this) {
             try {
                 while (!metadata.isMarkedAsDeleted() && !hasTimeoutOccurred()) {
-                    logger.info("Update received for content {}. Waiting {} secs for next update", metadata,
+                    logger.info("Update received for content '{}'. Waiting {} secs for next update", metadata.getId(),
                             timeoutForNextUpdateSecs);
 
                     wait(TimeUnit.SECONDS.toMillis(timeoutForNextUpdateSecs));
@@ -90,7 +90,7 @@ public class Uploader {
         }
 
         try {
-            if (metadata.isMarkedAsDeleted() && metadata.getLastUploadTime() != null) {
+            if (metadata.isMarkedAsDeleted()) {
                 delete();
             } else {
                 upload();
@@ -103,14 +103,16 @@ public class Uploader {
     }
 
     private void delete() throws UploadFailedException {
-        logger.info("Delete for content {} started", metadata);
+        logger.info("Delete for content '{}' started", metadata.getId());
 
         try {
-            cloudStore.delete(metadata.getId());
+            if (metadata.getLastUploadTime() != null) {
+                cloudStore.delete(metadata.getId());
+            }
 
             metadataRepo.delete(metadata.getId());
 
-            logger.info("Delete for content {} finished", metadata);
+            logger.info("Delete for content '{}' finished", metadata.getId());
 
             return;
         } catch (DbException e) {
@@ -121,7 +123,7 @@ public class Uploader {
     }
 
     private void upload() throws UploadFailedException {
-        logger.info("Upload for content {} started", metadata);
+        logger.info("Upload for content '{}' started", metadata.getId());
 
         long snapshotTime;
         Path snapshotPath;
@@ -140,7 +142,7 @@ public class Uploader {
             accessLock.unlock();
         }
 
-        logger.info("Snapshot file {} created", snapshotPath);
+        logger.debug("Snapshot file {} created", snapshotPath);
 
         try (FileChannel snapshotChannel = FileChannel.open(snapshotPath, StandardOpenOption.READ)) {
             cloudStore.upload(metadata.getId(), snapshotChannel, snapshotChannel.size());
@@ -148,7 +150,7 @@ public class Uploader {
             throw new UploadFailedException("Error while uploading content to cloud", e);
         }
 
-        logger.info("Content {} uploaded to cloud", metadata);
+        logger.info("Content '{}' uploaded to cloud", metadata.getId());
 
         try {
             metadata.setUploadedSize(Files.size(snapshotPath));
@@ -163,7 +165,7 @@ public class Uploader {
             logger.warn("Unable to delete snapshot file " + snapshotPath, e);
         }
 
-        logger.info("Snapshot file {} deleted", snapshotPath);
+        logger.debug("Snapshot file {} deleted", snapshotPath);
 
         try {
             metadataRepo.save(metadata);
@@ -171,7 +173,7 @@ public class Uploader {
             throw new UploadFailedException("Error while saving content metadata to DB", e);
         }
 
-        logger.info("Upload for content {} finished", metadata);
+        logger.info("Upload for content '{}' finished", metadata.getId());
 
         // Check if content was deleted or if there where new updates while uploading
         if (metadata.isMarkedAsDeleted() || getContentLastModifiedTime() > snapshotTime) {
@@ -199,7 +201,7 @@ public class Uploader {
 
             @Override
             public void run() {
-                logger.info("Retrying upload for content {}", metadata);
+                logger.info("Retrying upload for content '{}'", metadata.getId());
 
                 notifyUpdate();
             }

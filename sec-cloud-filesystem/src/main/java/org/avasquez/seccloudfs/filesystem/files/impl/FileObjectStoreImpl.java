@@ -40,6 +40,11 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
     }
 
     @Override
+    public long getTotalFiles() throws IOException {
+        return metadataRepo.count();
+    }
+
+    @Override
     protected FileObject doFind(String id) throws IOException {
         FileMetadata metadata = metadataRepo.find(id);
         if (metadata != null) {
@@ -78,7 +83,7 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
 
         FileObject file = new FileObjectImpl(this, metadata, metadataRepo, entries, content);
 
-        logger.info("{} created", file);
+        logger.debug("{} created", file);
 
         return file;
     }
@@ -87,7 +92,7 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
     protected void doDelete(FileObject file) throws IOException {
         metadataRepo.delete(file.getId());
 
-        logger.info("{} deleted", file);
+        logger.debug("{} deleted", file);
 
         if (!file.isDirectory()) {
             contentStore.delete(file.getContent());

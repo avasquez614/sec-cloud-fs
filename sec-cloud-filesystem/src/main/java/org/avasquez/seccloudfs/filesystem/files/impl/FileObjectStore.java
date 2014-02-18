@@ -9,6 +9,8 @@ import java.io.IOException;
  */
 public interface FileObjectStore {
 
+    long getTotalFiles() throws IOException;
+
     FileObject find(String id) throws IOException;
 
     FileObject create(boolean dir, User owner, long permissions) throws IOException;

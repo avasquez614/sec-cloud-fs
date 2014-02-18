@@ -18,6 +18,7 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import static net.fusejna.ErrorCodes.*;
 import static net.fusejna.StructFuseFileInfo.FileInfoWrapper;
 import static net.fusejna.StructStat.StatWrapper;
+import static net.fusejna.StructStatvfs.StatvfsWrapper;
 import static net.fusejna.StructTimeBuffer.TimeBufferWrapper;
 import static net.fusejna.types.TypeMode.ModeWrapper;
 import static net.fusejna.types.TypeMode.NodeType;
@@ -43,6 +45,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     private FileHandleRegistry fileHandleRegistry;
     private long rootPermissions;
     private int rootUid;
+    private long blockSize;
 
     public static void main(String... args) throws Exception {
         if (args.length != 1) {
@@ -88,6 +91,11 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         this.rootUid = rootUid;
     }
 
+    @Required
+    public void setBlockSize(long blockSize) {
+        this.blockSize = blockSize;
+    }
+
     @Override
     public void init() {
         try {
@@ -121,14 +129,26 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 NodeType nodeType = file.isDirectory() ? NodeType.DIRECTORY : NodeType.FILE;
                 long permissions = file.getPermissions();
                 long mode = nodeType.getBits() | permissions;
+                long uid = file.getOwner().getUid();
+                long gid = file.getOwner().getGid();
+                long size = file.getSize();
+                Date ctime = file.getLastChangeTime();
+                Date atime = file.getLastAccessTime();
+                Date mtime = file.getLastModifiedTime();
 
                 stat.mode(mode);
-                stat.uid(file.getOwner().getUid());
-                stat.gid(file.getOwner().getGid());
-                stat.size(file.getSize());
-                stat.ctime(millisToSeconds(file.getLastChangeTime().getTime()));
-                stat.atime(millisToSeconds(file.getLastAccessTime().getTime()));
-                stat.mtime(millisToSeconds(file.getLastModifiedTime().getTime()));
+                stat.uid(uid);
+                stat.gid(gid);
+                stat.size(size);
+                stat.ctime(millisToSeconds(ctime.getTime()));
+                stat.atime(millisToSeconds(atime.getTime()));
+                stat.mtime(millisToSeconds(mtime.getTime()));
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} requested attributes of file at {}: mode={},uid={},gid={}," +
+                            "size={},ctime={},atime={},mtime={}", getCurrentUser(), path, mode, uid,
+                            gid, size, ctime, atime, mtime);
+                }
 
                 return 0;
             }
@@ -145,8 +165,16 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 File file = resolveFile(path);
 
                 if (access == Constants.F_OK || hasPermission(file, access)) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Access allowed to {} to file at {}", getCurrentUser(), path);
+                    }
+
                     return 0;
                 } else {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Access denied to {} to file at {}", getCurrentUser(), path);
+                    }
+
                     return -EACCES();
                 }
             }
@@ -183,7 +211,13 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 checkDirectory(dir);
                 checkReadPermission(dir);
 
-                filler.add(dir.getChildren());
+                String[] children = dir.getChildren();
+
+                filler.add(children);
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} read dir at {}: children={}", getCurrentUser(), path, Arrays.toString(children));
+                }
 
                 return 0;
             }
@@ -205,10 +239,12 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 User owner = new User(getCurrentUid(), getCurrentGid());
                 long permissions = getPermissionsBits(mode.mode());
 
-                File dir = parent.createFile(getFilename(path), true, owner, permissions);
+                parent.createFile(getFilename(path), true, owner, permissions);
                 updateLastModifiedTime(parent, true);
 
-                logger.info("{} created {} at {}", getCurrentUser(), dir, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} created dir at {}", getCurrentUser(), path);
+                }
 
                 return 0;
             }
@@ -232,7 +268,9 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 parent.delete(name);
                 updateLastModifiedTime(parent, true);
 
-                logger.info("{} removed {} at {}", getCurrentUser(), dir, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} removed dir at {}", getCurrentUser(), path);
+                }
 
                 return 0;
             }
@@ -255,12 +293,14 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 checkDirectory(newParent);
                 checkWritePermission(newParent);
 
-                File file = parent.moveFileTo(getFilename(path), newParent, getFilename(newName));
+                parent.moveFileTo(getFilename(path), newParent, getFilename(newName));
 
                 updateLastModifiedTime(parent, true);
                 updateLastModifiedTime(newParent, true);
 
-                logger.info("{} moved {} from {} to {}", getCurrentUser(), file, path, newName);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} moved file from {} to {}", getCurrentUser(), path, newName);
+                }
 
                 return 0;
             }
@@ -283,7 +323,11 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 file.setPermissions(permissions);
                 updateLastChangeTime(file, true);
 
-                logger.info("{} changed permissions of {} at {}", getCurrentUser(), file, path);
+                if (logger.isDebugEnabled()) {
+                    String permStr = toPermissionsString(permissions);
+
+                    logger.debug("{} changed permissions of file at {} to {}", getCurrentUser(), path, permStr);
+                }
 
                 return 0;
             }
@@ -302,11 +346,14 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 }
 
                 File file = resolveFile(path);
+                User user = new User(uid, gid);
 
-                file.setOwner(new User(uid, gid));
+                file.setOwner(user);
                 updateLastChangeTime(file, true);
 
-                logger.info("{} changed owner of {} at {}", getCurrentUser(), file, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} changed owner of file at {} to {}", getCurrentUser(), path, user);
+                }
 
                 return 0;
             }
@@ -337,7 +384,9 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                             file = parent.createFile(name, false, owner, permissions);
                             updateLastModifiedTime(parent, true);
 
-                            logger.info("{} created {} at {}", getCurrentUser(), file, path);
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("{} created file at {}", getCurrentUser(), path);
+                            }
                         }
                     }
                 }
@@ -350,6 +399,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 long handleId = fileHandleRegistry.register(handle);
 
                 info.fh(handleId);
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} opened file at {}: fileHandle={}", getCurrentUser(), path, handleId);
+                }
 
                 return 0;
             }
@@ -373,7 +426,9 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 parent.delete(name);
                 updateLastModifiedTime(parent, true);
 
-                logger.info("{} removed {} at {}", getCurrentUser(), file, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} removed file at {}", getCurrentUser(), path);
+                }
 
                 return 0;
             }
@@ -397,7 +452,9 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 updateLastModifiedTime(file, true);
 
-                logger.info("{} truncated {} at {}", getCurrentUser(), file, path, offset);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} truncated file at {} to {}", getCurrentUser(), path, offset);
+                }
 
                 return 0;
             }
@@ -419,7 +476,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 file.setLastModifiedTime(new Date(secondsToMillis(timeBuffer.mod_sec())));
                 file.syncMetadata();
 
-                logger.info("{} updated last access and last modified time of {} at {}", getCurrentUser(), file, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} updated last access and last modified time of file at {}: atime={},mtime={}",
+                            getCurrentUser(), path, file.getLastAccessTime(), file.getLastModifiedTime());
+                }
 
                 return 0;
             }
@@ -444,6 +504,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 updateLastAccessTime(file, false);
 
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} opened file at {}: fileHandle={}", getCurrentUser(), path, handleId);
+                }
+
                 return 0;
             }
 
@@ -467,6 +531,11 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 handle.position(offset);
 
                 int readBytes = handle.read(buffer);
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} read {} bytes from file at {}", getCurrentUser(), readBytes, path);
+                }
+
                 if (readBytes > 0) {
                     return readBytes;
                 } else {
@@ -497,7 +566,9 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 updateLastModifiedTime(file, false);
 
-                logger.info("{} updated contents of {} at {}", getCurrentUser(), file, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} wrote {} bytes to file at {}", getCurrentUser(), writtenBytes, path);
+                }
 
                 return writtenBytes;
             }
@@ -515,6 +586,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 file.syncMetadata();
 
                 fileHandleRegistry.destroy(info.fh());
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} released file at {}: fileHandle={}", getCurrentUser(), path, info.fh());
+                }
 
                 return 0;
             }
@@ -549,12 +624,16 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 if (datasync == 0) {
                     file.syncMetadata();
 
-                    logger.info("{} flushed metadata of {} at {} to storage", getCurrentUser(), file, path);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("{} flushed metadata of file at {} to storage", getCurrentUser(), path);
+                    }
                 }
 
                 handle.flush();
 
-                logger.info("{} flushed data of {} at {} to storage", getCurrentUser(), file, path);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} flushed data of file at {} to storage", getCurrentUser(), path);
+                }
 
                 return 0;
             }
@@ -562,48 +641,80 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         }, "fsync");
     }
 
+    @Override
+    public int statfs(final String path, final StatvfsWrapper stats) {
+        return doWithErrorHandling(new Callable<Integer>() {
+
+            @Override
+            public Integer call() throws Exception {
+                long totalSpace = fileSystem.getTotalSpace();
+                long availableSpace = fileSystem.getAvailableSpace();
+                long totalBlocks = totalSpace / blockSize;
+                long availableBlocks = availableSpace / blockSize;
+                long freeFileNodes = Integer.MAX_VALUE - fileSystem.getTotalFiles();
+
+                stats.bsize(blockSize);
+                stats.frsize(blockSize);
+                stats.blocks(totalBlocks);
+                stats.bfree(availableBlocks);
+                stats.bavail(availableBlocks);
+                stats.files(Integer.MAX_VALUE);
+                stats.ffree(freeFileNodes);
+                stats.favail(freeFileNodes);
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} requested filesystem status: bsize={},frsize={},blocks={},bfree={}," +
+                            "bavail={},files={},ffree={},favail={}", getCurrentUser(), blockSize, blockSize,
+                            totalBlocks, availableBlocks, availableBlocks, Integer.MAX_VALUE, freeFileNodes,
+                            freeFileNodes);
+                }
+
+                return 0;
+            }
+
+        }, "statfs");
+    }
+
     private int doWithErrorHandling(Callable<Integer> method, String methodName) {
         try {
             return method.call();
         } catch (FileNotFoundException e) {
-            logError(e, methodName, true);
+            logError(e.getMessage(), methodName);
 
             return -ENOENT();
         } catch (NotDirectoryException e) {
-            logError(e, methodName, true);
+            logError(e.getMessage(), methodName);
 
             return -ENOTDIR();
         } catch (IsDirectoryException e) {
-            logError(e, methodName, true);
+            logError(e.getMessage(), methodName);
 
             return -EISDIR();
         } catch (PermissionDeniedException e) {
-            logError(e, methodName, true);
+            logError(e.getMessage(), methodName);
 
             return -EACCES();
         } catch (FileExistsException e) {
-            logError(e, methodName, true);
+            logError(e.getMessage(), methodName);
 
             return -EEXIST();
         } catch (InvalidFileHandleException e) {
-            logError(e, methodName, true);
+            logError(e.getMessage(), methodName);
 
             return -EBADF();
         }catch (Exception e) {
-            logError(e, methodName, false);
+            logError(e, methodName);
 
             return -EIO();
         }
     }
 
-    private void logError(Throwable ex, String methodName, boolean debug) {
-        if (debug) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Method '" + methodName + "' failed", ex);
-            }
-        } else {
-            logger.error("Method '" + methodName + "' failed", ex);
-        }
+    private void logError(String message, String methodName) {
+        logger.debug("Method '{}' failed: {}", methodName, message);
+    }    
+
+    private void logError(Throwable ex, String methodName) {
+        logger.error("Method '" + methodName + "' failed", ex);
     }
 
     private long millisToSeconds(long millis) {
@@ -746,6 +857,28 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         if (sync) {
             file.syncMetadata();
         }
+    }
+
+    private String toPermissionsString(long permissions) {
+        StringBuilder str = new StringBuilder();
+
+        for (int i = 8; i >= 0; i--) {
+            long mask = 1 << i;
+
+            if ((permissions & mask) == 1) {
+                if ((i + 1) % 3 == 0) {
+                    str.append('r');
+                } else if ((i + 1) % 3 == 2) {
+                    str.append('w');
+                } else {
+                    str.append('x');
+                }
+            } else {
+                str.append('-');
+            }
+        }
+
+        return str.toString();
     }
 
 }

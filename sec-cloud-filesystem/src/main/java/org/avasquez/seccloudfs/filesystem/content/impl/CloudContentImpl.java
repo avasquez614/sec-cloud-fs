@@ -88,7 +88,7 @@ public class CloudContentImpl implements CloudContent {
                 if (lastModifiedTime.compareTo(lastUploadTime) < 0 && openChannels == 0) {
                     Files.deleteIfExists(downloadPath);
 
-                    logger.info("Download for {} deleted", this);
+                    logger.info("Download for content '{}' deleted", getId());
 
                     return true;
                 }
@@ -104,7 +104,7 @@ public class CloudContentImpl implements CloudContent {
         metadata.setMarkedAsDeleted(true);
         metadataRepo.save(metadata);
 
-        logger.info("{} marked as deleted", this);
+        logger.info("Content '{}' marked as deleted", getId());
 
         accessLock.lock();
         try {
@@ -113,7 +113,7 @@ public class CloudContentImpl implements CloudContent {
 
                 uploader.notifyUpdate();
 
-                logger.info("Download for {} deleted", this);
+                logger.info("Download for content '{}' deleted", getId());
             }
         } finally {
             accessLock.unlock();
@@ -180,7 +180,7 @@ public class CloudContentImpl implements CloudContent {
 
             Files.move(tmpPath, downloadPath, StandardCopyOption.ATOMIC_MOVE);
 
-            logger.info("{} downloaded", this);
+            logger.info("Content '{}' downloaded", getId());
         } catch (IOException e) {
             throw new IOException("Error while trying to download " + this + " from cloud", e);
         }
@@ -242,7 +242,7 @@ public class CloudContentImpl implements CloudContent {
 
                             uploader.notifyUpdate();
 
-                            logger.info("Download for {} deleted", this);
+                            logger.info("Download for content '{}' deleted", getId());
                         }
                     } finally {
                         openChannels--;

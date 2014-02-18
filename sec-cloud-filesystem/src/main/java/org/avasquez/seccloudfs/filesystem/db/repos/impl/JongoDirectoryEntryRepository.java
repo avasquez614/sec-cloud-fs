@@ -24,7 +24,7 @@ public class JongoDirectoryEntryRepository extends JongoRepository<DirectoryEntr
         try {
             return collection.find(FIND_BY_DIRECTORY_ID_QUERY, dirId).as(DirectoryEntry.class);
         } catch (MongoException e) {
-            throw new DbException("Find entries for dir ID '" + dirId + "' failed", e);
+            throw new DbException("[" + collection.getName() + "] Find entries for dir ID '" + dirId + "' failed", e);
         }
     }
 

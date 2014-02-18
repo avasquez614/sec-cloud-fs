@@ -56,6 +56,7 @@
 
     <bean id="cloudStore" class="org.avasquez.seccloudfs.utils.testing.LocalCloudStore">
         <property name="storeDir" value="${cloud.store.local.dir}"/>
+        <property name="maxDirSize" value="${cloud.store.local.dir.maxSize}"/>
     </bean>
 
     <bean id="contentStore" class="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentStoreImpl">
@@ -81,6 +82,7 @@
     <bean id="fileSystem" class="org.avasquez.seccloudfs.filesystem.files.impl.FileSystemImpl">
         <property name="fileSystemInfoRepo" ref="fileSystemInfoRepo"/>
         <property name="fileObjectStore" ref="fileObjectStore"/>
+        <property name="contentStore" ref="contentStore"/>
     </bean>
 
     <bean id="fileHandleRegistry" class="org.avasquez.seccloudfs.filesystem.fuse.FileHandleRegistry">
@@ -93,6 +95,7 @@
         <property name="fileSystem" ref="fileSystem"/>
         <property name="rootUid" value="${users.root.uid}"/>
         <property name="rootPermissions" value="${filesystem.root.permissions}"/>
+        <property name="blockSize" value="${fuse.filesystem.blockSize}"/>
     </bean>
 
     <!-- Download Dir Manager -->

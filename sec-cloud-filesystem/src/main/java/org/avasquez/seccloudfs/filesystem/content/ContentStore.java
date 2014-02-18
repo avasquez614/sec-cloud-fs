@@ -13,4 +13,8 @@ public interface ContentStore {
 
     void delete(Content content) throws IOException;
 
+    long getTotalSpace() throws IOException;
+
+    long getAvailableSpace() throws IOException;
+
 }

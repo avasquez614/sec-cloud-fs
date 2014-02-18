@@ -82,7 +82,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
         Content content = createContentObject(metadata);
 
-        logger.info("{} created", content);
+        logger.debug("{} created", content);
 
         return content;
     }
@@ -101,4 +101,13 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         return new CloudContentImpl(metadata, metadataRepo, downloadPath, accessLock, cloudStore, uploader);
     }
 
+    @Override
+    public long getTotalSpace() throws IOException {
+        return cloudStore.getTotalSpace();
+    }
+
+    @Override
+    public long getAvailableSpace() throws IOException {
+        return cloudStore.getAvailableSpace();
+    }
 }

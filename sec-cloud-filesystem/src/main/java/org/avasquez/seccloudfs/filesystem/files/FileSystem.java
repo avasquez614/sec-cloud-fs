@@ -11,4 +11,10 @@ public interface FileSystem {
 
     File createRoot(User owner, long permissions) throws IOException;
 
+    long getTotalSpace() throws IOException;
+
+    long getAvailableSpace() throws IOException;
+
+    long getTotalFiles() throws IOException;
+
 }

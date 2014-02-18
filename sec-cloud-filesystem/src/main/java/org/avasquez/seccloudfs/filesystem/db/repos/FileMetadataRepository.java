@@ -9,6 +9,13 @@ import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
 public interface FileMetadataRepository {
 
     /**
+     * Returns the total number of file metadata in the database.
+     *
+     * @return the total of files
+     */
+    long count() throws DbException;
+
+    /**
      * Returns the file metadata with the specified ID in the database.
      *
      * @param id  the ID of the file metadata to look for

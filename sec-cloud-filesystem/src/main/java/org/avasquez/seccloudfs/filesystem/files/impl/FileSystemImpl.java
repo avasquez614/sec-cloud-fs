@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
+import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.avasquez.seccloudfs.filesystem.db.model.FileSystemInfo;
 import org.avasquez.seccloudfs.filesystem.db.repos.FileSystemInfoRepository;
 import org.avasquez.seccloudfs.filesystem.files.File;
@@ -16,6 +17,7 @@ public class FileSystemImpl implements FileSystem {
 
     private FileSystemInfoRepository fileSystemInfoRepo;
     private FileObjectStore fileObjectStore;
+    private ContentStore contentStore;
 
     private FileObject root;
 
@@ -27,6 +29,11 @@ public class FileSystemImpl implements FileSystem {
     @Required
     public void setFileObjectStore(FileObjectStore fileObjectStore) {
         this.fileObjectStore = fileObjectStore;
+    }
+
+    @Required
+    public void setContentStore(ContentStore contentStore) {
+        this.contentStore = contentStore;
     }
 
     @Override
@@ -48,6 +55,21 @@ public class FileSystemImpl implements FileSystem {
         fileSystemInfoRepo.insert(new FileSystemInfo(root.getId()));
 
         return root;
+    }
+
+    @Override
+    public long getTotalSpace() throws IOException {
+        return contentStore.getTotalSpace();
+    }
+
+    @Override
+    public long getAvailableSpace() throws IOException {
+        return contentStore.getAvailableSpace();
+    }
+
+    @Override
+    public long getTotalFiles() throws IOException {
+        return fileObjectStore.getTotalFiles();
     }
 
 }
