@@ -472,8 +472,12 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 checkWritePermission(file);
 
-                file.setLastAccessTime(new Date(secondsToMillis(timeBuffer.ac_sec())));
-                file.setLastModifiedTime(new Date(secondsToMillis(timeBuffer.mod_sec())));
+                Date lastAccessTime = new Date(secondsToMillis(timeBuffer.ac_sec()));
+                Date lastModifiedTime = new Date(secondsToMillis(timeBuffer.mod_sec()));
+
+                file.setLastAccessTime(lastAccessTime);
+                file.setLastChangeTime(lastModifiedTime);
+                file.setLastModifiedTime(lastModifiedTime);
                 file.syncMetadata();
 
                 if (logger.isDebugEnabled()) {

@@ -20,6 +20,9 @@
     </appender>
 
     <!--logger name="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS" level="DEBUG"/-->
+    <logger name="org.avasquez.seccloudfs.filesystem.files.impl.FileObjectStoreImpl" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.filesystem.files.impl.DirectoryEntries" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.filesystem.content.impl.Uploader" level="ERROR"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

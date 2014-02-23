@@ -69,7 +69,7 @@ public class DirectoryEntries {
     public void moveEntryTo(String fileName, DirectoryEntries dst, String newFileName) throws IOException {
         DirectoryEntry entry = getEntry(fileName);
         if (entry != null) {
-            DirectoryEntry replacedEntry = dst.entries.get(fileName);
+            DirectoryEntry replacedEntry = dst.entries.get(newFileName);
             DirectoryEntry movedEntry = new DirectoryEntry(entry.getId(),
                     dst.directoryId,
                     newFileName,
@@ -86,7 +86,7 @@ public class DirectoryEntries {
             if (replacedEntry != null) {
                 entryRepo.delete(replacedEntry.getId());
 
-                logger.debug("{} deleted", replacedEntry);
+                logger.debug("{} deleted (replaced by entry {})", replacedEntry, movedEntry);
             }
         }
     }

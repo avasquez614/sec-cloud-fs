@@ -76,7 +76,7 @@ public class FileObjectImpl implements FileObject {
     @Override
     public boolean hasChild(String name) throws IOException {
         if (entries != null) {
-            entries.hasEntry(name);
+            return entries.hasEntry(name);
         }
 
         return false;

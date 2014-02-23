@@ -36,7 +36,7 @@ public class Uploader {
     private long timeoutForNextUpdateSecs;
     private long retryDelaySecs;
 
-    private boolean uploading;
+    private volatile boolean uploading;
 
     public Uploader(ContentMetadata metadata, ContentMetadataRepository metadataRepo, CloudStore cloudStore,
                     Path downloadPath, Lock accessLock, Path snapshotDir, ScheduledExecutorService executorService,
@@ -66,6 +66,8 @@ public class Uploader {
             @Override
             public void run() {
                 uploading = true;
+
+                logger.debug("Uploading thread for content '{}' started", metadata.getId());
 
                 uploadUntilNoUpdatesReceived();
 
