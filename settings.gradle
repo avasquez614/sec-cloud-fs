@@ -1,1 +1,2 @@
-include "sec-cloud-commons", "sec-cloud-filesystem"
+include "sec-cloud-commons", "sec-cloud-filesystem", "sec-cloud-erasure"
+

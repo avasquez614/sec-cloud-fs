@@ -1,0 +1,4 @@
+dependencies {
+    compile fileTree(dir: 'libs', include: '*.jar')
+    compile 'com.nativelibs4java:bridj:0.6.2'
+}
