@@ -15,12 +15,12 @@ public interface ErasureDecoder {
      * @param dataFragments     the array of data (k) fragments. Size should be the same size of fragments returned
      *                          by {@link org.avasquez.seccloudfs.erasure.ErasureEncoder#encode(java.nio.ByteBuffer)}.
      *                          Missing, or "erased", fragments should be indicated with {@code null}.
-     * @param codingFragments   the array of coding (m) fragments. Size should be the same size of fragments returned
+     * @param encodedFragments  the array of coding (m) fragments. Size should be the same size of fragments returned
      *                          by {@link org.avasquez.seccloudfs.erasure.ErasureEncoder#encode(java.nio.ByteBuffer)}.
      *                          Missing, or "erased", fragments should be indicated with {@code null}.
      *
      * @return the original data
      */
-    ByteBuffer decode(ByteBuffer[] dataFragments, ByteBuffer[] codingFragments);
+    ByteBuffer decode(ByteBuffer[] dataFragments, ByteBuffer[] encodedFragments);
 
 }

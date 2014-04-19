@@ -1,4 +1,9 @@
+ repositories {
+     maven {
+         url 'http://oss.sonatype.org/content/groups/public'
+     }
+ }
+
 dependencies {
-    compile fileTree(dir: 'libs', include: '*.jar')
-    compile 'com.nativelibs4java:bridj:0.6.2'
+    compile 'com.nativelibs4java:bridj:0.7-SNAPSHOT'
 }
