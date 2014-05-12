@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.erasure;
 
-import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 
 /**
  * Erasure coding encoder.
@@ -12,10 +12,11 @@ public interface ErasureEncoder {
     /**
      * Encodes the given raw data through an erasure coding algorithm, producing k + m fragments.
      *
-     * @param rawData the data to encode
+     * @param inputChannel      an input channel to read the raw data from
+     * @param size              size of the raw data
      *
-     * @return  the result with the encoded fragments
+     * @return  the data (k) and coding (m) fragments
      */
-    EncodingResult encode(ByteBuffer rawData);
+    Fragments encode(ReadableByteChannel inputChannel, int size) throws EncodingException;
 
 }
