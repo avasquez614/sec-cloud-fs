@@ -37,7 +37,7 @@ public class JerasureEncoder implements ErasureEncoder {
         // Calculate the data buffer size (must be a multiple of minSize)
         if (mod != 0) {
             if (size < minSize) {
-                dataBufferSize = size + mod;
+                dataBufferSize = minSize;
             } else {
                 dataBufferSize = size + minSize - mod;
             }
@@ -59,16 +59,20 @@ public class JerasureEncoder implements ErasureEncoder {
         padWithZeroes(dataBuffer);
 
         // Create pointers to data
+        int fragmentSize = dataBufferSize / k;
         Pointer<Byte> dataBufferPtr = Pointer.pointerToBytes(dataBuffer);
         Pointer<Pointer<Byte>> dataPtrs = Pointer.allocatePointers(Byte.class, k);
-
-        int fragmentSize = dataBufferSize / k;
 
         for (int i = 0; i < k; i++) {
             dataPtrs.set(i, dataBufferPtr.offset(i * fragmentSize));
         }
 
-        Pointer<Pointer<Byte>> codingPtrs = Pointer.allocateBytes(m, fragmentSize);
+        // Allocate memory for coding
+        Pointer<Pointer<Byte>> codingPtrs = Pointer.allocatePointers(Byte.class, m);
+
+        for (int i = 0; i < m; i++) {
+            codingPtrs.set(i, Pointer.allocateBytes(fragmentSize));
+        }
 
         // Do encoding
         codingMethod.encode(dataPtrs, codingPtrs, fragmentSize);
@@ -77,7 +81,7 @@ public class JerasureEncoder implements ErasureEncoder {
         ByteBuffer[] dataFragments = asFragmentArray(dataPtrs, k, fragmentSize);
         ByteBuffer[] codingFragments = asFragmentArray(codingPtrs, m, fragmentSize);
 
-        return new Fragments(dataFragments, codingFragments);
+        return new Fragments(null, dataFragments, codingFragments);
     }
 
     private void padWithZeroes(ByteBuffer buffer) {

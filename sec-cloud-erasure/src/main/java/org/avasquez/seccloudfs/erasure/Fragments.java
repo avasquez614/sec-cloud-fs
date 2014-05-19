@@ -9,10 +9,12 @@ import java.nio.ByteBuffer;
  */
 public class Fragments {
 
+    private ByteBuffer originalData;
     private ByteBuffer[] dataFragments;
     private ByteBuffer[] codingFragments;
 
-    public Fragments(ByteBuffer[] dataFragments, ByteBuffer[] codingFragments) {
+    public Fragments(ByteBuffer originalData, ByteBuffer[] dataFragments, ByteBuffer[] codingFragments) {
+        this.originalData = originalData;
         this.dataFragments = dataFragments;
         this.codingFragments = codingFragments;
     }

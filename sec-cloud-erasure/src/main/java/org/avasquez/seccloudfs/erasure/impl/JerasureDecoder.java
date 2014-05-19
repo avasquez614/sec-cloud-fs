@@ -44,39 +44,43 @@ public class JerasureDecoder implements ErasureDecoder {
                 fragmentSize = dataFragments[i].capacity();
             }
         }
-        // Look for erasures in coding fragments
-        for (int i = 0; i < codingFragments.length; i++) {
-            if (codingFragments[i] == null) {
-                erasures[numErased] = k + i;
-                numErased++;
-            } else if (fragmentSize == 0) {
-                fragmentSize = codingFragments[i].capacity();
+
+        // If no data fragments have been erased, just write them to the output channel
+        if (numErased > 0) {
+            // Look for erasures in coding fragments
+            for (int i = 0; i < codingFragments.length; i++) {
+                if (codingFragments[i] == null) {
+                    erasures[numErased] = k + i;
+                    numErased++;
+                } else if (fragmentSize == 0) {
+                    fragmentSize = codingFragments[i].capacity();
+                }
             }
-        }
 
-        erasures[numErased] = -1;
+            erasures[numErased] = -1;
 
-        if (numErased > m) {
-            throw new DecodingException("Unable to continue decoding: more than m (" + m + ") fragments are missing");
-        }
-
-        // Allocate memory for missing fragments, which will be reconstructed by the decoder
-        for (int i = 0; i < numErased; i++) {
-            if (erasures[i] < k) {
-                dataFragments[erasures[i]] = ByteBuffer.allocateDirect(fragmentSize);
-            } else {
-                codingFragments[erasures[i] - k] = ByteBuffer.allocateDirect(fragmentSize);
+            if (numErased > m) {
+                throw new DecodingException("More than m (" + m + ") fragments are missing");
             }
-        }
 
-        // Get pointers for data and coding fragments;
-        Pointer<Pointer<Byte>> dataPtrs = asPointers(dataFragments, k);
-        Pointer<Pointer<Byte>> codingPtrs = asPointers(codingFragments, m);
+            // Allocate memory for missing fragments, which will be reconstructed by the decoder
+            for (int i = 0; i < numErased; i++) {
+                if (erasures[i] < k) {
+                    dataFragments[erasures[i]] = ByteBuffer.allocateDirect(fragmentSize);
+                } else {
+                    codingFragments[erasures[i] - k] = ByteBuffer.allocateDirect(fragmentSize);
+                }
+            }
 
-        // Do decoding
-        boolean success = codingMethod.decode(Pointer.pointerToInts(erasures), dataPtrs, codingPtrs, fragmentSize);
-        if (!success) {
-            throw new DecodingException("Decoding failed for unknown reasons");
+            // Get pointers for data and coding fragments;
+            Pointer<Pointer<Byte>> dataPtrs = asPointers(dataFragments, k);
+            Pointer<Pointer<Byte>> codingPtrs = asPointers(codingFragments, m);
+
+            // Do decoding
+            boolean success = codingMethod.decode(Pointer.pointerToInts(erasures), dataPtrs, codingPtrs, fragmentSize);
+            if (!success) {
+                throw new DecodingException("Decoding failed for unknown reasons");
+            }
         }
 
         // Write completed data fragments to output channel, until original size has been written
