@@ -1,8 +1,10 @@
 apply plugin:'application'
+
 mainClassName = 'org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS'
 
 dependencies {
     compile project(':sec-cloud-commons')
+    compile project(':sec-cloud-erasure')
     compile fileTree(dir: 'libs', include: '*.jar')
     compile 'org.infinispan:infinispan-core:6.0.1.Final'
     compile 'net.java.dev.jna:jna:3.5.2'

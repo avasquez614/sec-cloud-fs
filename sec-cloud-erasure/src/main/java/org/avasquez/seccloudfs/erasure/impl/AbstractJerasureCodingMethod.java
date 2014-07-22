@@ -76,10 +76,10 @@ public abstract class AbstractJerasureCodingMethod implements JerasureCodingMeth
     }
 
     @Override
-    public boolean decode(Pointer<Integer> erasures, Pointer<Pointer<Byte>> dataPtrs, Pointer<Pointer<Byte>> codingPtrs,
-                          int fragmentSize) {
+    public boolean decode(Pointer<Integer> erasures, Pointer<Pointer<Byte>> dataPtrs,
+                          Pointer<Pointer<Byte>> codingPtrs, int sliceSize) {
         int result = JerasureLibrary.scheduleDecodeLazy(k, m, w, bitMatrix, erasures, dataPtrs, codingPtrs,
-                fragmentSize, packetSize, true);
+                sliceSize, packetSize, true);
 
         return result != -1;
     }

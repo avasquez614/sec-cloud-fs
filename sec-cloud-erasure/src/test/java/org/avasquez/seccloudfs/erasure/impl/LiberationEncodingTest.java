@@ -1,7 +1,7 @@
 package org.avasquez.seccloudfs.erasure.impl;
 
 import org.apache.commons.io.IOUtils;
-import org.avasquez.seccloudfs.erasure.Fragments;
+import org.avasquez.seccloudfs.erasure.Slices;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -49,29 +49,39 @@ public class LiberationEncodingTest {
         decoder.setCodingMethod(liberation);
     }
 
-    //@Test
+    @Test
     public void testEncodingAndDecoding() throws Exception {
         ClassPathResource resource = new ClassPathResource(FILE_PATH);
         int size = (int) resource.getFile().length();
         ReadableByteChannel inputChannel = Channels.newChannel(resource.getInputStream());
 
-        Fragments fragments = encoder.encode(inputChannel, size);
+        Slices slices = encoder.encode(inputChannel, size);
 
-        assertNotNull(fragments);
+        // Check that slices are not garbage collected
+        System.gc();
 
-        ByteBuffer[] dataFragments = fragments.getDataFragments();
-        ByteBuffer[] codingFragments = fragments.getCodingFragments();
+        Thread.sleep(3000);
 
-        assertNotNull(dataFragments);
-        assertEquals(K, dataFragments.length);
+        assertNotNull(slices);
 
-        assertNotNull(codingFragments);
-        assertEquals(M, codingFragments.length);
+        ByteBuffer[] dataSlices = slices.getDataSlices();
+        ByteBuffer[] codingSlices = slices.getCodingSlices();
+
+        assertNotNull(dataSlices);
+        assertEquals(K, dataSlices.length);
+
+        assertNotNull(codingSlices);
+        assertEquals(M, codingSlices.length);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream(size);
         WritableByteChannel outputChannel = Channels.newChannel(output);
 
-        decoder.decode(fragments, size, outputChannel);
+        decoder.decode(slices, size, outputChannel);
+
+        // Check that slices are not garbage collected
+        System.gc();
+
+        Thread.sleep(3000);
 
         byte[] outputData = output.toByteArray();
 
@@ -81,47 +91,44 @@ public class LiberationEncodingTest {
     }
 
     @Test
-    public void testEncodingAndDecodingWithMissingFragments() throws Exception {
+    public void testEncodingAndDecodingWithMissingSlices() throws Exception {
         ClassPathResource resource = new ClassPathResource(FILE_PATH);
         byte[] originalData = IOUtils.toByteArray(resource.getInputStream());
         int size = originalData.length;
         ReadableByteChannel inputChannel = Channels.newChannel(new ByteArrayInputStream(originalData));
 
-        Fragments fragments = encoder.encode(inputChannel, size);
+        Slices slices = encoder.encode(inputChannel, size);
 
-        assertNotNull(fragments);
+        // Check that slices are not garbage collected
+        System.gc();
 
-        ByteBuffer[] dataFragments = fragments.getDataFragments();
-        ByteBuffer[] codingFragments = fragments.getCodingFragments();
+        Thread.sleep(3000);
 
-        assertNotNull(dataFragments);
-        assertEquals(K, dataFragments.length);
+        assertNotNull(slices);
 
-        assertNotNull(codingFragments);
-        assertEquals(M, codingFragments.length);
+        ByteBuffer[] dataSlices = slices.getDataSlices();
+        ByteBuffer[] codingSlices = slices.getCodingSlices();
 
-        dataFragments[2] = null;
-        codingFragments[0] = null;
+        assertNotNull(dataSlices);
+        assertEquals(K, dataSlices.length);
+
+        assertNotNull(codingSlices);
+        assertEquals(M, codingSlices.length);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream(size);
         WritableByteChannel outputChannel = Channels.newChannel(output);
 
-        decoder.decode(fragments, size, outputChannel);
+        dataSlices[2] = null;
+        codingSlices[0] = null;
+
+        decoder.decode(slices, size, outputChannel);
+
+        // Check that slices are not garbage collected
+        System.gc();
+
+        Thread.sleep(3000);
 
         byte[] outputData = output.toByteArray();
-
-        assertNotNull(outputData);
-        assertEquals(size, outputData.length);
-        assertArrayEquals(originalData, outputData);
-
-        resetBuffers(dataFragments);
-
-        output = new ByteArrayOutputStream(size);
-        outputChannel = Channels.newChannel(output);
-
-        decoder.decode(fragments, size, outputChannel);
-
-        outputData = output.toByteArray();
 
         assertNotNull(outputData);
         assertEquals(size, outputData.length);

@@ -10,13 +10,13 @@ import java.nio.channels.ReadableByteChannel;
 public interface ErasureEncoder {
 
     /**
-     * Encodes the given raw data through an erasure coding algorithm, producing k + m fragments.
+     * Encodes the given raw data through an erasure coding algorithm, producing k + m slicess.
      *
      * @param inputChannel      an input channel to read the raw data from
      * @param size              size of the raw data
      *
-     * @return  the data (k) and coding (m) fragments
+     * @return  the data (k) and coding (m) slicess
      */
-    Fragments encode(ReadableByteChannel inputChannel, int size) throws EncodingException;
+    Slices encode(ReadableByteChannel inputChannel, int size) throws EncodingException;
 
 }

@@ -2,7 +2,8 @@ package org.avasquez.seccloudfs.erasure.impl;
 
 import org.avasquez.seccloudfs.erasure.EncodingException;
 import org.avasquez.seccloudfs.erasure.ErasureEncoder;
-import org.avasquez.seccloudfs.erasure.Fragments;
+import org.avasquez.seccloudfs.erasure.Slices;
+import org.avasquez.seccloudfs.erasure.utils.ByteBufferUtils;
 import org.bridj.Pointer;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -25,7 +26,7 @@ public class JerasureEncoder implements ErasureEncoder {
     }
 
     @Override
-    public Fragments encode(ReadableByteChannel inputChannel, int size) throws EncodingException {
+    public Slices encode(ReadableByteChannel inputChannel, int size) throws EncodingException {
         int dataBufferSize = size;
         int k = codingMethod.getK();
         int m = codingMethod.getM();
@@ -59,45 +60,25 @@ public class JerasureEncoder implements ErasureEncoder {
         padWithZeroes(dataBuffer);
 
         // Create pointers to data
-        int fragmentSize = dataBufferSize / k;
-        Pointer<Byte> dataBufferPtr = Pointer.pointerToBytes(dataBuffer);
-        Pointer<Pointer<Byte>> dataPtrs = Pointer.allocatePointers(Byte.class, k);
+        int sliceSize = dataBufferSize / k;
+        ByteBuffer[] dataSlices = ByteBufferUtils.sliceBuffer(dataBuffer, k,  sliceSize);
+        Pointer<Pointer<Byte>> dataPtrs = ByteBufferUtils.asPointers(dataSlices);
 
-        for (int i = 0; i < k; i++) {
-            dataPtrs.set(i, dataBufferPtr.offset(i * fragmentSize));
-        }
-
-        // Allocate memory for coding
-        Pointer<Pointer<Byte>> codingPtrs = Pointer.allocatePointers(Byte.class, m);
-
-        for (int i = 0; i < m; i++) {
-            codingPtrs.set(i, Pointer.allocateBytes(fragmentSize));
-        }
+        // Allocate memory for coding and create pointers to coding
+        ByteBuffer codingBuffer = ByteBuffer.allocateDirect(m * sliceSize);
+        ByteBuffer[] codingSlices = ByteBufferUtils.sliceBuffer(codingBuffer, m, sliceSize);
+        Pointer<Pointer<Byte>> codingPtrs = ByteBufferUtils.asPointers(codingSlices);
 
         // Do encoding
-        codingMethod.encode(dataPtrs, codingPtrs, fragmentSize);
+        codingMethod.encode(dataPtrs, codingPtrs, sliceSize);
 
-        // Create data and coding fragment arrays
-        ByteBuffer[] dataFragments = asFragmentArray(dataPtrs, k, fragmentSize);
-        ByteBuffer[] codingFragments = asFragmentArray(codingPtrs, m, fragmentSize);
-
-        return new Fragments(null, dataFragments, codingFragments);
+        return new Slices(dataSlices, codingSlices);
     }
 
     private void padWithZeroes(ByteBuffer buffer) {
         while (buffer.position() < buffer.limit()) {
             buffer.put((byte) 0);
         }
-    }
-
-    private ByteBuffer[] asFragmentArray(Pointer<Pointer<Byte>> fragmentPtrs, int numFragments, int fragmentSize) {
-        ByteBuffer[] fragments = new ByteBuffer[numFragments];
-
-        for (int i = 0; i < numFragments; i++) {
-            fragments[i] = fragmentPtrs.get(i).getByteBuffer(fragmentSize);
-        }
-
-        return fragments;
     }
 
 }

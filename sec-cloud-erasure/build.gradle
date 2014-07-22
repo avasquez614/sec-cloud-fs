@@ -1,9 +1,3 @@
- repositories {
-     maven {
-         url 'http://oss.sonatype.org/content/groups/public'
-     }
- }
-
 dependencies {
     compile 'org.springframework:spring-context:4.0.4.RELEASE'
     compile 'com.nativelibs4java:bridj:0.7-SNAPSHOT'

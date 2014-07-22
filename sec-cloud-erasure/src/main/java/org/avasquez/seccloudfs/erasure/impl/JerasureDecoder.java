@@ -2,7 +2,8 @@ package org.avasquez.seccloudfs.erasure.impl;
 
 import org.avasquez.seccloudfs.erasure.DecodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
-import org.avasquez.seccloudfs.erasure.Fragments;
+import org.avasquez.seccloudfs.erasure.Slices;
+import org.avasquez.seccloudfs.erasure.utils.ByteBufferUtils;
 import org.bridj.Pointer;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -25,87 +26,78 @@ public class JerasureDecoder implements ErasureDecoder {
     }
 
     @Override
-    public void decode(Fragments fragments, int originalSize, WritableByteChannel outputChannel)
+    public void decode(Slices slices, int originalSize, WritableByteChannel outputChannel)
             throws DecodingException {
         int k = codingMethod.getK();
         int m = codingMethod.getM();
-        ByteBuffer[] dataFragments = fragments.getDataFragments();
-        ByteBuffer[] codingFragments = fragments.getCodingFragments();
+        ByteBuffer[] dataSlices = slices.getDataSlices();
+        ByteBuffer[] codingSlices = slices.getCodingSlices();
         int[] erasures = new int[k + m];
         int numErased = 0;
-        int fragmentSize = 0;
+        int sliceSize = 0;
 
-        // Look for erasures in data fragments
-        for (int i = 0; i < dataFragments.length; i++) {
-            if (dataFragments[i] == null) {
+        // Look for erasures in data slices
+        for (int i = 0; i < dataSlices.length; i++) {
+            if (dataSlices[i] == null) {
                 erasures[numErased] = i;
                 numErased++;
-            } else if (fragmentSize == 0) {
-                fragmentSize = dataFragments[i].capacity();
+            } else if (sliceSize == 0) {
+                sliceSize = dataSlices[i].capacity();
             }
         }
 
-        // If no data fragments have been erased, just write them to the output channel
+        // If no data slices have been erased, just write them to the output channel
         if (numErased > 0) {
-            // Look for erasures in coding fragments
-            for (int i = 0; i < codingFragments.length; i++) {
-                if (codingFragments[i] == null) {
+            // Look for erasures in coding slices
+            for (int i = 0; i < codingSlices.length; i++) {
+                if (codingSlices[i] == null) {
                     erasures[numErased] = k + i;
                     numErased++;
-                } else if (fragmentSize == 0) {
-                    fragmentSize = codingFragments[i].capacity();
+                } else if (sliceSize == 0) {
+                    sliceSize = codingSlices[i].capacity();
                 }
             }
 
             erasures[numErased] = -1;
 
             if (numErased > m) {
-                throw new DecodingException("More than m (" + m + ") fragments are missing");
+                throw new DecodingException("More than m (" + m + ") slices are missing");
             }
 
-            // Allocate memory for missing fragments, which will be reconstructed by the decoder
+            // Allocate memory for missing slices, which will be reconstructed by the decoder
             for (int i = 0; i < numErased; i++) {
                 if (erasures[i] < k) {
-                    dataFragments[erasures[i]] = ByteBuffer.allocateDirect(fragmentSize);
+                    dataSlices[erasures[i]] = ByteBuffer.allocateDirect(sliceSize);
                 } else {
-                    codingFragments[erasures[i] - k] = ByteBuffer.allocateDirect(fragmentSize);
+                    codingSlices[erasures[i] - k] = ByteBuffer.allocateDirect(sliceSize);
                 }
             }
 
-            // Get pointers for data and coding fragments;
-            Pointer<Pointer<Byte>> dataPtrs = asPointers(dataFragments, k);
-            Pointer<Pointer<Byte>> codingPtrs = asPointers(codingFragments, m);
+            // Get pointers for data and coding slices;
+            Pointer<Pointer<Byte>> dataPtrs = ByteBufferUtils.asPointers(dataSlices);
+            Pointer<Pointer<Byte>> codingPtrs = ByteBufferUtils.asPointers(codingSlices);
 
             // Do decoding
-            boolean success = codingMethod.decode(Pointer.pointerToInts(erasures), dataPtrs, codingPtrs, fragmentSize);
+            boolean success = codingMethod.decode(Pointer.pointerToInts(erasures), dataPtrs, codingPtrs, sliceSize);
             if (!success) {
                 throw new DecodingException("Decoding failed for unknown reasons");
             }
         }
 
-        // Write completed data fragments to output channel, until original size has been written
+        // Write completed data slices to output channel, until original size has been written
         int totalWritten = 0;
-        for (int i = 0; i < dataFragments.length; i++) {
-            if (totalWritten + fragmentSize > originalSize) {
-                // This is the fragment with padded zeroes, so just write the actual bytes
-                dataFragments[i].limit(originalSize - totalWritten);
+        for (int i = 0; i < dataSlices.length; i++) {
+            if (totalWritten + sliceSize > originalSize) {
+                // This is the slice with padded zeroes, so just write the actual bytes
+                dataSlices[i].limit(originalSize - totalWritten);
             }
 
             try {
-                totalWritten += outputChannel.write(dataFragments[i]);
+                totalWritten += outputChannel.write(dataSlices[i]);
             } catch (IOException e) {
                 throw new DecodingException("Unable to write data to output channel", e);
             }
         }
-    }
-
-    private Pointer<Pointer<Byte>> asPointers(ByteBuffer[] fragments, int numFragments) {
-        Pointer<Pointer<Byte>> ptrs = Pointer.allocatePointers(Byte.class, numFragments);
-        for (int i = 0; i < fragments.length; i++) {
-            ptrs.set(i, Pointer.pointerToBytes(fragments[i]));
-        }
-
-        return ptrs;
     }
 
 }

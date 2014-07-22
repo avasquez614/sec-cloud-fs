@@ -30,25 +30,25 @@ public interface JerasureCodingMethod {
     int getPacketSize();
 
     /**
-     * Encodes the data fragments (k) into the coding fragments (m).
+     * Encodes the data slices (k) into the coding slices (m).
      *
-     * @param dataPtrs      pointers to the data fragments
-     * @param codingPtrs    pointers to the coding fragments
-     * @param fragmentSize  the size of a data or coding fragment
+     * @param dataPtrs      pointers to the data slices
+     * @param codingPtrs    pointers to the coding slices
+     * @param sliceSize     the size of a data or coding slice
      */
-    void encode(Pointer<Pointer<Byte>> dataPtrs, Pointer<Pointer<Byte>> codingPtrs, int fragmentSize);
+    void encode(Pointer<Pointer<Byte>> dataPtrs, Pointer<Pointer<Byte>> codingPtrs, int sliceSize);
 
     /**
-     * Decodes the remaining data (k) and coding fragments into the original data fragments.
+     * Decodes the remaining data (k) and coding slices into the original data slices.
      *
-     * @param erasures      array with the missing (erased) fragment IDs
-     * @param dataPtrs      pointers to the data fragments
-     * @param codingPtrs    pointers to the coding fragments
-     * @param fragmentSize  the size of a data or coding fragment
+     * @param erasures      array with the missing (erased) slice IDs
+     * @param dataPtrs      pointers to the data slices
+     * @param codingPtrs    pointers to the coding slices
+     * @param sliceSize     the size of a data or coding slice
      *
      * @return false if the decode was unsuccessful
      */
     boolean decode(Pointer<Integer> erasures, Pointer<Pointer<Byte>> dataPtrs, Pointer<Pointer<Byte>> codingPtrs,
-                   int fragmentSize);
+                   int sliceSize);
 
 }
