@@ -1,9 +1,9 @@
 package org.avasquez.seccloudfs.storage.impl;
 
 import java.io.IOException;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,7 +35,7 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
      * upload time.
      */
     @Override
-    public Iterable<CloudStore> list() {
+    public Collection<CloudStore> list() {
         List<CloudStore> list = new ArrayList<CloudStore>(stores.values());
 
         Collections.sort(list, new Comparator<CloudStore>() {
@@ -81,7 +81,7 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         }
 
         @Override
-        public long upload(final String id, final ReadableByteChannel src, final long length) throws IOException {
+        public long upload(final String id, final SeekableByteChannel src, final long length) throws IOException {
             long bytesUploaded = underlyingStore.upload(id, src, length);
 
             lastUploadTime = System.currentTimeMillis();
@@ -90,7 +90,7 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         }
 
         @Override
-        public long download(final String id, final WritableByteChannel target) throws IOException {
+        public long download(final String id, final SeekableByteChannel target) throws IOException {
             return underlyingStore.download(id, target);
         }
 

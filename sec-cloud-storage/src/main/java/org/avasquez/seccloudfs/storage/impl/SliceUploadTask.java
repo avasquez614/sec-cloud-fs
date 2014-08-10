@@ -1,6 +1,7 @@
 package org.avasquez.seccloudfs.storage.impl;
 
 import java.nio.ByteBuffer;
+import java.util.Queue;
 import java.util.concurrent.Callable;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
@@ -16,33 +17,47 @@ import org.slf4j.LoggerFactory;
  *
  * @author avasquez
  */
-public class SliceUploadTask implements Callable<Boolean> {
+public class SliceUploadTask implements Callable<Long> {
 
     private static final Logger logger = LoggerFactory.getLogger(SliceUploadTask.class);
 
     private ByteBuffer slice;
     private SliceMetadata sliceMetadata;
     private SliceMetadataRepository sliceMetadataRepository;
-    private CloudStore cloudStore;
+    private Queue<CloudStore> availableCloudStores;
 
     public SliceUploadTask(final ByteBuffer slice, final SliceMetadata sliceMetadata,
-                           final SliceMetadataRepository sliceMetadataRepository, final CloudStore cloudStore) {
+                           final SliceMetadataRepository sliceMetadataRepository,
+                           final Queue<CloudStore> availableCloudStores) {
         this.slice = slice;
         this.sliceMetadata = sliceMetadata;
         this.sliceMetadataRepository = sliceMetadataRepository;
-        this.cloudStore = cloudStore;
+        this.availableCloudStores = availableCloudStores;
     }
 
     @Override
-    public Boolean call() throws Exception {
-        logger.debug("Uploading slice '{}' to {}", sliceMetadata.getId(), cloudStore);
+    public Long call() throws Exception {
+        boolean uploaded = false;
+        long bytesUploaded = 0;
 
-        try {
-            cloudStore.upload(sliceMetadata.getId(), new ByteBufferChannel(slice), sliceMetadata.getSize());
-        } catch (Exception e) {
-            logger.error("Failed to upload slice '" + sliceMetadata.getId() + "' to " + cloudStore, e);
+        while (!uploaded) {
+            CloudStore cloudStore = availableCloudStores.poll();
+            if (cloudStore != null) {
+                try {
+                    logger.debug("Trying to upload slice '{}' to {}", sliceMetadata.getId(), cloudStore);
 
-            return false;
+                    bytesUploaded = cloudStore.upload(sliceMetadata.getId(), new ByteBufferChannel(slice),
+                        sliceMetadata.getSize());
+
+                    uploaded = true;
+                } catch (Exception e) {
+                    logger.error("Failed to upload slice '" + sliceMetadata.getId() + "' to " + cloudStore, e);
+                }
+            } else {
+                logger.error("No more available cloud stores to upload slice '{}'", sliceMetadata.getId());
+
+                return null;
+            }
         }
 
         logger.debug("Saving slice metadata {}", sliceMetadata);
@@ -52,10 +67,10 @@ public class SliceUploadTask implements Callable<Boolean> {
         } catch (Exception e) {
             logger.error("Failed to save slice metadata " + sliceMetadata, e);
 
-            return false;
+            return null;
         }
 
-        return true;
+        return bytesUploaded;
     }
 
     @Override
@@ -63,7 +78,7 @@ public class SliceUploadTask implements Callable<Boolean> {
         return "SliceUploadTask{" +
             "sliceMetadata=" + sliceMetadata +
             ", sliceMetadataRepository=" + sliceMetadataRepository +
-            ", cloudStore=" + cloudStore +
+            ", availableCloudStores=" + availableCloudStores +
             '}';
     }
 

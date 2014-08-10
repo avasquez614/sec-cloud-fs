@@ -1,5 +1,7 @@
 package org.avasquez.seccloudfs.storage;
 
+import java.util.Collection;
+
 import org.avasquez.seccloudfs.cloud.CloudStore;
 
 /**
@@ -13,7 +15,7 @@ public interface CloudStoreRegistry {
      * Returns the list of available {@link org.avasquez.seccloudfs.cloud.CloudStore}s for use. The list might be
      * ordered according to the usage priority of the stores.
      */
-    Iterable<CloudStore> list();
+    Collection<CloudStore> list();
 
     /**
      * Returns the {@link org.avasquez.seccloudfs.cloud.CloudStore} corresponding to the specific ID.
