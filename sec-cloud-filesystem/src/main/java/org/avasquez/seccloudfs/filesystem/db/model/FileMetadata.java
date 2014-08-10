@@ -1,10 +1,10 @@
 package org.avasquez.seccloudfs.filesystem.db.model;
 
+import java.util.Date;
+
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
-
-import java.util.Date;
 
 /**
  * The file metadata. All fields are volatile since instances are normally used by multiple threads.

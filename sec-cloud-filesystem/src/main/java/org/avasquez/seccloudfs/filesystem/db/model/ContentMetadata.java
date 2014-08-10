@@ -1,9 +1,9 @@
 package org.avasquez.seccloudfs.filesystem.db.model;
 
+import java.util.Date;
+
 import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
-
-import java.util.Date;
 
 /**
  * Created by alfonsovasquez on 12/01/14.

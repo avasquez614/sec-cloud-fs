@@ -54,9 +54,9 @@
 
     <!-- Content Store -->
 
-    <bean id="cloudStore" class="org.avasquez.seccloudfs.utils.testing.LocalCloudStore">
+    <bean id="cloudStore" class="org.avasquez.seccloudfs.cloud.impl.LocalCloudStore">
         <property name="storeDir" value="${cloud.store.local.dir}"/>
-        <property name="maxDirSize" value="${cloud.store.local.dir.maxSize}"/>
+        <property name="maxSize" value="${cloud.store.local.dir.maxSize}"/>
     </bean>
 
     <bean id="contentStore" class="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentStoreImpl">

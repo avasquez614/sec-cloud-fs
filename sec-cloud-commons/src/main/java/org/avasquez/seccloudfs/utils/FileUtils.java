@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  */
 public class FileUtils {
 
-    public static final Pattern humanReadableSizePattern = Pattern.compile("(\\d+)(B|KB|MB|GB)?",
+    public static final Pattern humanReadableSizePattern = Pattern.compile("(\\d+)\\s*(B|KB|MB|GB)?",
             Pattern.CASE_INSENSITIVE);
 
     private FileUtils() {
@@ -33,7 +33,7 @@ public class FileUtils {
             try {
                 long coeff = Long.parseLong(sizeMatcher.group(1));
                 int unit = 1024;
-                int exp = 0;
+                int exp;
                 String suffix = sizeMatcher.group(2).toUpperCase();
 
                 switch (suffix) {

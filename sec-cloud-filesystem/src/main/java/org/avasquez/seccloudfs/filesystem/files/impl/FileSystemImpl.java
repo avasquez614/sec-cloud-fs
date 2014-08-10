@@ -1,5 +1,7 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
+import java.io.IOException;
+
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.avasquez.seccloudfs.filesystem.db.model.FileSystemInfo;
 import org.avasquez.seccloudfs.filesystem.db.repos.FileSystemInfoRepository;
@@ -7,8 +9,6 @@ import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileSystem;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.springframework.beans.factory.annotation.Required;
-
-import java.io.IOException;
 
 /**
  * Created by alfonsovasquez on 01/02/14.

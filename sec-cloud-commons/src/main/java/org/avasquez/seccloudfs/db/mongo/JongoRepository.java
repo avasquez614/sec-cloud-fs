@@ -1,6 +1,8 @@
 package org.avasquez.seccloudfs.db.mongo;
 
 import com.mongodb.MongoException;
+
+import org.avasquez.seccloudfs.db.Repository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.bson.types.ObjectId;
 import org.jongo.Jongo;
@@ -9,7 +11,7 @@ import org.jongo.MongoCollection;
 /**
  * Created by alfonsovasquez on 02/02/14.
  */
-public abstract class JongoRepository<T> {
+public abstract class JongoRepository<T> implements Repository<T> {
 
     protected MongoCollection collection;
 

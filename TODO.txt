@@ -1,2 +1,4 @@
-* Test FUSE filesystem.
+* Add distribution and encrypting functionality.
+* Add interfaces for multiple clouds (at least Dropbox, Google Drive and Amazon S3).
+* Add file chunking.
 * Work in fs repair service (optional).
