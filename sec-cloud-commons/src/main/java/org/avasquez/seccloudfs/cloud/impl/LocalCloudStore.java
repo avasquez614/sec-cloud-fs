@@ -17,7 +17,18 @@ import org.springframework.beans.factory.annotation.Required;
  */
 public class LocalCloudStore extends MaxSizeAwareCloudStore {
 
+    private String name;
     private Path storeDir;
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Required
+    public void setName(final String name) {
+        this.name = name;
+    }
 
     @Required
     public void setStoreDir(final Path storeDir) {

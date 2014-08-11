@@ -50,6 +50,11 @@ public class EncryptingCloudStore implements CloudStore {
     }
 
     @Override
+    public String getName() {
+        return underlyingStore.getName();
+    }
+
+    @Override
     public long upload(final String id, final SeekableByteChannel src, final long length) throws IOException {
         Path tmpFile = Files.createTempFile(id, null, null);
 

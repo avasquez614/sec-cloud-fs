@@ -1,15 +1,15 @@
 package org.avasquez.seccloudfs.erasure.impl;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
+
 import org.avasquez.seccloudfs.erasure.DecodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
 import org.avasquez.seccloudfs.erasure.Slices;
 import org.avasquez.seccloudfs.erasure.utils.ByteBufferUtils;
 import org.bridj.Pointer;
 import org.springframework.beans.factory.annotation.Required;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.WritableByteChannel;
 
 /**
  * Implementation of {@link org.avasquez.seccloudfs.erasure.ErasureDecoder} that uses Jerasure.
@@ -35,6 +35,15 @@ public class JerasureDecoder implements ErasureDecoder {
         int[] erasures = new int[k + m];
         int numErased = 0;
         int sliceSize = 0;
+
+        if (dataSlices.length != k) {
+            throw new DecodingException("Illegal length of data slices array (expected: " + k +
+                ", actual" + dataSlices.length + ")");
+        }
+        if (codingSlices.length != k) {
+            throw new DecodingException("Illegal length of coding slices array (expected: " + m +
+                ", actual" + codingSlices.length + ")");
+        }
 
         // Look for erasures in data slices
         for (int i = 0; i < dataSlices.length; i++) {

@@ -1,11 +1,9 @@
 package org.avasquez.seccloudfs.exception;
 
-import java.io.IOException;
-
 /**
  * Created by alfonsovasquez on 02/02/14.
  */
-public class DbException extends IOException {
+public class DbException extends Exception {
 
     public DbException(String message) {
         super(message);

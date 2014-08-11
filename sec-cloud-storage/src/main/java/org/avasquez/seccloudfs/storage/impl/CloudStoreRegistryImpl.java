@@ -81,6 +81,11 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         }
 
         @Override
+        public String getName() {
+            return underlyingStore.getName();
+        }
+
+        @Override
         public long upload(final String id, final SeekableByteChannel src, final long length) throws IOException {
             long bytesUploaded = underlyingStore.upload(id, src, length);
 

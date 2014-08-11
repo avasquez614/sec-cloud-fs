@@ -31,7 +31,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     }
 
     @Override
-    public void upload(String id, SeekableByteChannel src, long length) throws IOException {
+    public long upload(String id, SeekableByteChannel src, long length) throws IOException {
         Object metadata = getMetadata(id);
 
         synchronized (this) {
@@ -51,6 +51,8 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
             long delta = -length + bytesUploaded;
 
             currentSize.addAndGet(delta);
+
+            return bytesUploaded;
         } catch (IOException e) {
             // Recalculate size since maybe some bytes were written
             currentSize = new AtomicLong(calculateCurrentSize());
@@ -60,8 +62,8 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     }
 
     @Override
-    public void download(String id, SeekableByteChannel target) throws IOException {
-        doDownload(getMetadata(id), target);
+    public long download(String id, SeekableByteChannel target) throws IOException {
+        return doDownload(getMetadata(id), target);
     }
 
     @Override

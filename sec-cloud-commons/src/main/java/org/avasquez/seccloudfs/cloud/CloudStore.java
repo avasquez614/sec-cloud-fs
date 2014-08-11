@@ -11,6 +11,11 @@ import java.nio.channels.SeekableByteChannel;
 public interface CloudStore {
 
     /**
+     * Returns the name of this cloud store.
+     */
+    String getName();
+
+    /**
      * Uploads the given data in the cloud.
      *
      * @param id        the ID used to identify the data

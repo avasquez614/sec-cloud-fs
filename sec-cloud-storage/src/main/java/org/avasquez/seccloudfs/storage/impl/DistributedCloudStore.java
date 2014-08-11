@@ -17,9 +17,10 @@ import org.avasquez.seccloudfs.erasure.EncodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
 import org.avasquez.seccloudfs.erasure.ErasureEncoder;
 import org.avasquez.seccloudfs.erasure.Slices;
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.storage.CloudStoreRegistry;
 import org.avasquez.seccloudfs.storage.db.model.SliceMetadata;
-import org.avasquez.seccloudfs.storage.db.repos.SliceMetadataRepository;
+import org.avasquez.seccloudfs.storage.db.repos.ErasureInfoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
@@ -35,7 +36,7 @@ public class DistributedCloudStore implements CloudStore {
     private static final Logger logger = LoggerFactory.getLogger(DistributedCloudStore.class);
 
     private CloudStoreRegistry cloudStoreRegistry;
-    private SliceMetadataRepository sliceMetadataRepository;
+    private ErasureInfoRepository erasureInfoRepository;
     private ErasureEncoder erasureEncoder;
     private ErasureDecoder erasureDecoder;
     private Executor taskExecutor;
@@ -46,8 +47,8 @@ public class DistributedCloudStore implements CloudStore {
     }
 
     @Required
-    public void setSliceMetadataRepository(final SliceMetadataRepository sliceMetadataRepository) {
-        this.sliceMetadataRepository = sliceMetadataRepository;
+    public void setErasureInfoRepository(final ErasureInfoRepository erasureInfoRepository) {
+        this.erasureInfoRepository = erasureInfoRepository;
     }
 
     @Required
@@ -71,19 +72,19 @@ public class DistributedCloudStore implements CloudStore {
         try {
             slices = erasureEncoder.encode(src, (int) src.size());
         } catch (EncodingException e) {
-            throw new IOException("Unable to encode data", e);
+            throw new IOException("Unable to encode data '" + id + "'", e);
         }
 
         Queue<CloudStore> availableCloudStores = new ConcurrentLinkedQueue<>(cloudStoreRegistry.list());
         List<SliceUploadTask> uploadTasks = createUploadTasks(id, slices, availableCloudStores);
         CompletionService<Long> uploadCompletionService = new ExecutorCompletionService<>(taskExecutor);
 
-        long totalBytesUploaded = 0;
-        int slicesUploaded = 0;
-
         for (SliceUploadTask task : uploadTasks) {
             uploadCompletionService.submit(task);
         }
+
+        long totalBytesUploaded = 0;
+        int slicesUploaded = 0;
 
         for (int i = 0; i < uploadTasks.size(); i++) {
             try {
@@ -100,13 +101,21 @@ public class DistributedCloudStore implements CloudStore {
         if (slicesUploaded == uploadTasks.size()) {
             return totalBytesUploaded;
         } else {
-            throw new IOException("Some fragments couldn't be uploaded");
+            throw new IOException("Some slices for data '" + id + "' couldn't be uploaded");
         }
     }
 
     @Override
     public long download(final String id, final SeekableByteChannel target) throws IOException {
-        return 0;
+        Iterable<SliceMetadata> metadataList;
+        try {
+            metadataList = erasureInfoRepository.findByDataId(id);
+        } catch (DbException e) {
+            throw new IOException("Unable to retrieve slice metadata for data '" + id + "'");
+        }
+
+        List<CloudStore> cloudStoresUsed = new ArrayList<>();
+        for (Slice)
     }
 
     @Override
@@ -166,7 +175,7 @@ public class DistributedCloudStore implements CloudStore {
             metadata.setIndex(i);
             metadata.setSize(dataSlices[i].capacity());
 
-            tasks.add(new SliceUploadTask(dataSlices[i], metadata, sliceMetadataRepository, availableCloudStores));
+            tasks.add(new SliceUploadTask(dataSlices[i], metadata, erasureInfoRepository, availableCloudStores));
         }
 
         for (int i = 0; i < codingSlices.length; i++) {
@@ -177,10 +186,19 @@ public class DistributedCloudStore implements CloudStore {
             metadata.setIndex(i);
             metadata.setSize(codingSlices[i].capacity());
 
-            tasks.add(new SliceUploadTask(codingSlices[i], metadata, sliceMetadataRepository, availableCloudStores));
+            tasks.add(new SliceUploadTask(codingSlices[i], metadata, erasureInfoRepository, availableCloudStores));
         }
 
         return tasks;
+    }
+
+    private List<SliceDownloadTask> createDownloadTasks(Iterable<SliceMetadata> metadata) throws IOException {
+        List<SliceMetadata> dataSliceMetadata = new ArrayList<>();
+        List<SliceMetadata>
+
+        for (SliceMetadata m : metadata) {
+
+        }
     }
 
 }

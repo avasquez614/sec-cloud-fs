@@ -20,36 +20,33 @@ public class SliceDownloadTask implements Callable<ByteBuffer> {
     private static final Logger logger = LoggerFactory.getLogger(SliceDownloadTask.class);
 
     private SliceMetadata sliceMetadata;
+    private int sliceSize;
     private CloudStore cloudStore;
 
-    public SliceDownloadTask(final SliceMetadata sliceMetadata, final CloudStore cloudStore) {
+    public SliceDownloadTask(final SliceMetadata sliceMetadata, final int sliceSize, final CloudStore cloudStore) {
         this.sliceMetadata = sliceMetadata;
+        this.sliceSize = sliceSize;
         this.cloudStore = cloudStore;
     }
 
     @Override
     public ByteBuffer call() throws Exception {
-        logger.debug("Downloading slice '{}' from {}", sliceMetadata.getId(), cloudStore);
+        String sliceId = sliceMetadata.getId();
+        String cloudStoreName = cloudStore.getName();
 
-        ByteBuffer slice = ByteBuffer.allocateDirect(sliceMetadata.getSize());
+        logger.debug("Downloading slice '{}' from [{}]", sliceId, cloudStoreName);
+
+        ByteBuffer slice = ByteBuffer.allocateDirect(sliceSize);
 
         try {
-            cloudStore.download(sliceMetadata.getId(), new ByteBufferChannel(slice));
+            cloudStore.download(sliceId, new ByteBufferChannel(slice));
 
             return slice;
         } catch (Exception e) {
-            logger.error("Failed to download slice '" + sliceMetadata.getId() + "' from " + cloudStore, e);
+            logger.error("Failed to download slice '" + sliceId + "' from [" + cloudStoreName + "]", e);
 
             return null;
         }
-    }
-
-    @Override
-    public String toString() {
-        return "SliceDownloadTask{" +
-            "sliceMetadata=" + sliceMetadata +
-            ", cloudStore=" + cloudStore +
-            '}';
     }
 
 }

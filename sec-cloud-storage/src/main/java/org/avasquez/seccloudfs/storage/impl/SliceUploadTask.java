@@ -6,7 +6,6 @@ import java.util.concurrent.Callable;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.storage.db.model.SliceMetadata;
-import org.avasquez.seccloudfs.storage.db.repos.SliceMetadataRepository;
 import org.avasquez.seccloudfs.utils.nio.ByteBufferChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,63 +22,43 @@ public class SliceUploadTask implements Callable<Long> {
 
     private ByteBuffer slice;
     private SliceMetadata sliceMetadata;
-    private SliceMetadataRepository sliceMetadataRepository;
     private Queue<CloudStore> availableCloudStores;
 
     public SliceUploadTask(final ByteBuffer slice, final SliceMetadata sliceMetadata,
-                           final SliceMetadataRepository sliceMetadataRepository,
                            final Queue<CloudStore> availableCloudStores) {
         this.slice = slice;
         this.sliceMetadata = sliceMetadata;
-        this.sliceMetadataRepository = sliceMetadataRepository;
         this.availableCloudStores = availableCloudStores;
     }
 
     @Override
     public Long call() throws Exception {
-        boolean uploaded = false;
-        long bytesUploaded = 0;
+        String sliceId = sliceMetadata.getId();
+        int sliceSize = slice.capacity();
+        Long bytesUploaded = null;
 
-        while (!uploaded) {
+        while (bytesUploaded != null) {
             CloudStore cloudStore = availableCloudStores.poll();
             if (cloudStore != null) {
+                String cloudStoreName = cloudStore.getName();
+
+                logger.debug("Trying to upload slice '{}' to [{}]", sliceId, cloudStoreName);
+
                 try {
-                    logger.debug("Trying to upload slice '{}' to {}", sliceMetadata.getId(), cloudStore);
+                    bytesUploaded = cloudStore.upload(sliceMetadata.getId(), new ByteBufferChannel(slice), sliceSize);
 
-                    bytesUploaded = cloudStore.upload(sliceMetadata.getId(), new ByteBufferChannel(slice),
-                        sliceMetadata.getSize());
-
-                    uploaded = true;
+                    sliceMetadata.setCloudStoreName(cloudStore.getName());
                 } catch (Exception e) {
-                    logger.error("Failed to upload slice '" + sliceMetadata.getId() + "' to " + cloudStore, e);
+                    logger.error("Failed to upload slice '" + sliceId + "' to [" + cloudStoreName + "]", e);
                 }
             } else {
-                logger.error("No more available cloud stores to upload slice '{}'", sliceMetadata.getId());
+                logger.error("No more available cloud stores to upload slice '{}'", sliceId);
 
-                return null;
+                break;
             }
         }
 
-        logger.debug("Saving slice metadata {}", sliceMetadata);
-
-        try {
-            sliceMetadataRepository.save(sliceMetadata);
-        } catch (Exception e) {
-            logger.error("Failed to save slice metadata " + sliceMetadata, e);
-
-            return null;
-        }
-
         return bytesUploaded;
-    }
-
-    @Override
-    public String toString() {
-        return "SliceUploadTask{" +
-            "sliceMetadata=" + sliceMetadata +
-            ", sliceMetadataRepository=" + sliceMetadataRepository +
-            ", availableCloudStores=" + availableCloudStores +
-            '}';
     }
 
 }

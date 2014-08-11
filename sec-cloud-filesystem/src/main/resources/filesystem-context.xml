@@ -55,6 +55,7 @@
     <!-- Content Store -->
 
     <bean id="cloudStore" class="org.avasquez.seccloudfs.cloud.impl.LocalCloudStore">
+        <property name="name" value="userHome"/>
         <property name="storeDir" value="${cloud.store.local.dir}"/>
         <property name="maxSize" value="${cloud.store.local.dir.maxSize}"/>
     </bean>
