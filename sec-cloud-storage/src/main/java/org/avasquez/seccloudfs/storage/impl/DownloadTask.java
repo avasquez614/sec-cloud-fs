@@ -15,22 +15,27 @@ import org.slf4j.LoggerFactory;
  *
  * @author avasquez
  */
-public class SliceDownloadTask implements Callable<ByteBuffer> {
+public class DownloadTask implements Callable<DownloadResult> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SliceDownloadTask.class);
+    private static final Logger logger = LoggerFactory.getLogger(DownloadTask.class);
 
     private SliceMetadata sliceMetadata;
+    private int sliceIndex;
+    private boolean dataSlice;
     private int sliceSize;
     private CloudStore cloudStore;
 
-    public SliceDownloadTask(final SliceMetadata sliceMetadata, final int sliceSize, final CloudStore cloudStore) {
+    public DownloadTask(final SliceMetadata sliceMetadata, final int sliceIndex, final boolean dataSlice,
+                        final int sliceSize, final CloudStore cloudStore) {
         this.sliceMetadata = sliceMetadata;
+        this.sliceIndex = sliceIndex;
+        this.dataSlice = dataSlice;
         this.sliceSize = sliceSize;
         this.cloudStore = cloudStore;
     }
 
     @Override
-    public ByteBuffer call() throws Exception {
+    public DownloadResult call() throws Exception {
         String sliceId = sliceMetadata.getId();
         String cloudStoreName = cloudStore.getName();
 
@@ -41,7 +46,9 @@ public class SliceDownloadTask implements Callable<ByteBuffer> {
         try {
             cloudStore.download(sliceId, new ByteBufferChannel(slice));
 
-            return slice;
+            slice.clear();
+
+            return new DownloadResult(slice, dataSlice, sliceIndex);
         } catch (Exception e) {
             logger.error("Failed to download slice '" + sliceId + "' from [" + cloudStoreName + "]", e);
 

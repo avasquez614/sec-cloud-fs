@@ -16,16 +16,16 @@ import org.slf4j.LoggerFactory;
  *
  * @author avasquez
  */
-public class SliceUploadTask implements Callable<Long> {
+public class UploadTask implements Callable<Long> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SliceUploadTask.class);
+    private static final Logger logger = LoggerFactory.getLogger(UploadTask.class);
 
     private ByteBuffer slice;
     private SliceMetadata sliceMetadata;
     private Queue<CloudStore> availableCloudStores;
 
-    public SliceUploadTask(final ByteBuffer slice, final SliceMetadata sliceMetadata,
-                           final Queue<CloudStore> availableCloudStores) {
+    public UploadTask(final ByteBuffer slice, final SliceMetadata sliceMetadata, final Queue<CloudStore>
+        availableCloudStores) {
         this.slice = slice;
         this.sliceMetadata = sliceMetadata;
         this.availableCloudStores = availableCloudStores;

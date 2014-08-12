@@ -13,14 +13,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author avasquez
  */
-public class SliceDeleteTask implements Callable<Boolean> {
+public class DeleteTask implements Callable<Boolean> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SliceDeleteTask.class);
+    private static final Logger logger = LoggerFactory.getLogger(DeleteTask.class);
 
     private SliceMetadata sliceMetadata;
     private CloudStore cloudStore;
 
-    public SliceDeleteTask(final SliceMetadata sliceMetadata, final CloudStore cloudStore) {
+    public DeleteTask(final SliceMetadata sliceMetadata, final CloudStore cloudStore) {
         this.sliceMetadata = sliceMetadata;
         this.cloudStore = cloudStore;
     }

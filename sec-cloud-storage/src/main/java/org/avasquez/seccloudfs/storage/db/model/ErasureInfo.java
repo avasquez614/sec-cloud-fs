@@ -1,12 +1,10 @@
 package org.avasquez.seccloudfs.storage.db.model;
 
-import java.util.List;
-
 import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
 
 /**
- * Information about an erasure encoding operation.
+ * Contains erasure encoding info for a specific data.
  *
  * @author avasquez
  */
@@ -17,8 +15,24 @@ public class ErasureInfo {
     private String id;
     private String dataId;
     private int sliceSize;
-    private List<SliceMetadata> dataSliceMetadata;
-    private List<SliceMetadata> codingSliceMetadata;
+    private SliceMetadata[] dataSliceMetadata;
+    private SliceMetadata[] codingSliceMetadata;
+
+    public ErasureInfo() {
+    }
+
+    /**
+     * Copy constructor
+     *
+     * @param info the info to copy
+     */
+    public ErasureInfo(ErasureInfo info) {
+        id = info.id;
+        dataId = info.dataId;
+        sliceSize = info.sliceSize;
+        dataSliceMetadata = info.dataSliceMetadata;
+        codingSliceMetadata = info.codingSliceMetadata;
+    }
 
     /**
      * Returns the ID of this erasure encoding operation.
@@ -65,28 +79,28 @@ public class ErasureInfo {
     /**
      * Returns the metadata for the data slices.
      */
-    public List<SliceMetadata> getDataSliceMetadata() {
+    public SliceMetadata[] getDataSliceMetadata() {
         return dataSliceMetadata;
     }
 
     /**
      * Sets the metadata for the data slices.
      */
-    public void setDataSliceMetadata(final List<SliceMetadata> dataSliceMetadata) {
+    public void setDataSliceMetadata(final SliceMetadata[] dataSliceMetadata) {
         this.dataSliceMetadata = dataSliceMetadata;
     }
 
     /**
      * Returns the metadata for the coding slices.
      */
-    public List<SliceMetadata> getCodingSliceMetadata() {
+    public SliceMetadata[] getCodingSliceMetadata() {
         return codingSliceMetadata;
     }
 
     /**
      * Sets the metadata for the data slices.
      */
-    public void setCodingSliceMetadata(final List<SliceMetadata> codingSliceMetadata) {
+    public void setCodingSliceMetadata(final SliceMetadata[] codingSliceMetadata) {
         this.codingSliceMetadata = codingSliceMetadata;
     }
 
