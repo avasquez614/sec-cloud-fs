@@ -22,19 +22,6 @@ public class ErasureInfo {
     }
 
     /**
-     * Copy constructor
-     *
-     * @param info the info to copy
-     */
-    public ErasureInfo(ErasureInfo info) {
-        id = info.id;
-        dataId = info.dataId;
-        sliceSize = info.sliceSize;
-        dataSliceMetadata = info.dataSliceMetadata;
-        codingSliceMetadata = info.codingSliceMetadata;
-    }
-
-    /**
      * Returns the ID of this erasure encoding operation.
      */
     public String getId() {
