@@ -31,4 +31,12 @@ public class FileSystemInfo {
         return rootDirectory;
     }
 
+    @Override
+    public String toString() {
+        return "FileSystemInfo{" +
+            "id='" + id + '\'' +
+            ", rootDirectory='" + rootDirectory + '\'' +
+            '}';
+    }
+
 }

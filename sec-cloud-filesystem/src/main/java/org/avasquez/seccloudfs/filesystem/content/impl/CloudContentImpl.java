@@ -1,13 +1,5 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.filesystem.content.CloudContent;
-import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -18,6 +10,15 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.util.concurrent.locks.Lock;
+
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.content.CloudContent;
+import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by alfonsovasquez on 11/01/14.
@@ -102,7 +103,11 @@ public class CloudContentImpl implements CloudContent {
 
     public void delete() throws IOException {
         metadata.setMarkedAsDeleted(true);
-        metadataRepo.save(metadata);
+        try {
+            metadataRepo.save(metadata);
+        } catch (DbException e) {
+            throw new IOException("Unable to save " + metadata + " in DB", e);
+        }
 
         logger.info("Content '{}' marked as deleted", getId());
 

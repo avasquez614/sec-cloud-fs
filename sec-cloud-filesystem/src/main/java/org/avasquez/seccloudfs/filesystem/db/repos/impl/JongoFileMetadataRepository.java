@@ -1,6 +1,7 @@
 package org.avasquez.seccloudfs.filesystem.db.repos.impl;
 
 import com.mongodb.MongoException;
+
 import org.avasquez.seccloudfs.db.mongo.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
@@ -20,7 +21,7 @@ public class JongoFileMetadataRepository extends JongoRepository<FileMetadata> i
     }
 
     @Override
-    public Class<? extends FileMetadata> getPojoClass() {
+    public Class<FileMetadata> getPojoClass() {
         return FileMetadata.class;
     }
 

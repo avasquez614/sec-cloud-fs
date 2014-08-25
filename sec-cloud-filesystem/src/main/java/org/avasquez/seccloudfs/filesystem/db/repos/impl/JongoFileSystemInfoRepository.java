@@ -1,6 +1,7 @@
 package org.avasquez.seccloudfs.filesystem.db.repos.impl;
 
 import com.mongodb.MongoException;
+
 import org.avasquez.seccloudfs.db.mongo.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.FileSystemInfo;
@@ -19,7 +20,7 @@ public class JongoFileSystemInfoRepository extends JongoRepository<FileSystemInf
     }
 
     @Override
-    public Class<? extends FileSystemInfo> getPojoClass() {
+    public Class<FileSystemInfo> getPojoClass() {
         return FileSystemInfo.class;
     }
 
@@ -28,8 +29,7 @@ public class JongoFileSystemInfoRepository extends JongoRepository<FileSystemInf
         try {
             return collection.findOne().as(FileSystemInfo.class);
         } catch (MongoException e) {
-            throw new DbException("[" + collection.getName() + "] Get singleton " + FileSystemInfo.class.getName() +
-                    " failed", e);
+            throw new DbException("[" + collection.getName() + "] Get singleton failed", e);
         }
     }
 
@@ -39,7 +39,7 @@ public class JongoFileSystemInfoRepository extends JongoRepository<FileSystemInf
             super.insert(pojo);
         } else {
             throw new DbException("[" + collection.getName() + "] An instance of " + FileSystemInfo.class.getName() +
-                    " already exists in the DB");
+                " already exists in the DB");
         }
     }
 

@@ -17,6 +17,13 @@ public interface Repository<T> {
     long count() throws DbException;
 
     /**
+     * Returns all elements in the DB for the repository.
+     *
+     * @return all elements for the repository
+     */
+    Iterable<T> findAll() throws DbException;
+
+    /**
      * Returns the POJO with the specified ID in the database.
      *
      * @param id  the ID of the POJO to look for
@@ -45,5 +52,10 @@ public interface Repository<T> {
      * @param id the ID of the POJO to delete
      */
     void delete(String id) throws DbException;
+
+    /**
+     * Deletes all elements in the DB for the repository.
+     */
+    void deleteAll() throws DbException;
 
 }

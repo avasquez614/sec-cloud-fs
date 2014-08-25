@@ -1,19 +1,20 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.filesystem.content.Content;
-import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Required;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.content.Content;
+import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
 
 /**
  * Created by alfonsovasquez on 12/01/14.
@@ -67,7 +68,13 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
     @Override
     protected Content doFind(String id) throws IOException {
-        ContentMetadata metadata = metadataRepo.find(id);
+        ContentMetadata metadata;
+        try {
+            metadata = metadataRepo.find(id);
+        } catch (DbException e) {
+            throw new IOException("Unable to find content by ID '" + id + "'", e);
+        }
+
         if (metadata != null) {
             return createContentObject(metadata);
         } else {
@@ -78,7 +85,11 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     @Override
     protected Content doCreate() throws IOException {
         ContentMetadata metadata = new ContentMetadata();
-        metadataRepo.insert(metadata);
+        try {
+            metadataRepo.insert(metadata);
+        } catch (DbException e) {
+            throw new IOException("Unable to insert " + metadata + " into DB", e);
+        }
 
         Content content = createContentObject(metadata);
 

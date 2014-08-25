@@ -1,6 +1,7 @@
 package org.avasquez.seccloudfs.filesystem.db.repos.impl;
 
 import com.mongodb.MongoException;
+
 import org.avasquez.seccloudfs.db.mongo.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
@@ -24,12 +25,12 @@ public class JongoDirectoryEntryRepository extends JongoRepository<DirectoryEntr
         try {
             return collection.find(FIND_BY_DIRECTORY_ID_QUERY, dirId).as(DirectoryEntry.class);
         } catch (MongoException e) {
-            throw new DbException("[" + collection.getName() + "] Find entries for dir ID '" + dirId + "' failed", e);
+            throw new DbException("[" + collection.getName() + "] Find by dir ID '" + dirId + "' failed", e);
         }
     }
 
     @Override
-    public Class<? extends DirectoryEntry> getPojoClass() {
+    public Class<DirectoryEntry> getPojoClass() {
         return DirectoryEntry.class;
     }
 

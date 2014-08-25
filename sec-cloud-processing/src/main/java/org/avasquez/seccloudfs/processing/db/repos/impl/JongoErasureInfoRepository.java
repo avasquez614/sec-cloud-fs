@@ -23,7 +23,7 @@ public class JongoErasureInfoRepository extends JongoRepository<ErasureInfo> imp
     }
 
     @Override
-    public Class<? extends ErasureInfo> getPojoClass() {
+    public Class<ErasureInfo> getPojoClass() {
         return ErasureInfo.class;
     }
 
@@ -32,8 +32,7 @@ public class JongoErasureInfoRepository extends JongoRepository<ErasureInfo> imp
         try {
             return collection.findOne(FIND_BY_DATA_ID_QUERY, dataId).as(ErasureInfo.class);
         } catch (MongoException e) {
-            throw new DbException("[" + collection.getName() + "] Find erasure info for data ID '" +
-                dataId + "' failed", e);
+            throw new DbException("[" + collection.getName() + "] Find by data ID '" + dataId + "' failed", e);
         }
     }
 

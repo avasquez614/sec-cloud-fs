@@ -1,5 +1,9 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
+import java.io.IOException;
+import java.util.Date;
+
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
@@ -9,9 +13,6 @@ import org.avasquez.seccloudfs.filesystem.files.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
-
-import java.io.IOException;
-import java.util.Date;
 
 /**
  * Created by alfonsovasquez on 19/01/14.
@@ -41,12 +42,22 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
 
     @Override
     public long getTotalFiles() throws IOException {
-        return metadataRepo.count();
+        try {
+            return metadataRepo.count();
+        } catch (DbException e) {
+            throw new IOException("Unable to return count of file metadata in DB", e);
+        }
     }
 
     @Override
     protected FileObject doFind(String id) throws IOException {
-        FileMetadata metadata = metadataRepo.find(id);
+        FileMetadata metadata;
+        try {
+            metadata = metadataRepo.find(id);
+        } catch (DbException e) {
+            throw new IOException("Unable to find file metadata for ID '" + id + "'", e);
+        }
+
         if (metadata != null) {
             return new FileObjectImpl(this, metadata, metadataRepo, getDirectoryEntries(metadata),
                     getContent(metadata));
@@ -75,7 +86,11 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
             metadata.setContentId(content.getId());
         }
 
-        metadataRepo.insert(metadata);
+        try {
+            metadataRepo.insert(metadata);
+        } catch (DbException e) {
+            throw new IOException("Unable to insert " + metadata + " into DB", e);
+        }
 
         if (dir) {
             entries = new DirectoryEntries(entryRepo, metadata.getId());
@@ -90,7 +105,11 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
 
     @Override
     protected void doDelete(FileObject file) throws IOException {
-        metadataRepo.delete(file.getId());
+        try {
+            metadataRepo.delete(file.getId());
+        } catch (DbException e) {
+            throw new IOException("Unable to delete " + file + " from DB", e);
+        }
 
         logger.debug("{} deleted", file);
 
@@ -118,7 +137,11 @@ public class FileObjectStoreImpl extends AbstractCachedFileObjectStore {
                 content = contentStore.create();
 
                 metadata.setContentId(content.getId());
-                metadataRepo.save(metadata);
+                try {
+                    metadataRepo.save(metadata);
+                } catch (DbException e) {
+                    throw new IOException("Unable to save " + metadata + " in DB", e);
+                }
             }
 
             return content;

@@ -1,0 +1,4 @@
+dependencies {
+    compile project(':sec-cloud-commons')
+    compile 'com.google.apis:google-api-services-drive:v2-rev137-1.19.0'
+}

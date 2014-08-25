@@ -19,6 +19,7 @@ public abstract class JongoRepository<T> implements Repository<T> {
         collection = jongo.getCollection(collectionName);
     }
 
+    @Override
     public long count() throws DbException {
         try {
             return collection.count();
@@ -27,6 +28,16 @@ public abstract class JongoRepository<T> implements Repository<T> {
         }
     }
 
+    @Override
+    public Iterable<T> findAll() throws DbException {
+        try {
+            return collection.find().as(getPojoClass());
+        } catch (MongoException e) {
+            throw new DbException("[" + collection.getName() + "] Find all failed", e);
+        }
+    }
+
+    @Override
     public T find(String id) throws DbException {
         try {
             return collection.findOne(new ObjectId(id)).as(getPojoClass());
@@ -35,6 +46,7 @@ public abstract class JongoRepository<T> implements Repository<T> {
         }
     }
 
+    @Override
     public void insert(T pojo) throws DbException {
         try {
             collection.insert(pojo);
@@ -43,6 +55,7 @@ public abstract class JongoRepository<T> implements Repository<T> {
         }
     }
 
+    @Override
     public void save(T pojo) throws DbException {
         try {
             collection.save(pojo);
@@ -51,6 +64,7 @@ public abstract class JongoRepository<T> implements Repository<T> {
         }
     }
 
+    @Override
     public void delete(String id) throws DbException {
         try {
             collection.remove(new ObjectId(id));
@@ -59,6 +73,15 @@ public abstract class JongoRepository<T> implements Repository<T> {
         }
     }
 
-    public abstract Class<? extends T> getPojoClass();
+    @Override
+    public void deleteAll() throws DbException {
+        try {
+            collection.remove();
+        } catch (MongoException e) {
+            throw new DbException("[" + collection.getName() + "] Delete all failed", e);
+        }
+    }
+
+    public abstract Class<T> getPojoClass();
 
 }

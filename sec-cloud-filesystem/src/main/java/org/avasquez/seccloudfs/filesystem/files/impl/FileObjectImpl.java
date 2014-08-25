@@ -1,5 +1,9 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
+import java.io.IOException;
+import java.util.Date;
+
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.filesystem.db.model.FileMetadata;
@@ -9,9 +13,6 @@ import org.avasquez.seccloudfs.filesystem.exception.NotDirectoryException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.User;
 import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
-
-import java.io.IOException;
-import java.util.Date;
 
 /**
  * Created by alfonsovasquez on 19/01/14.
@@ -217,7 +218,11 @@ public class FileObjectImpl implements FileObject {
 
     @Override
     public void syncMetadata() throws IOException {
-        metadataRepo.save(metadata);
+        try {
+            metadataRepo.save(metadata);
+        } catch (DbException e) {
+            throw new IOException("Unable to save " + metadata + " to DB", e);
+        }
     }
 
     @Override

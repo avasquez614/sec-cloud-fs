@@ -2,6 +2,7 @@ package org.avasquez.seccloudfs.filesystem.files.impl;
 
 import java.io.IOException;
 
+import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.content.ContentStore;
 import org.avasquez.seccloudfs.filesystem.db.model.FileSystemInfo;
 import org.avasquez.seccloudfs.filesystem.db.repos.FileSystemInfoRepository;
@@ -39,7 +40,13 @@ public class FileSystemImpl implements FileSystem {
     @Override
     public File getRoot() throws IOException {
         if (root == null) {
-            FileSystemInfo info = fileSystemInfoRepo.getSingleton();
+            FileSystemInfo info;
+            try {
+                info = fileSystemInfoRepo.getSingleton();
+            } catch (DbException e) {
+                throw new IOException("Unable to retrieve singleton filesystem info from DB", e);
+            }
+
             if (info != null) {
                 root = fileObjectStore.find(info.getRootDirectory());
             }
@@ -52,7 +59,12 @@ public class FileSystemImpl implements FileSystem {
     public File createRoot(User owner, long permissions) throws IOException {
         root = fileObjectStore.create(true, owner, permissions);
 
-        fileSystemInfoRepo.insert(new FileSystemInfo(root.getId()));
+        FileSystemInfo info = new FileSystemInfo(root.getId());
+        try {
+            fileSystemInfoRepo.insert(info);
+        } catch (DbException e) {
+            throw new IOException("Unable to insert singleton" + info + " into DB", e);
+        }
 
         return root;
     }

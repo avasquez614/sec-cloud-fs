@@ -17,7 +17,7 @@ public class JongoContentMetadataRepository extends JongoRepository<ContentMetad
     }
 
     @Override
-    public Class<? extends ContentMetadata> getPojoClass() {
+    public Class<ContentMetadata> getPojoClass() {
         return ContentMetadata.class;
     }
 

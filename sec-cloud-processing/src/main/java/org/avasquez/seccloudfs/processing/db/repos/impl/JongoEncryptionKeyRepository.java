@@ -26,7 +26,7 @@ public class JongoEncryptionKeyRepository extends JongoRepository<EncryptionKey>
     }
 
     @Override
-    public Class<? extends EncryptionKey> getPojoClass() {
+    public Class<EncryptionKey> getPojoClass() {
         return EncryptionKey.class;
     }
 
@@ -35,7 +35,7 @@ public class JongoEncryptionKeyRepository extends JongoRepository<EncryptionKey>
         try {
             return collection.findOne(FIND_BY_DATA_ID_QUERY, dataId).as(EncryptionKey.class);
         } catch (MongoException e) {
-            throw new DbException("[" + collection.getName() + "] Find key for data ID '" + dataId + "' failed", e);
+            throw new DbException("[" + collection.getName() + "] Find by data ID '" + dataId + "' failed", e);
         }
     }
 

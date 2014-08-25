@@ -1,15 +1,19 @@
 package org.avasquez.seccloudfs.filesystem.files.impl;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.filesystem.db.repos.DirectoryEntryRepository;
 import org.avasquez.seccloudfs.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by alfonsovasquez on 01/02/14.
@@ -27,7 +31,13 @@ public class DirectoryEntries {
         this.directoryId = directoryId;
         this.entries = new ConcurrentHashMap<>();
 
-        List<DirectoryEntry> entries = CollectionUtils.asList(entryRepo.findByDirectoryId(directoryId));
+        List<DirectoryEntry> entries;
+        try {
+            entries = CollectionUtils.asList(entryRepo.findByDirectoryId(directoryId));
+        } catch (DbException e) {
+            throw new IOException("Unable to retrieve dir entries for dir ID '" + directoryId + "'", e);
+        }
+
         if (entries != null) {
             entries = deleteDuplicateEntries(entries);
             for (DirectoryEntry entry : entries) {
@@ -57,7 +67,11 @@ public class DirectoryEntries {
     public DirectoryEntry createEntry(String fileName, String fileId) throws IOException {
         DirectoryEntry entry = new DirectoryEntry(directoryId, fileName, fileId, new Date());
 
-        entryRepo.insert(entry);
+        try {
+            entryRepo.insert(entry);
+        } catch (DbException e) {
+            throw new IOException("Unable to insert " + entry + " into DB", e);
+        }
 
         entries.put(fileName, entry);
 
@@ -76,7 +90,11 @@ public class DirectoryEntries {
                     entry.getFileId(),
                     new Date());
 
-            entryRepo.save(movedEntry);
+            try {
+                entryRepo.save(movedEntry);
+            } catch (DbException e) {
+                throw new IOException("Unable to save " + movedEntry + " in DB", e);
+            }
 
             entries.remove(fileName);
             dst.entries.put(newFileName, movedEntry);
@@ -84,7 +102,11 @@ public class DirectoryEntries {
             logger.debug("{} moved from {} with name '{}'", movedEntry, this, fileName);
 
             if (replacedEntry != null) {
-                entryRepo.delete(replacedEntry.getId());
+                try {
+                    entryRepo.delete(replacedEntry.getId());
+                } catch (DbException e) {
+                    throw new IOException("Unable to delete entry " + replacedEntry + " from DB", e);
+                }
 
                 logger.debug("{} deleted (replaced by entry {})", replacedEntry, movedEntry);
             }
@@ -94,7 +116,11 @@ public class DirectoryEntries {
     public void deleteEntry(String fileName) throws IOException {
         DirectoryEntry entry = getEntry(fileName);
         if (entry != null) {
-            entryRepo.delete(entry.getId());
+            try {
+                entryRepo.delete(entry.getId());
+            } catch (DbException e) {
+                throw new IOException("Unable to delete entry " + entry + " from DB", e);
+            }
 
             entries.remove(fileName);
 
@@ -110,7 +136,7 @@ public class DirectoryEntries {
                 '}';
     }
 
-    private List<DirectoryEntry> deleteDuplicateEntries(List<DirectoryEntry> entries) throws DbException {
+    private List<DirectoryEntry> deleteDuplicateEntries(List<DirectoryEntry> entries) throws IOException {
         List<DirectoryEntry> nonDupEntries = new ArrayList<>();
         List<DirectoryEntry> dupEntries = new ArrayList<>();
 
@@ -132,7 +158,11 @@ public class DirectoryEntries {
         }
 
         for (DirectoryEntry dupEntry : dupEntries) {
-            entryRepo.delete(dupEntry.getId());
+            try {
+                entryRepo.delete(dupEntry.getId());
+            } catch (DbException e) {
+                throw new IOException("Unable to delete " + dupEntry + " from DB", e);
+            }
         }
 
         return nonDupEntries;
