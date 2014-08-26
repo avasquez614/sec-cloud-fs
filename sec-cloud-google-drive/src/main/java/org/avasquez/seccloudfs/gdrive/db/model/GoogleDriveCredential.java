@@ -1,7 +1,9 @@
 package org.avasquez.seccloudfs.gdrive.db.model;
 
+import com.google.api.client.auth.oauth2.Credential;
+
+import org.bson.types.ObjectId;
 import org.jongo.marshall.jackson.oid.Id;
-import org.jongo.marshall.jackson.oid.ObjectId;
 
 /**
  * Represents Google Drive credential info that's stored in the DB.
@@ -11,45 +13,58 @@ import org.jongo.marshall.jackson.oid.ObjectId;
 public class GoogleDriveCredential {
 
     @Id
-    @ObjectId
     private String id;
-    private String userId;
     private String accessToken;
     private String refreshToken;
     private Long expirationTime;
 
     /**
-     * Private no-arg constructor, for use by frameworks like Jongo/Jackson.
+     * Generates an ID for the credential.
      */
-    private GoogleDriveCredential() {
+    public static String generateId() {
+        return ObjectId.get().toString();
     }
 
-    public GoogleDriveCredential(final String userId, final String accessToken, final String refreshToken,
-                                 final Long expirationTime) {
-        this.userId = userId;
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.expirationTime = expirationTime;
+    public GoogleDriveCredential() {
+    }
+
+    public GoogleDriveCredential(String id, Credential credential) {
+        this.id = id;
+        this.accessToken = credential.getAccessToken();
+        this.refreshToken = credential.getRefreshToken();
+        this.expirationTime = credential.getExpirationTimeMilliseconds();
     }
 
     public String getId() {
         return id;
     }
 
-    public String getUserId() {
-        return userId;
+    public void setId(final String id) {
+        this.id = id;
     }
 
     public String getAccessToken() {
         return accessToken;
     }
 
+    public void setAccessToken(final String accessToken) {
+        this.accessToken = accessToken;
+    }
+
     public String getRefreshToken() {
         return refreshToken;
     }
 
+    public void setRefreshToken(final String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
     public Long getExpirationTime() {
         return expirationTime;
+    }
+
+    public void setExpirationTime(final Long expirationTime) {
+        this.expirationTime = expirationTime;
     }
 
 }
