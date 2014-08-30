@@ -1,3 +1,2 @@
-include 'sec-cloud-commons', 'sec-cloud-filesystem', 'sec-cloud-erasure', 'sec-cloud-processing',
-        'sec-cloud-google-drive'
+include 'commons', 'filesystem', 'erasure', 'processing', 'google-drive'
 

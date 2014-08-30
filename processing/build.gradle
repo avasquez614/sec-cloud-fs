@@ -1,0 +1,5 @@
+dependencies {
+    compile project(':commons')
+    compile project(':erasure')
+    compile 'org.apache.shiro:shiro-core:1.2.3'
+}
