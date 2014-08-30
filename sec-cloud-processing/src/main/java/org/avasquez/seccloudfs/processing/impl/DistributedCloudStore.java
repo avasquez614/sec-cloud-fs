@@ -13,13 +13,13 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorCompletionService;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.erasure.DecodingException;
 import org.avasquez.seccloudfs.erasure.EncodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
 import org.avasquez.seccloudfs.erasure.ErasureEncoder;
 import org.avasquez.seccloudfs.erasure.Slices;
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.processing.CloudStoreRegistry;
 import org.avasquez.seccloudfs.processing.db.model.ErasureInfo;
 import org.avasquez.seccloudfs.processing.db.model.SliceMetadata;
 import org.avasquez.seccloudfs.processing.db.repos.ErasureInfoRepository;

@@ -20,8 +20,6 @@ import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialRepository;
 import org.avasquez.seccloudfs.gdrive.utils.RepositoryCredentialRefreshListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
 
 /**
@@ -30,9 +28,7 @@ import org.springframework.beans.factory.annotation.Required;
  *
  * @author avasquez
  */
-public class GoogleDriveAuthorizer {
-
-    private static final Logger logger = LoggerFactory.getLogger(GoogleDriveAuthorizer.class);
+public class GoogleDriveAuthorizationSupport {
 
     private static final String REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
     private static final List<String> SCOPES = Arrays.asList(DriveScopes.DRIVE);
@@ -72,13 +68,13 @@ public class GoogleDriveAuthorizer {
     }
 
     /**
-     * Exchanges an authorization code for OAuth 2.0 credentials. The credentials are then stored in the DB.
+     * Exchanges an authorization code for OAuth 2.0 credential. The credentials are then stored in the DB.
      *
      * @param authorizationCode authorization code to exchange for OAuth 2.0 credentials
      *
-     * @return the OAuth 2.0 credentials
+     * @return the OAuth 2.0 credential
      */
-    public Credential exchangeCode(String authorizationCode) throws IOException {
+    public GoogleDriveCredential exchangeCode(String authorizationCode) throws IOException {
         TokenResponse response = flow.newTokenRequest(authorizationCode).setRedirectUri(REDIRECT_URI).execute();
         String credentialId = GoogleDriveCredential.generateId();
         Credential credential = createCredential(credentialId, response);
@@ -90,25 +86,7 @@ public class GoogleDriveAuthorizer {
             throw new IOException("Unable to insert credential '" + credentialId + "'");
         }
 
-        return credential;
-    }
-
-    /**
-     * Loads an existing credential from the DB.
-     *
-     * @param id the ID of the stored credential
-     *
-     * @return the stored credential
-     */
-    public Credential loadCredential(String id) throws IOException {
-        GoogleDriveCredential storedCredential;
-        try {
-            storedCredential = credentialRepository.find(id);
-        } catch (DbException e) {
-            throw new IOException("Unable to retrieve credential '" + id + "'", e);
-        }
-
-        return createCredential(id, storedCredential);
+        return storedCredential;
     }
 
     private void createFlow() {
@@ -120,7 +98,7 @@ public class GoogleDriveAuthorizer {
             .build();
     }
 
-    public Credential createCredential(String id, TokenResponse tokenResponse) {
+    private Credential createCredential(String id, TokenResponse tokenResponse) {
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
         CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialRepository);
@@ -132,22 +110,6 @@ public class GoogleDriveAuthorizer {
             .addRefreshListener(refreshListener)
             .build()
             .setFromTokenResponse(tokenResponse);
-    }
-
-    public Credential createCredential(String id, GoogleDriveCredential storedCredential) {
-        HttpTransport transport = new NetHttpTransport();
-        JsonFactory jsonFactory = new JacksonFactory();
-        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialRepository);
-
-        return new GoogleCredential.Builder()
-            .setTransport(transport)
-            .setJsonFactory(jsonFactory)
-            .setClientSecrets(clientId, clientSecret)
-            .addRefreshListener(refreshListener)
-            .build()
-            .setAccessToken(storedCredential.getAccessToken())
-            .setRefreshToken(storedCredential.getRefreshToken())
-            .setExpirationTimeMilliseconds(storedCredential.getExpirationTime());
     }
 
 }

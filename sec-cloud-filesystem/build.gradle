@@ -10,7 +10,7 @@ dependencies {
 
 // Install to another dir
 installApp {
-    destinationDir = file('/opt/sec-cloud-fs')
+    destinationDir = file('/opt/sec-cloud-fs/fuse')
 }
 
 // Add conf dir to classpath of start-up scripts

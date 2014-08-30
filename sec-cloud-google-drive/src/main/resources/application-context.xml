@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:property-placeholder location="classpath:application.properties,classpath*:conf/application.properties" />
+
+    <context:annotation-config />
+
+    <bean id="mongoClient" class="com.mongodb.MongoClient">
+        <constructor-arg value="${mongo.host}" />
+        <constructor-arg value="${mongo.port}" />
+    </bean>
+
+    <bean id="jongo" class="org.avasquez.seccloudfs.db.mongo.JongoFactoryBean">
+        <property name="dbName" value="${mongo.db.name}" />
+        <property name="mongoClient" ref="mongoClient" />
+    </bean>
+
+    <bean id="googleDriveCredentialRepo"
+          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <bean id="authorizationSupport" class="org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizationSupport">
+        <property name="credentialRepository" ref="googleDriveCredentialRepo"/>
+        <property name="clientSecret" value="${google.clientId}"/>
+        <property name="clientId" value="${google.clientSecret}"/>
+    </bean>
+
+    <import resource="classpath*:conf/application-context.xml"/>
+
+</beans>

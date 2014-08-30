@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.processing.CloudStoreRegistry;
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 
 /**
- * Default implementation of {@link org.avasquez.seccloudfs.processing.CloudStoreRegistry}.
+ * Default implementation of {@link org.avasquez.seccloudfs.cloud.CloudStoreRegistry}.
  *
  * @author avasquez
  */
@@ -22,12 +22,19 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
 
     private Map<String, LastUploadTimeAwareCloudStore> stores;
 
-    public void setStores(final Map<String, CloudStore> stores) {
-        this.stores = new HashMap<>(stores.size());
+    public CloudStoreRegistryImpl() {
+        stores = new HashMap<>();
+    }
 
+    public void setStores(final Map<String, CloudStore> stores) {
         for (Map.Entry<String, CloudStore> entry : stores.entrySet()) {
             this.stores.put(entry.getKey(), new LastUploadTimeAwareCloudStore(entry.getValue()));
         }
+    }
+
+    @Override
+    public void register(final CloudStore store) {
+        stores.put(store.getName(), new LastUploadTimeAwareCloudStore(store));
     }
 
     /**
@@ -63,8 +70,8 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
      * Returns the {@link org.avasquez.seccloudfs.cloud.CloudStore} from the map of stores.
      */
     @Override
-    public CloudStore find(final String id) {
-        return stores.get(id);
+    public CloudStore find(final String name) {
+        return stores.get(name);
     }
 
     private static class LastUploadTimeAwareCloudStore implements CloudStore {
