@@ -21,6 +21,10 @@ public class DropboxCredential {
     private DropboxCredential() {
     }
 
+    public DropboxCredential(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
     public String getId() {
         return id;
     }

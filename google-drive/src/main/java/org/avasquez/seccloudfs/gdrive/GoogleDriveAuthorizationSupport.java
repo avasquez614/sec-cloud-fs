@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 import javax.annotation.PostConstruct;
 
-import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialRepository;
 import org.avasquez.seccloudfs.gdrive.utils.RepositoryCredentialRefreshListener;
@@ -79,12 +78,6 @@ public class GoogleDriveAuthorizationSupport {
         String credentialId = GoogleDriveCredential.generateId();
         Credential credential = createCredential(credentialId, response);
         GoogleDriveCredential storedCredential = new GoogleDriveCredential(credentialId, credential);
-
-        try {
-            credentialRepository.insert(storedCredential);
-        } catch (DbException e) {
-            throw new IOException("Unable to insert credential '" + credentialId + "'");
-        }
 
         return storedCredential;
     }

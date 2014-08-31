@@ -10,12 +10,12 @@
 
     <context:property-placeholder location="classpath:filesystem.properties,classpath*:conf/filesystem.properties" />
 
-    <context:annotation-config />
+    <context:annotation-requestConfig />
 
     <!-- Cache -->
 
     <bean id="cacheManager" class="org.infinispan.manager.DefaultCacheManager">
-        <constructor-arg value="${cache.config.file}" />
+        <constructor-arg value="${cache.requestConfig.file}" />
     </bean>
 
     <!-- DB -->

@@ -8,7 +8,7 @@
 
     <context:property-placeholder location="classpath:application.properties,classpath*:conf/application.properties" />
 
-    <context:annotation-requestConfig />
+    <context:annotation-config />
 
     <bean id="mongoClient" class="com.mongodb.MongoClient">
         <constructor-arg value="${mongo.host}" />
@@ -20,15 +20,24 @@
         <property name="mongoClient" ref="mongoClient" />
     </bean>
 
-    <bean id="googleDriveCredentialRepo"
-          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialRepository">
+    <bean id="dropboxCredentialRepo"
+          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.JongoDropboxCredentialRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
-    <bean id="authSupport" class="org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizationSupport">
-        <property name="credentialRepository" ref="googleDriveCredentialRepo"/>
-        <property name="clientSecret" value="${google.clientId}"/>
-        <property name="clientId" value="${google.clientSecret}"/>
+    <bean id="appInfo" class="com.dropbox.core.DbxAppInfo">
+        <constructor-arg value="${dropbox.appKey}"/>
+        <constructor-arg value="${dropbox.appSecret}"/>
+    </bean>
+
+    <bean id="requestConfig" class="com.dropbox.core.DbxRequestConfig">
+        <constructor-arg value="${dropbox.clientIdentifier}"/>
+        <constructor-arg value="#{T(java.util.Locale).default.toString()}"/>
+    </bean>
+
+    <bean id="webAuth" class="com.dropbox.core.DbxWebAuthNoRedirect">
+        <constructor-arg ref="requestConfig"/>
+        <constructor-arg ref="appInfo"/>
     </bean>
 
     <import resource="classpath*:conf/application-context.xml"/>

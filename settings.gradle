@@ -1,4 +1,2 @@
-include 'commons', 'filesystem', 'erasure', 'processing', 'google-drive'
-
-include 'dropbox'
+include 'commons', 'filesystem', 'erasure', 'processing', 'google-drive', 'dropbox'
 

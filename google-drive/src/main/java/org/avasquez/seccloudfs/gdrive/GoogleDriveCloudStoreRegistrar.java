@@ -11,9 +11,9 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 
 import java.io.IOException;
+import javax.annotation.PostConstruct;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
@@ -31,7 +31,7 @@ import org.springframework.beans.factory.annotation.Required;
  *
  * @author avasquez
  */
-public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
+public class GoogleDriveCloudStoreRegistrar {
 
     public static final String STORE_NAME_PREFIX = "gdrive://";
 
@@ -40,6 +40,7 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     private GoogleDriveCredentialRepository credentialRepository;
     private String rootFolderName;
     private EmbeddedCacheManager cacheManager;
+    private CloudStoreRegistry registry;
 
     @Required
     public void setClientId(String clientId) {
@@ -66,14 +67,17 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
         this.cacheManager = cacheManager;
     }
 
+    @Required
+    public void setRegistry(final CloudStoreRegistry registry) {
+        this.registry = registry;
+    }
+
     /**
      * Creates {@link org.avasquez.seccloudfs.cloud.CloudStore}s from the credentials stored in the DB, and then
-     * registers them with the specified registry
-     *
-     * @param registry the registry to register the stores to
+     * registers them with the registry.
      */
-    @Override
-    public void registerStores(CloudStoreRegistry registry) throws IOException {
+    @PostConstruct
+    public void registerStores() throws IOException {
         Iterable<GoogleDriveCredential> credentials = findCredentials();
         for (GoogleDriveCredential credential : credentials) {
             registry.register(createStore(credential));
