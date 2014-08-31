@@ -21,7 +21,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     protected AtomicLong currentSize;
 
     @Required
-    public void setMaxSize(final String maxSize) {
+    public void setMaxSize(String maxSize) {
         this.maxSize = FileUtils.humanReadableByteSizeToByteCount(maxSize);
     }
 

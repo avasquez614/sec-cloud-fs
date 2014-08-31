@@ -1,0 +1,25 @@
+apply plugin:'application'
+
+mainClassName = 'org.avasquez.seccloudfs.dropbox.DropboxAuthorizerCli'
+
+dependencies {
+    compile project(':commons')
+    compile 'com.dropbox.core:dropbox-core-sdk:1.7.6'
+}
+
+// Install to another dir
+installApp {
+    destinationDir = file('/opt/sec-cloud-fs/dropbox')
+}
+
+// Add conf dir to classpath of start-up scripts
+startScripts {
+    applicationName = 'dropbox-authorizer'
+    classpath += files('src/dist/conf')
+    doLast {
+        def windowsScriptFile = file getWindowsScript()
+        def unixScriptFile = file getUnixScript()
+        windowsScriptFile.text = windowsScriptFile.text.replace('%APP_HOME%\\lib\\conf', '%APP_HOME%\\conf')
+        unixScriptFile.text = unixScriptFile.text.replace('$APP_HOME/lib/conf', '$APP_HOME/conf')
+    }
+}

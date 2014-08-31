@@ -40,17 +40,17 @@ public class GoogleDriveAuthorizationSupport {
     private GoogleAuthorizationCodeFlow flow;
 
     @Required
-    public void setClientId(final String clientId) {
+    public void setClientId(String clientId) {
         this.clientId = clientId;
     }
 
     @Required
-    public void setClientSecret(final String clientSecret) {
+    public void setClientSecret(String clientSecret) {
         this.clientSecret = clientSecret;
     }
 
     @Required
-    public void setCredentialRepository(final GoogleDriveCredentialRepository credentialRepository) {
+    public void setCredentialRepository(GoogleDriveCredentialRepository credentialRepository) {
         this.credentialRepository = credentialRepository;
     }
 

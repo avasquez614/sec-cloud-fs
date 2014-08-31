@@ -26,17 +26,17 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Required
-    public void setName(final String name) {
+    public void setName(String name) {
         this.name = name;
     }
 
     @Required
-    public void setStoreDir(final Path storeDir) {
+    public void setStoreDir(Path storeDir) {
         this.storeDir = storeDir;
     }
 
     @Override
-    protected Object getMetadata(final String id) throws IOException {
+    protected Object getMetadata(String id) throws IOException {
         return storeDir.resolve(id);
     }
 

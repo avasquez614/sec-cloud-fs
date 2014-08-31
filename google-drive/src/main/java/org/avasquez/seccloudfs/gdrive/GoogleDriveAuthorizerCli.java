@@ -24,8 +24,8 @@ public class GoogleDriveAuthorizerCli {
     private PrintWriter stdOut;
     private GoogleDriveAuthorizationSupport authorizationSupport;
 
-    public GoogleDriveAuthorizerCli(final BufferedReader stdIn, final PrintWriter stdOut,
-                                    final GoogleDriveAuthorizationSupport authorizationSupport) {
+    public GoogleDriveAuthorizerCli(BufferedReader stdIn, PrintWriter stdOut,
+                                    GoogleDriveAuthorizationSupport authorizationSupport) {
         this.stdIn = stdIn;
         this.stdOut = stdOut;
         this.authorizationSupport = authorizationSupport;

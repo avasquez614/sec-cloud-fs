@@ -1,2 +1,4 @@
 include 'commons', 'filesystem', 'erasure', 'processing', 'google-drive'
 
+include 'dropbox'
+

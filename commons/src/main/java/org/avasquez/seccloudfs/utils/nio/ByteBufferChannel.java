@@ -13,14 +13,14 @@ public class ByteBufferChannel implements SeekableByteChannel {
 
     private ByteBuffer buffer;
 
-    public ByteBufferChannel(final ByteBuffer buffer) {
+    public ByteBufferChannel(ByteBuffer buffer) {
         buffer.clear();
 
         this.buffer = buffer;
     }
 
     @Override
-    public int read(final ByteBuffer dst) throws IOException {
+    public int read(ByteBuffer dst) throws IOException {
         int bytesToRead = buffer.remaining();
 
         dst.put(buffer);
@@ -29,7 +29,7 @@ public class ByteBufferChannel implements SeekableByteChannel {
     }
 
     @Override
-    public int write(final ByteBuffer src) throws IOException {
+    public int write(ByteBuffer src) throws IOException {
         int bytesToWrite = src.remaining();
 
         buffer.put(src);
@@ -43,7 +43,7 @@ public class ByteBufferChannel implements SeekableByteChannel {
     }
 
     @Override
-    public SeekableByteChannel position(final long newPosition) throws IOException {
+    public SeekableByteChannel position(long newPosition) throws IOException {
         buffer.position((int) newPosition);
 
         return this;
@@ -55,7 +55,7 @@ public class ByteBufferChannel implements SeekableByteChannel {
     }
 
     @Override
-    public SeekableByteChannel truncate(final long size) throws IOException {
+    public SeekableByteChannel truncate(long size) throws IOException {
         return null;
     }
 

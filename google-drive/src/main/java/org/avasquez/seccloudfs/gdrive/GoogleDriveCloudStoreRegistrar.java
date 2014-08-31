@@ -42,27 +42,27 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     private EmbeddedCacheManager cacheManager;
 
     @Required
-    public void setClientId(final String clientId) {
+    public void setClientId(String clientId) {
         this.clientId = clientId;
     }
 
     @Required
-    public void setClientSecret(final String clientSecret) {
+    public void setClientSecret(String clientSecret) {
         this.clientSecret = clientSecret;
     }
 
     @Required
-    public void setCredentialRepository(final GoogleDriveCredentialRepository credentialRepository) {
+    public void setCredentialRepository( GoogleDriveCredentialRepository credentialRepository) {
         this.credentialRepository = credentialRepository;
     }
 
     @Required
-    public void setRootFolderName(final String rootFolderName) {
+    public void setRootFolderName(String rootFolderName) {
         this.rootFolderName = rootFolderName;
     }
 
     @Required
-    public void setCacheManager(final EmbeddedCacheManager cacheManager) {
+    public void setCacheManager(EmbeddedCacheManager cacheManager) {
         this.cacheManager = cacheManager;
     }
 
@@ -73,7 +73,7 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
      * @param registry the registry to register the stores to
      */
     @Override
-    public void registerStores(final CloudStoreRegistry registry) throws IOException {
+    public void registerStores(CloudStoreRegistry registry) throws IOException {
         Iterable<GoogleDriveCredential> credentials = findCredentials();
         for (GoogleDriveCredential credential : credentials) {
             registry.register(createStore(credential));
