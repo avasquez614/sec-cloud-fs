@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.dropbox.db;
+package org.avasquez.seccloudfs.dropbox;
 
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxRequestConfig;
