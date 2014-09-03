@@ -11,16 +11,16 @@ import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ParentReference;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.utils.nio.ChannelUtils;
 import org.infinispan.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +80,7 @@ public class GoogleDriveCloudStore implements CloudStore {
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
 
         if (file != null) {
-            logger.debug("File '{}' already exists in {} store. Updating it...", id, name);
+            logger.debug("Data '{}' already exists in {} store. Updating it...", id, name);
 
             try {
                 file = drive.files().update(file.getId(), file, content).execute();
@@ -88,7 +88,7 @@ public class GoogleDriveCloudStore implements CloudStore {
                 throw new IOException("Error updating file '" + id + "' in store " + name, e);
             }
         } else {
-            logger.debug("File '{}' doesn't exist in {} store. Inserting it...", id, name);
+            logger.debug("Data '{}' doesn't exist in {} store. Inserting it...", id, name);
 
             file = new File();
             file.setTitle(id);
@@ -97,7 +97,7 @@ public class GoogleDriveCloudStore implements CloudStore {
             try {
                 file = drive.files().insert(file, content).execute();
             } catch (IOException e) {
-                throw new IOException("Error inserting file '" + id + "' in store " + name, e);
+                throw new IOException("Error inserting data '" + id + "' in store " + name, e);
             }
 
             fileCache.put(id, file);
@@ -111,16 +111,17 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = fileCache.get(id);
 
         if (file != null && StringUtils.isNotEmpty(file.getDownloadUrl())) {
-            logger.debug("Downloading file {} from store {}", id, name);
+            logger.debug("Downloading data {} from store {}", id, name);
 
             try {
                 HttpRequest request = drive.getRequestFactory().buildGetRequest(new GenericUrl(file.getDownloadUrl()));
                 HttpResponse response = request.execute();
-                ReadableByteChannel content = Channels.newChannel(response.getContent());
 
-                return ChannelUtils.copy(content, target);
+                try (InputStream in = response.getContent()) {
+                    return IOUtils.copy(in, Channels.newOutputStream(target));
+                }
             } catch (IOException e) {
-                throw new IOException("Error downloading file '" + id + "' from store " + name, e);
+                throw new IOException("Error downloading data '" + id + "' from store " + name, e);
             }
         } else {
             return 0;
@@ -132,12 +133,12 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = fileCache.get(id);
 
         if (file != null) {
-            logger.debug("Deleting {}/{} from store {}", rootFolderName, id, name);
+            logger.debug("Deleting data {} from store {}", id, name);
 
             try {
                 drive.files().delete(file.getId()).execute();
             } catch (IOException e) {
-                throw new IOException("Error deleting file '" + id + "' from store " + name, e);
+                throw new IOException("Error deleting data '" + id + "' from store " + name, e);
             }
 
             fileCache.remove(id);
@@ -184,6 +185,8 @@ public class GoogleDriveCloudStore implements CloudStore {
 
         try {
             folder = drive.files().insert(folder).execute();
+
+            logger.debug("Folder '" + folderName + " created in store " + name);
         } catch (IOException e) {
             throw new IOException("Error creating folder '" + folderName + "' in store " + name, e);
         }

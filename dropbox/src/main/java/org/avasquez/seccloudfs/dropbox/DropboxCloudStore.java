@@ -40,12 +40,12 @@ public class DropboxCloudStore implements CloudStore {
     public long upload(String id, SeekableByteChannel src, long length) throws IOException {
         DbxEntry.File file;
 
-        logger.debug("Uploading file '{}' to store {}", id, name);
+        logger.debug("Uploading data '{}' to store {}", id, name);
 
         try {
             file = client.uploadFile(id, DbxWriteMode.force(), length, Channels.newInputStream(src));
-        } catch (DbxException e) {
-            throw new IOException("Error uploading file '" + id + "' from store " + name, e);
+        } catch (Exception e) {
+            throw new IOException("Error uploading data '" + id + "' to store " + name, e);
         }
 
         return file.numBytes;
@@ -55,12 +55,12 @@ public class DropboxCloudStore implements CloudStore {
     public long download(String id, SeekableByteChannel target) throws IOException {
         DbxEntry.File file;
 
-        logger.debug("Downloading file '{}' from store {}", id, name);
+        logger.debug("Downloading data '{}' from store {}", id, name);
 
         try {
             file = client.getFile(id, null, Channels.newOutputStream(target));
         } catch (Exception e) {
-            throw new IOException("Error downloading file '" + id + "' to store " + name, e);
+            throw new IOException("Error downloading data '" + id + "' from store " + name, e);
         }
 
         return file.numBytes;
@@ -68,12 +68,12 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void delete(String id) throws IOException {
-        logger.debug("Deleting file '{}' from store {}", id, name);
+        logger.debug("Deleting data '{}' from store {}", id, name);
 
         try {
             client.delete(id);
-        } catch (DbxException e) {
-            throw new IOException("Error deleting file '" + id + "' from store " + name, e);
+        } catch (Exception e) {
+            throw new IOException("Error deleting data '" + id + "' from store " + name, e);
         }
     }
 

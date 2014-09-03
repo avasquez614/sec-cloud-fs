@@ -36,13 +36,13 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected Object getMetadata(String id) throws IOException {
+    protected Object getDataObject(String id, boolean withData) throws IOException {
         return storeDir.resolve(id);
     }
 
     @Override
-    protected long doUpload(Object metadata, SeekableByteChannel src, long length) throws IOException {
-        Path path = (Path) metadata;
+    protected long doUpload(String id, Object dataObject, SeekableByteChannel src, long length) throws IOException {
+        Path path = (Path) dataObject;
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.CREATE,
             StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
@@ -51,8 +51,8 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected long doDownload(Object metadata, SeekableByteChannel target) throws IOException {
-        Path path = (Path) metadata;
+    protected long doDownload(String id, Object dataObject, SeekableByteChannel target) throws IOException {
+        Path path = (Path) dataObject;
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {
             return fileChannel.transferTo(0, fileChannel.size(), target);
@@ -60,13 +60,13 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected void doDelete(Object metadata) throws IOException {
-        Files.delete((Path) metadata);
+    protected void doDelete(String id, Object dataObject) throws IOException {
+        Files.delete((Path) dataObject);
     }
 
     @Override
-    protected long getDataSize(Object metadata) throws IOException {
-        return Files.size((Path) metadata);
+    protected long getDataSize(Object dataObject) throws IOException {
+        return Files.size((Path) dataObject);
     }
 
     @Override

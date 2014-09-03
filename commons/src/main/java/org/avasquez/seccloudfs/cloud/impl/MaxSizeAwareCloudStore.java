@@ -32,10 +32,10 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
 
     @Override
     public long upload(String id, SeekableByteChannel src, long length) throws IOException {
-        Object metadata = getMetadata(id);
+        Object dataObject = getDataObject(id, false);
 
         synchronized (this) {
-            long dataSize = getDataSize(metadata);
+            long dataSize = getDataSize(dataObject);
             long delta = -dataSize + length;
             long newSize = currentSize.get() + delta;
 
@@ -47,7 +47,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
         }
 
         try {
-            long bytesUploaded = doUpload(metadata, src, length);
+            long bytesUploaded = doUpload(id, dataObject, src, length);
             long delta = -length + bytesUploaded;
 
             currentSize.addAndGet(delta);
@@ -63,15 +63,15 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
 
     @Override
     public long download(String id, SeekableByteChannel target) throws IOException {
-        return doDownload(getMetadata(id), target);
+        return doDownload(id, getDataObject(id, true), target);
     }
 
     @Override
     public void delete(String id) throws IOException {
-        Object metadata = getMetadata(id);
+        Object metadata = getDataObject(id, false);
         long dataSize = getDataSize(metadata);
 
-        doDelete(metadata);
+        doDelete(id, metadata);
 
         currentSize.addAndGet(-dataSize);
     }
@@ -86,15 +86,16 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
         return maxSize - currentSize.get();
     }
 
-    protected abstract Object getMetadata(String id) throws IOException;
+    protected abstract Object getDataObject(String id, boolean withData) throws IOException;
 
-    protected abstract long doUpload(Object metadata, SeekableByteChannel src, long length) throws IOException;
+    protected abstract long doUpload(String id, Object dataObject, SeekableByteChannel src,
+                                     long length) throws IOException;
 
-    protected abstract long doDownload(Object metadata, SeekableByteChannel target) throws IOException;
+    protected abstract long doDownload(String id, Object dataObject, SeekableByteChannel target) throws IOException;
 
-    protected abstract void doDelete(Object metadata) throws IOException;
+    protected abstract void doDelete(String id, Object dataObject) throws IOException;
 
-    protected abstract long getDataSize(Object metadata) throws IOException;
+    protected abstract long getDataSize(Object dataObject) throws IOException;
 
     protected abstract long calculateCurrentSize() throws IOException;
 
