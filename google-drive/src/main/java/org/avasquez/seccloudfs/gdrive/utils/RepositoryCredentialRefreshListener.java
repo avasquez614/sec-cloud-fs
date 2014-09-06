@@ -8,14 +8,14 @@ import com.google.api.client.auth.oauth2.TokenResponse;
 import java.io.IOException;
 
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
-import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialRepository;
+import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
+import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of {@link com.google.api.client.auth.oauth2.CredentialRefreshListener} that updates the stored
- * {@link org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential} on refresh success and deletes it on
+ * {@link org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials} on refresh success and deletes it on
  * refresh error.
  *
  * @author avasquez
@@ -24,43 +24,43 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
 
     private static final Logger logger = LoggerFactory.getLogger(RepositoryCredentialRefreshListener.class);
 
-    private String credentialId;
-    private GoogleDriveCredentialRepository credentialRepository;
+    private String credentialsId;
+    private GoogleDriveCredentialsRepository credentialsRepository;
 
-    public RepositoryCredentialRefreshListener(final String credentialId,
-                                               final GoogleDriveCredentialRepository credentialRepository) {
-        this.credentialId = credentialId;
-        this.credentialRepository = credentialRepository;
+    public RepositoryCredentialRefreshListener(String credentialsId,
+                                               GoogleDriveCredentialsRepository credentialsRepository) {
+        this.credentialsId = credentialsId;
+        this.credentialsRepository = credentialsRepository;
     }
 
     @Override
-    public void onTokenResponse(final Credential credential, final TokenResponse tokenResponse) throws IOException {
-        logger.debug("Credential '" + credentialId + "' refreshed");
+    public void onTokenResponse(Credential credentials, TokenResponse tokenResponse) throws IOException {
+        logger.debug("Credentials '" + credentialsId + "' refreshed");
 
-        GoogleDriveCredential storedCredential = new GoogleDriveCredential();
-        storedCredential.setId(credentialId);
-        storedCredential.setAccessToken(credential.getAccessToken());
-        storedCredential.setRefreshToken(credential.getRefreshToken());
-        storedCredential.setExpirationTime(credential.getExpirationTimeMilliseconds());
+        GoogleDriveCredentials storedCredentials = new GoogleDriveCredentials();
+        storedCredentials.setId(credentialsId);
+        storedCredentials.setAccessToken(credentials.getAccessToken());
+        storedCredentials.setRefreshToken(credentials.getRefreshToken());
+        storedCredentials.setExpirationTime(credentials.getExpirationTimeMilliseconds());
 
         try {
-            credentialRepository.save(storedCredential);
+            credentialsRepository.save(storedCredentials);
         } catch (DbException e) {
-            throw new IOException("Unable to save credential '" + credentialId + "'");
+            throw new IOException("Unable to save credentials '" + credentialsId + "'");
         }
     }
 
     @Override
-    public void onTokenErrorResponse(final Credential credential,
-                                     final TokenErrorResponse tokenErrorResponse) throws IOException {
-        logger.error("An error occurred on refreshing credential '{}': error = {}, errorDescription = {}, " +
+    public void onTokenErrorResponse(Credential credentials,
+                                     TokenErrorResponse tokenErrorResponse) throws IOException {
+        logger.error("An error occurred on refreshing credentials '{}': error = {}, errorDescription = {}, " +
             "errorUri = {}", tokenErrorResponse.getError(), tokenErrorResponse.getErrorDescription(),
             tokenErrorResponse.getErrorUri());
 
         try {
-            credentialRepository.delete(credentialId);
+            credentialsRepository.delete(credentialsId);
         } catch (DbException e) {
-            throw new IOException("Unable to delete credential '" + credentialId + "'", e);
+            throw new IOException("Unable to delete credentials '" + credentialsId + "'", e);
         }
     }
 

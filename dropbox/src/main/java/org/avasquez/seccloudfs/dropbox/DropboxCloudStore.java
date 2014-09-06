@@ -40,12 +40,12 @@ public class DropboxCloudStore implements CloudStore {
     public long upload(String id, SeekableByteChannel src, long length) throws IOException {
         DbxEntry.File file;
 
-        logger.debug("Uploading data '{}' to store {}", id, name);
+        logger.debug("Uploading data {}/{}", name, id);
 
         try {
             file = client.uploadFile(id, DbxWriteMode.force(), length, Channels.newInputStream(src));
         } catch (Exception e) {
-            throw new IOException("Error uploading data '" + id + "' to store " + name, e);
+            throw new IOException("Error uploading data " + name + "/" + id, e);
         }
 
         return file.numBytes;
@@ -55,12 +55,12 @@ public class DropboxCloudStore implements CloudStore {
     public long download(String id, SeekableByteChannel target) throws IOException {
         DbxEntry.File file;
 
-        logger.debug("Downloading data '{}' from store {}", id, name);
+        logger.debug("Downloading data {}/{}", name, id);
 
         try {
             file = client.getFile(id, null, Channels.newOutputStream(target));
         } catch (Exception e) {
-            throw new IOException("Error downloading data '" + id + "' from store " + name, e);
+            throw new IOException("Error downloading data " + name + "/" + id, e);
         }
 
         return file.numBytes;
@@ -68,12 +68,12 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void delete(String id) throws IOException {
-        logger.debug("Deleting data '{}' from store {}", id, name);
+        logger.debug("Deleting data {}/{}", name, id);
 
         try {
             client.delete(id);
         } catch (Exception e) {
-            throw new IOException("Error deleting data '" + id + "' from store " + name, e);
+            throw new IOException("Error deleting data " + name + "/" + id, e);
         }
     }
 

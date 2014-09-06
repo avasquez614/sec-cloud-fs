@@ -29,12 +29,12 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     private static final String BINARY_MIME_TYPE = "application/octet-stream";
 
     private String name;
-    private AmazonS3 client;
+    private AmazonS3 s3;
     private String bucketName;
 
-    public AmazonS3CloudStore(String name, AmazonS3 client, String bucketName) {
+    public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName) {
         this.name = name;
-        this.client = client;
+        this.s3 = s3;
         this.bucketName = bucketName;
     }
 
@@ -48,7 +48,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
         // Check if bucket exists, if not create it
         boolean bucketExists;
         try {
-            bucketExists = client.doesBucketExist(bucketName);
+            bucketExists = s3.doesBucketExist(bucketName);
         } catch (Exception e) {
             throw new IOException("Error checking if bucket '" + bucketName + "' of store " + name + " exists", e);
         }
@@ -57,7 +57,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
             logger.info("Bucket '" + bucketName + "' of store " + name + " does not exist. Creating it...");
 
             try {
-                client.createBucket(bucketName);
+                s3.createBucket(bucketName);
             } catch (Exception e) {
                 throw new IOException("Error creating bucket '" + name + "' of store " + name, e);
             }
@@ -68,31 +68,31 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
 
     @Override
     protected Object getDataObject(String id, boolean withData) throws IOException {
-        logger.debug("Retrieving data object '{}' from store {}", id, name);
+        logger.debug("Retrieving data object {}/{}/{}", name, bucketName, id);
 
         try {
             if (withData) {
-                return client.getObject(bucketName, id);
+                return s3.getObject(bucketName, id);
             } else {
-                return client.getObjectMetadata(bucketName, id);
+                return s3.getObjectMetadata(bucketName, id);
             }
         } catch (Exception e) {
-            throw new IOException("Error retrieving data object '" + id + "' from store " + name, e);
+            throw new IOException("Error retrieving data object " + name + "/" + bucketName + "/" + id, e);
         }
     }
 
     @Override
     protected long doUpload(String id, Object dataObject, SeekableByteChannel src, long length) throws IOException {
-        logger.debug("Uploading data '{}' to store {}", id, name);
+        logger.debug("Uploading data {}/{}/{}", name, bucketName, id);
 
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(BINARY_MIME_TYPE);
         metadata.setContentLength(length);
 
         try {
-            client.putObject(bucketName, id, Channels.newInputStream(src), metadata);
+            s3.putObject(bucketName, id, Channels.newInputStream(src), metadata);
         } catch (Exception e) {
-            throw new IOException("Error uploading data '" + id + "' to store " + name, e);
+            throw new IOException("Error uploading data " + name + "/" + bucketName + "/" + id, e);
         }
 
         return length;
@@ -100,7 +100,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
 
     @Override
     protected long doDownload(String id, Object dataObject, SeekableByteChannel target) throws IOException {
-        logger.debug("Downloading data '{}' from store {}", id, name);
+        logger.debug("Downloading data {}/{}/{}", name, bucketName, id);
 
         try {
             S3Object s3Object = (S3Object) dataObject;
@@ -109,18 +109,18 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
                 return IOUtils.copy(in, Channels.newOutputStream(target));
             }
         } catch (Exception e) {
-            throw new IOException("Error downloading data '" + id + "' from store " + name, e);
+            throw new IOException("Error downloading data " + name + "/" + bucketName + "/" + id, e);
         }
     }
 
     @Override
     protected void doDelete(String id, Object dataObject) throws IOException {
-        logger.debug("Deleting data '{}' from store {}", id, name);
+        logger.debug("Deleting data {}/{}/{}", name, bucketName, id);
 
         try {
-            client.deleteObject(bucketName, id);
+            s3.deleteObject(bucketName, id);
         } catch (Exception e) {
-            throw new IOException("Error deleting data '" + id + "' from store " + name, e);
+            throw new IOException("Error deleting data " + name + "/" + bucketName + "/" + id, e);
         }
     }
 
@@ -136,11 +136,11 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     @Override
     protected long calculateCurrentSize() throws IOException {
         try {
-            ObjectListing objectListing = client.listObjects(new ListObjectsRequest().withBucketName(bucketName));
+            ObjectListing objectListing = s3.listObjects(new ListObjectsRequest().withBucketName(bucketName));
             long total = getTotalSizeOfObjects(objectListing);
 
             while (objectListing.isTruncated()) {
-                objectListing = client.listNextBatchOfObjects(objectListing);
+                objectListing = s3.listNextBatchOfObjects(objectListing);
                 total += getTotalSizeOfObjects(objectListing);
             }
 

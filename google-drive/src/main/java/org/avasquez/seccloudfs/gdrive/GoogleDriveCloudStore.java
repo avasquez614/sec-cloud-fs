@@ -80,15 +80,15 @@ public class GoogleDriveCloudStore implements CloudStore {
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
 
         if (file != null) {
-            logger.debug("Data '{}' already exists in {} store. Updating it...", id, name);
+            logger.debug("Data {}/{}/{} already exists. Updating it...", name, rootFolderName, id);
 
             try {
                 file = drive.files().update(file.getId(), file, content).execute();
             } catch (IOException e) {
-                throw new IOException("Error updating file '" + id + "' in store " + name, e);
+                throw new IOException("Error updating file " + name + "/" + rootFolderName + "/" + id, e);
             }
         } else {
-            logger.debug("Data '{}' doesn't exist in {} store. Inserting it...", id, name);
+            logger.debug("Data {}/{}/{} doesn't exist. Inserting it...", name, rootFolderName, id);
 
             file = new File();
             file.setTitle(id);
@@ -97,7 +97,7 @@ public class GoogleDriveCloudStore implements CloudStore {
             try {
                 file = drive.files().insert(file, content).execute();
             } catch (IOException e) {
-                throw new IOException("Error inserting data '" + id + "' in store " + name, e);
+                throw new IOException("Error inserting data " + name + "/" + rootFolderName + "/" + id, e);
             }
 
             fileCache.put(id, file);
@@ -111,7 +111,7 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = fileCache.get(id);
 
         if (file != null && StringUtils.isNotEmpty(file.getDownloadUrl())) {
-            logger.debug("Downloading data {} from store {}", id, name);
+            logger.debug("Downloading data {}/{}/{}", name, rootFolderName, id);
 
             try {
                 HttpRequest request = drive.getRequestFactory().buildGetRequest(new GenericUrl(file.getDownloadUrl()));
@@ -121,7 +121,7 @@ public class GoogleDriveCloudStore implements CloudStore {
                     return IOUtils.copy(in, Channels.newOutputStream(target));
                 }
             } catch (IOException e) {
-                throw new IOException("Error downloading data '" + id + "' from store " + name, e);
+                throw new IOException("Error downloading data " + name + "/" + rootFolderName + "/" + id, e);
             }
         } else {
             return 0;
@@ -133,12 +133,12 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = fileCache.get(id);
 
         if (file != null) {
-            logger.debug("Deleting data {} from store {}", id, name);
+            logger.debug("Deleting data {}/{}/{}", name, rootFolderName, id);
 
             try {
                 drive.files().delete(file.getId()).execute();
             } catch (IOException e) {
-                throw new IOException("Error deleting data '" + id + "' from store " + name, e);
+                throw new IOException("Error deleting data " + name + "/" + rootFolderName + "/" + id, e);
             }
 
             fileCache.remove(id);

@@ -9,15 +9,14 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.drive.DriveScopes;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import javax.annotation.PostConstruct;
 
-import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
-import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialRepository;
+import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
+import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.avasquez.seccloudfs.gdrive.utils.RepositoryCredentialRefreshListener;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -30,11 +29,14 @@ import org.springframework.beans.factory.annotation.Required;
 public class GoogleDriveAuthorizationSupport {
 
     private static final String REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
-    private static final List<String> SCOPES = Arrays.asList(DriveScopes.DRIVE);
+    private static final List<String> SCOPES = Arrays.asList(
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile");
 
     private String clientId;
     private String clientSecret;
-    private GoogleDriveCredentialRepository credentialRepository;
+    private GoogleDriveCredentialsRepository credentialsRepository;
 
     private GoogleAuthorizationCodeFlow flow;
 
@@ -49,8 +51,8 @@ public class GoogleDriveAuthorizationSupport {
     }
 
     @Required
-    public void setCredentialRepository(GoogleDriveCredentialRepository credentialRepository) {
-        this.credentialRepository = credentialRepository;
+    public void setCredentialsRepository(GoogleDriveCredentialsRepository credentialsRepository) {
+        this.credentialsRepository = credentialsRepository;
     }
 
     @PostConstruct
@@ -73,13 +75,13 @@ public class GoogleDriveAuthorizationSupport {
      *
      * @return the OAuth 2.0 credential
      */
-    public GoogleDriveCredential exchangeCode(String authorizationCode) throws IOException {
+    public GoogleDriveCredentials exchangeCode(String authorizationCode) throws IOException {
         TokenResponse response = flow.newTokenRequest(authorizationCode).setRedirectUri(REDIRECT_URI).execute();
-        String credentialId = GoogleDriveCredential.generateId();
-        Credential credential = createCredential(credentialId, response);
-        GoogleDriveCredential storedCredential = new GoogleDriveCredential(credentialId, credential);
+        String credentialId = GoogleDriveCredentials.generateId();
+        Credential credentials = createCredentials(credentialId, response);
+        GoogleDriveCredentials storedCredentials = new GoogleDriveCredentials(credentialId, credentials);
 
-        return storedCredential;
+        return storedCredentials;
     }
 
     private void createFlow() {
@@ -91,10 +93,10 @@ public class GoogleDriveAuthorizationSupport {
             .build();
     }
 
-    private Credential createCredential(String id, TokenResponse tokenResponse) {
+    private Credential createCredentials(String id, TokenResponse tokenResponse) {
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
-        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialRepository);
+        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialsRepository);
 
         return new GoogleCredential.Builder()
             .setTransport(transport)

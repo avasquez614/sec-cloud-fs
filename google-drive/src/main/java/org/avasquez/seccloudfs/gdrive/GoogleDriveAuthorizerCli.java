@@ -6,8 +6,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
-import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialRepository;
+import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
+import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.avasquez.seccloudfs.utils.CliUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -25,42 +25,58 @@ public class GoogleDriveAuthorizerCli {
     private BufferedReader stdIn;
     private PrintWriter stdOut;
     private GoogleDriveAuthorizationSupport authSupport;
-    private GoogleDriveCredentialRepository credentialRepository;
+    private GoogleDriveCredentialsRepository credentialsRepository;
 
     public GoogleDriveAuthorizerCli(BufferedReader stdIn, PrintWriter stdOut,
                                     GoogleDriveAuthorizationSupport authSupport,
-                                    GoogleDriveCredentialRepository credentialRepository) {
+                                    GoogleDriveCredentialsRepository credentialsRepository) {
         this.stdIn = stdIn;
         this.stdOut = stdOut;
         this.authSupport = authSupport;
-        this.credentialRepository = credentialRepository;
+        this.credentialsRepository = credentialsRepository;
     }
 
     public void run() {
         String authUrl = authSupport.getAuthorizationUrl();
-        String code = null;
 
         stdOut.println("1. Go to: " + authUrl);
-        stdOut.print("2. Enter authorization code: ");
+        stdOut.println("2. Click \"Allow\" (you might have to log in first)");
+        stdOut.print("3. Enter authorization code: ");
         stdOut.flush();
 
+        String code = null;
         try {
             code = CliUtils.readLine(stdIn, stdOut);
         } catch (IOException e) {
-            CliUtils.die("ERROR: Unable to read authorization code", e, stdOut);
+            CliUtils.die("ERROR: Unable to read authorization code input", e, stdOut);
         }
 
+        GoogleDriveCredentials credentials = null;
         try {
-            GoogleDriveCredential credential = authSupport.exchangeCode(code);
-
-            credentialRepository.insert(credential);
-
-            stdOut.println("Credential successfully obtained and stored in DB with ID '" + credential.getId() + "'");
-            stdOut.println();
+            credentials = authSupport.exchangeCode(code);
         } catch (IOException e) {
-            CliUtils.die("ERROR: Unable to exchange authorization code for credential", e, stdOut);
+            CliUtils.die("ERROR: Unable to exchange authorization code for credentials", e, stdOut);
+        }
+
+        stdOut.print("4. Enter the username: ");
+        stdOut.flush();
+
+        String username = null;
+        try {
+            username = CliUtils.readLine(stdIn, stdOut);
+        } catch (IOException e) {
+            CliUtils.die("ERROR: Unable to read username input", e, stdOut);
+        }
+
+        credentials.setUsername(username);
+
+        try {
+            credentialsRepository.insert(credentials);
+
+            stdOut.println("Credentials successfully obtained and stored in DB with ID '" + credentials.getId() + "'");
+            stdOut.println();
         } catch (DbException e) {
-            CliUtils.die("ERROR: Unable to store credential in DB", e, stdOut);
+            CliUtils.die("ERROR: Unable to store credentials in DB", e, stdOut);
         }
     }
 
@@ -69,8 +85,8 @@ public class GoogleDriveAuthorizerCli {
         BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
         PrintWriter stdOut = new PrintWriter(System.out);
         GoogleDriveAuthorizationSupport authSupport = context.getBean(GoogleDriveAuthorizationSupport.class);
-        GoogleDriveCredentialRepository credentialRepository = context.getBean(GoogleDriveCredentialRepository.class);
-        GoogleDriveAuthorizerCli cli = new GoogleDriveAuthorizerCli(stdIn, stdOut, authSupport, credentialRepository);
+        GoogleDriveCredentialsRepository credentialsRepository = context.getBean(GoogleDriveCredentialsRepository.class);
+        GoogleDriveAuthorizerCli cli = new GoogleDriveAuthorizerCli(stdIn, stdOut, authSupport, credentialsRepository);
 
         cli.run();
     }

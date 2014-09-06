@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.gdrive;
+package org.avasquez.seccloudfs.gdrive.utils;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.CredentialRefreshListener;
@@ -16,9 +16,9 @@ import javax.annotation.PostConstruct;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredential;
-import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialRepository;
-import org.avasquez.seccloudfs.gdrive.utils.RepositoryCredentialRefreshListener;
+import org.avasquez.seccloudfs.gdrive.GoogleDriveCloudStore;
+import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
+import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.manager.EmbeddedCacheManager;
@@ -26,7 +26,7 @@ import org.springframework.beans.factory.annotation.Required;
 
 /**
  * Creates {@link org.avasquez.seccloudfs.cloud.CloudStore}s from the {@link org.avasquez.seccloudfs.gdrive.db.model
- * .GoogleDriveCredential}s stored in the DB, and then registers them with the {@link org.avasquez.seccloudfs.cloud
+ * .GoogleDriveCredentials} stored in the DB, and then registers them with the {@link org.avasquez.seccloudfs.cloud
  * .CloudStoreRegistry}.
  *
  * @author avasquez
@@ -37,7 +37,7 @@ public class GoogleDriveCloudStoreRegistrar {
 
     private String clientId;
     private String clientSecret;
-    private GoogleDriveCredentialRepository credentialRepository;
+    private GoogleDriveCredentialsRepository credentialsRepository;
     private String rootFolderName;
     private EmbeddedCacheManager cacheManager;
     private CloudStoreRegistry registry;
@@ -53,8 +53,8 @@ public class GoogleDriveCloudStoreRegistrar {
     }
 
     @Required
-    public void setCredentialRepository( GoogleDriveCredentialRepository credentialRepository) {
-        this.credentialRepository = credentialRepository;
+    public void setCredentialsRepository(GoogleDriveCredentialsRepository credentialsRepository) {
+        this.credentialsRepository = credentialsRepository;
     }
 
     @Required
@@ -78,38 +78,38 @@ public class GoogleDriveCloudStoreRegistrar {
      */
     @PostConstruct
     public void registerStores() throws IOException {
-        Iterable<GoogleDriveCredential> credentials = findCredentials();
-        for (GoogleDriveCredential credential : credentials) {
-            registry.register(createStore(credential));
+        Iterable<GoogleDriveCredentials> credentialsList = findCredentials();
+        for (GoogleDriveCredentials credentials : credentialsList) {
+            registry.register(createStore(credentials));
         }
     }
 
-    private Iterable<GoogleDriveCredential> findCredentials() throws IOException {
+    private Iterable<GoogleDriveCredentials> findCredentials() throws IOException {
         try {
-            return credentialRepository.findAll();
+            return credentialsRepository.findAll();
         } catch (DbException e) {
-            throw new IOException("Unable to retrieve credentials from DB", e);
+            throw new IOException("Unable to retrieve all credentials from DB", e);
         }
     }
 
-    private CloudStore createStore(GoogleDriveCredential storedCredential) {
+    private CloudStore createStore(GoogleDriveCredentials storedCredentials) throws IOException {
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
-        String id = storedCredential.getId();
-        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialRepository);
+        String id = storedCredentials.getId();
+        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialsRepository);
 
-        Credential credential = new GoogleCredential.Builder()
+        Credential credentials = new GoogleCredential.Builder()
             .setTransport(transport)
             .setJsonFactory(jsonFactory)
             .setClientSecrets(clientId, clientSecret)
             .addRefreshListener(refreshListener)
             .build()
-            .setAccessToken(storedCredential.getAccessToken())
-            .setRefreshToken(storedCredential.getRefreshToken())
-            .setExpirationTimeMilliseconds(storedCredential.getExpirationTime());
+            .setAccessToken(storedCredentials.getAccessToken())
+            .setRefreshToken(storedCredentials.getRefreshToken())
+            .setExpirationTimeMilliseconds(storedCredentials.getExpirationTime());
 
-        Drive drive = new Drive.Builder(transport, jsonFactory, credential).build();
-        String storeName = STORE_NAME_PREFIX + id;
+        Drive drive = new Drive.Builder(transport, jsonFactory, credentials).build();
+        String storeName = STORE_NAME_PREFIX + storedCredentials.getUsername();
         Cache<String, File> fileCache = createFileCache(storeName);
 
         return new GoogleDriveCloudStore(storeName, drive, fileCache, rootFolderName);

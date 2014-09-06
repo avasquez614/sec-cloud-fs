@@ -21,8 +21,8 @@
         <property name="mongoClient" ref="mongoClient" />
     </bean>
 
-    <bean id="dropboxCredentialRepo"
-          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.JongoDropboxCredentialRepository">
+    <bean id="dropboxCredentialsRepo"
+          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.JongoDropboxCredentialsRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 

@@ -6,14 +6,15 @@ import org.bson.types.ObjectId;
 import org.jongo.marshall.jackson.oid.Id;
 
 /**
- * Represents Google Drive credential info that's stored in the DB.
+ * Represents Google Drive credentials info that's stored in the DB.
  *
  * @author avasquez
  */
-public class GoogleDriveCredential {
+public class GoogleDriveCredentials {
 
     @Id
     private String id;
+    private String username;
     private String accessToken;
     private String refreshToken;
     private Long expirationTime;
@@ -25,10 +26,10 @@ public class GoogleDriveCredential {
         return ObjectId.get().toString();
     }
 
-    public GoogleDriveCredential() {
+    public GoogleDriveCredentials() {
     }
 
-    public GoogleDriveCredential(String id, Credential credential) {
+    public GoogleDriveCredentials(String id, Credential credential) {
         this.id = id;
         this.accessToken = credential.getAccessToken();
         this.refreshToken = credential.getRefreshToken();
@@ -41,6 +42,14 @@ public class GoogleDriveCredential {
 
     public void setId(final String id) {
         this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(final String username) {
+        this.username = username;
     }
 
     public String getAccessToken() {

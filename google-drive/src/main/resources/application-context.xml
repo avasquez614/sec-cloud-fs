@@ -21,13 +21,13 @@
         <property name="mongoClient" ref="mongoClient" />
     </bean>
 
-    <bean id="googleDriveCredentialRepo"
-          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialRepository">
+    <bean id="googleDriveCredentialsRepo"
+          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialsRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
     <bean id="authSupport" class="org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizationSupport">
-        <property name="credentialRepository" ref="googleDriveCredentialRepo"/>
+        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
         <property name="clientSecret" value="${google.clientId}"/>
         <property name="clientId" value="${google.clientSecret}"/>
     </bean>

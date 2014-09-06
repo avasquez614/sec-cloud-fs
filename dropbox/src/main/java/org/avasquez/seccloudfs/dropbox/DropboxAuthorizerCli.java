@@ -1,6 +1,5 @@
 package org.avasquez.seccloudfs.dropbox;
 
-import com.dropbox.core.DbxAuthFinish;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxWebAuthNoRedirect;
 
@@ -9,8 +8,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
-import org.avasquez.seccloudfs.dropbox.db.model.DropboxCredential;
-import org.avasquez.seccloudfs.dropbox.db.repos.DropboxCredentialRepository;
+import org.avasquez.seccloudfs.dropbox.db.model.DropboxCredentials;
+import org.avasquez.seccloudfs.dropbox.db.repos.DropboxCredentialsRepository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.utils.CliUtils;
 import org.springframework.context.ApplicationContext;
@@ -29,43 +28,60 @@ public class DropboxAuthorizerCli {
     private BufferedReader stdIn;
     private PrintWriter stdOut;
     private DbxWebAuthNoRedirect webAuth;
-    private DropboxCredentialRepository credentialRepository;
+    private DropboxCredentialsRepository credentialsRepository;
 
     public DropboxAuthorizerCli(BufferedReader stdIn, PrintWriter stdOut, DbxWebAuthNoRedirect webAuth,
-                                DropboxCredentialRepository credentialRepository) {
+                                DropboxCredentialsRepository credentialsRepository) {
         this.stdIn = stdIn;
         this.stdOut = stdOut;
         this.webAuth = webAuth;
-        this.credentialRepository = credentialRepository;
+        this.credentialsRepository = credentialsRepository;
     }
 
     public void run() {
         String authUrl = webAuth.start();
-        String code = null;
 
         stdOut.println("1. Go to: " + authUrl);
         stdOut.println("2. Click \"Allow\" (you might have to log in first)");
         stdOut.print("3. Enter the authorization code: ");
         stdOut.flush();
 
+        String code = null;
         try {
             code = CliUtils.readLine(stdIn, stdOut);
         } catch (IOException e) {
-            CliUtils.die("ERROR: Unable to read authorization code", e, stdOut);
+            CliUtils.die("ERROR: Unable to read authorization code input", e, stdOut);
         }
 
+        String accessToken = null;
         try {
-            DbxAuthFinish authFinish = webAuth.finish(code);
-            DropboxCredential credential = new DropboxCredential(authFinish.accessToken);
-
-            credentialRepository.insert(credential);
-
-            stdOut.println("Credential successfully obtained and stored in DB with ID '" + credential.getId() + "'");
-            stdOut.println();
+            accessToken = webAuth.finish(code).accessToken;
         } catch (DbxException e) {
-            CliUtils.die("ERROR: Unable to exchange authorization code for credential", e, stdOut);
+            CliUtils.die("ERROR: Unable to exchange authorization code for credentials", e, stdOut);
+        }
+
+        DropboxCredentials credentials = new DropboxCredentials();
+        credentials.setAccessToken(accessToken);
+
+        stdOut.print("4. Enter the username: ");
+        stdOut.flush();
+
+        String username = null;
+        try {
+            username = CliUtils.readLine(stdIn, stdOut);
+        } catch (IOException e) {
+            CliUtils.die("ERROR: Unable to read username input", e, stdOut);
+        }
+
+        credentials.setUsername(username);
+
+        try {
+            credentialsRepository.insert(credentials);
+
+            stdOut.println("Credentials successfully obtained and stored in DB with ID '" + credentials.getId() + "'");
+            stdOut.println();
         } catch (DbException e) {
-            CliUtils.die("ERROR: Unable to store credential in DB", e, stdOut);
+            CliUtils.die("ERROR: Unable to store credentials in DB", e, stdOut);
         }
     }
 
@@ -74,7 +90,7 @@ public class DropboxAuthorizerCli {
         BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
         PrintWriter stdOut = new PrintWriter(System.out);
         DbxWebAuthNoRedirect auth = context.getBean(DbxWebAuthNoRedirect.class);
-        DropboxCredentialRepository credentialRepository = context.getBean(DropboxCredentialRepository.class);
+        DropboxCredentialsRepository credentialRepository = context.getBean(DropboxCredentialsRepository.class);
         DropboxAuthorizerCli cli = new DropboxAuthorizerCli(stdIn, stdOut, auth, credentialRepository);
 
         cli.run();

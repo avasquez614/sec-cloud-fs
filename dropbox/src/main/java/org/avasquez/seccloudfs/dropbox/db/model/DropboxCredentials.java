@@ -4,26 +4,17 @@ import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
 
 /**
- * Represents Dropbox credential info that's stored in the DB.
+ * Represents Dropbox credentials info that's stored in the DB.
  *
  * @author avasquez
  */
-public class DropboxCredential {
+public class DropboxCredentials {
 
     @Id
     @ObjectId
     private String id;
+    private String username;
     private String accessToken;
-
-    /**
-     * Private no-arg constructor, for use by frameworks like Jongo/Jackson.
-     */
-    private DropboxCredential() {
-    }
-
-    public DropboxCredential(String accessToken) {
-        this.accessToken = accessToken;
-    }
 
     public String getId() {
         return id;
@@ -31,6 +22,14 @@ public class DropboxCredential {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(final String username) {
+        this.username = username;
     }
 
     public String getAccessToken() {
