@@ -2,15 +2,19 @@ package org.avasquez.seccloudfs.erasure.impl;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
+import java.io.IOException;
 import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import org.apache.commons.io.IOUtils;
-import org.avasquez.seccloudfs.erasure.Slices;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.springframework.core.io.ClassPathResource;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -30,6 +34,9 @@ public class LiberationEncodingTest {
     private static final int PACKET_SIZE =  8;
 
     private static final String FILE_PATH = "gpl-3.0.txt";
+
+    @Rule
+    public TemporaryFolder tmpFolder = new TemporaryFolder();
 
     private JerasureEncoder encoder;
     private JerasureDecoder decoder;
@@ -56,34 +63,20 @@ public class LiberationEncodingTest {
         ClassPathResource resource = new ClassPathResource(FILE_PATH);
         int size = (int) resource.getFile().length();
         ReadableByteChannel inputChannel = Channels.newChannel(resource.getInputStream());
+        FileChannel[] dataSlices = createTmpFileChannels(encoder.getK());
+        FileChannel[] codingSlices = createTmpFileChannels(encoder.getM());
 
-        Slices slices = encoder.encode(inputChannel, size);
+        int sliceSize = encoder.encode(inputChannel, size, dataSlices, codingSlices);
 
-        // Check that slices are not garbage collected
-        System.gc();
-
-        Thread.sleep(3000);
-
-        assertNotNull(slices);
-
-        ByteBuffer[] dataSlices = slices.getDataSlices();
-        ByteBuffer[] codingSlices = slices.getCodingSlices();
-
-        assertNotNull(dataSlices);
-        assertEquals(K, dataSlices.length);
-
-        assertNotNull(codingSlices);
-        assertEquals(M, codingSlices.length);
+        assertEquals(dataSlices[0].size(), sliceSize);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream(size);
         WritableByteChannel outputChannel = Channels.newChannel(output);
 
-        decoder.decode(slices, size, outputChannel);
+        resetChannels(dataSlices);
+        resetChannels(codingSlices);
 
-        // Check that slices are not garbage collected
-        System.gc();
-
-        Thread.sleep(3000);
+        decoder.decode(size, dataSlices, codingSlices, outputChannel);
 
         byte[] outputData = output.toByteArray();
 
@@ -98,24 +91,12 @@ public class LiberationEncodingTest {
         byte[] originalData = IOUtils.toByteArray(resource.getInputStream());
         int size = originalData.length;
         ReadableByteChannel inputChannel = Channels.newChannel(new ByteArrayInputStream(originalData));
+        FileChannel[] dataSlices = createTmpFileChannels(encoder.getK());
+        FileChannel[] codingSlices = createTmpFileChannels(encoder.getM());
 
-        Slices slices = encoder.encode(inputChannel, size);
+        int sliceSize = encoder.encode(inputChannel, size, dataSlices, codingSlices);
 
-        // Check that slices are not garbage collected
-        System.gc();
-
-        Thread.sleep(3000);
-
-        assertNotNull(slices);
-
-        ByteBuffer[] dataSlices = slices.getDataSlices();
-        ByteBuffer[] codingSlices = slices.getCodingSlices();
-
-        assertNotNull(dataSlices);
-        assertEquals(K, dataSlices.length);
-
-        assertNotNull(codingSlices);
-        assertEquals(M, codingSlices.length);
+        assertEquals(dataSlices[0].size(), sliceSize);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream(size);
         WritableByteChannel outputChannel = Channels.newChannel(output);
@@ -123,23 +104,36 @@ public class LiberationEncodingTest {
         dataSlices[2] = null;
         codingSlices[0] = null;
 
-        decoder.decode(slices, size, outputChannel);
+        resetChannels(dataSlices);
+        resetChannels(codingSlices);
 
-        // Check that slices are not garbage collected
-        System.gc();
-
-        Thread.sleep(3000);
+        decoder.decode(size, dataSlices, codingSlices, outputChannel);
 
         byte[] outputData = output.toByteArray();
 
         assertNotNull(outputData);
         assertEquals(size, outputData.length);
-        assertArrayEquals(originalData, outputData);
+        assertArrayEquals(IOUtils.toByteArray(resource.getInputStream()), outputData);
     }
 
-    private void resetBuffers(ByteBuffer[] buffers) {
-        for (ByteBuffer buffer : buffers) {
-            buffer.clear();
+    private FileChannel[] createTmpFileChannels(int num) throws IOException {
+        FileChannel[] channels = new FileChannel[num];
+
+        for (int i = 0; i < num; i++) {
+            Path path = tmpFolder.newFile().toPath();
+            FileChannel channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+
+            channels[i] = channel;
+        }
+
+        return channels;
+    }
+
+    private void resetChannels(FileChannel[] channels) throws IOException {
+        for (FileChannel channel : channels) {
+            if (channel != null) {
+                channel.position(0);
+            }
         }
     }
 

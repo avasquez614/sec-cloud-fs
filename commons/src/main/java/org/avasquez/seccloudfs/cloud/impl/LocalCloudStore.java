@@ -2,7 +2,8 @@ package org.avasquez.seccloudfs.cloud.impl;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -41,7 +42,7 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected long doUpload(String id, Object dataObject, SeekableByteChannel src, long length) throws IOException {
+    protected long doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
         Path path = (Path) dataObject;
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.CREATE,
@@ -51,7 +52,7 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected long doDownload(String id, Object dataObject, SeekableByteChannel target) throws IOException {
+    protected long doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
         Path path = (Path) dataObject;
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {

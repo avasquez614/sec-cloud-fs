@@ -45,19 +45,9 @@ public abstract class AbstractJerasureCodingMethod implements JerasureCodingMeth
         this.m = m;
     }
 
-    @Override
-    public int getW() {
-        return w;
-    }
-
     @Required
     public void setW(int w) {
         this.w = w;
-    }
-
-    @Override
-    public int getPacketSize() {
-        return packetSize;
     }
 
     @Required
@@ -68,6 +58,22 @@ public abstract class AbstractJerasureCodingMethod implements JerasureCodingMeth
     @PostConstruct
     public void init() {
         doInit();
+    }
+
+    @Override
+    public int getPaddedSize(final int size) {
+        int minSize = k * w * packetSize;
+        int mod = size % minSize;
+
+        if (mod != 0) {
+            if (size < minSize) {
+                return minSize;
+            } else {
+                return size + minSize - mod;
+            }
+        }
+
+        return size;
     }
 
     @Override

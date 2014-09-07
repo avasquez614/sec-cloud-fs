@@ -13,7 +13,8 @@ import com.google.api.services.drive.model.ParentReference;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -75,7 +76,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, SeekableByteChannel src, long length) throws IOException {
+    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
         File file = fileCache.get(id);
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
 
@@ -107,7 +108,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     }
 
     @Override
-    public long download(String id, SeekableByteChannel target) throws IOException {
+    public long download(String id, WritableByteChannel target) throws IOException {
         File file = fileCache.get(id);
 
         if (file != null && StringUtils.isNotEmpty(file.getDownloadUrl())) {

@@ -5,7 +5,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -35,17 +36,17 @@ public class EncryptingCloudStore implements CloudStore {
     private EncryptionKeyRepository keyRepository;
 
     @Required
-    public void setUnderlyingStore(final CloudStore underlyingStore) {
+    public void setUnderlyingStore(CloudStore underlyingStore) {
         this.underlyingStore = underlyingStore;
     }
 
     @Required
-    public void setCipherService(final AbstractSymmetricCipherService cipherService) {
+    public void setCipherService(AbstractSymmetricCipherService cipherService) {
         this.cipherService = cipherService;
     }
 
     @Required
-    public void setKeyRepository(final EncryptionKeyRepository keyRepository) {
+    public void setKeyRepository(EncryptionKeyRepository keyRepository) {
         this.keyRepository = keyRepository;
     }
 
@@ -55,7 +56,7 @@ public class EncryptingCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(final String id, final SeekableByteChannel src, final long length) throws IOException {
+    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
         Path tmpFile = Files.createTempFile(id, null, null);
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
@@ -77,7 +78,7 @@ public class EncryptingCloudStore implements CloudStore {
     }
 
     @Override
-    public long download(final String id, final SeekableByteChannel target) throws IOException {
+    public long download(String id, WritableByteChannel target) throws IOException {
         Path tmpFile = Files.createTempFile(id, null, null);
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
@@ -99,7 +100,7 @@ public class EncryptingCloudStore implements CloudStore {
     }
 
     @Override
-    public void delete(final String id) throws IOException {
+    public void delete(String id) throws IOException {
         underlyingStore.delete(id);
     }
 

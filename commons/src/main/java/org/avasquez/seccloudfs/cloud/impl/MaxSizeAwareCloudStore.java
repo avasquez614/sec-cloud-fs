@@ -1,7 +1,8 @@
 package org.avasquez.seccloudfs.cloud.impl;
 
 import java.io.IOException;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.PostConstruct;
 
@@ -31,7 +32,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, SeekableByteChannel src, long length) throws IOException {
+    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
         Object dataObject = getDataObject(id, false);
 
         synchronized (this) {
@@ -62,7 +63,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     }
 
     @Override
-    public long download(String id, SeekableByteChannel target) throws IOException {
+    public long download(String id, WritableByteChannel target) throws IOException {
         return doDownload(id, getDataObject(id, true), target);
     }
 
@@ -88,10 +89,10 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
 
     protected abstract Object getDataObject(String id, boolean withData) throws IOException;
 
-    protected abstract long doUpload(String id, Object dataObject, SeekableByteChannel src,
+    protected abstract long doUpload(String id, Object dataObject, ReadableByteChannel src,
                                      long length) throws IOException;
 
-    protected abstract long doDownload(String id, Object dataObject, SeekableByteChannel target) throws IOException;
+    protected abstract long doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException;
 
     protected abstract void doDelete(String id, Object dataObject) throws IOException;
 

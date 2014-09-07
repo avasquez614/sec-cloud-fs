@@ -1,7 +1,8 @@
 package org.avasquez.seccloudfs.cloud;
 
 import java.io.IOException;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 
 /**
  * Handles the storage of data in the cloud.
@@ -19,22 +20,22 @@ public interface CloudStore {
      * Uploads the given data in the cloud.
      *
      * @param id        the ID used to identify the data
-     * @param src       the source channel from where the data can be retrieved
+     * @param src       the source channel from where the data should be retrieved
      * @param length    the length of the data
      *
      * @return the final number of bytes uploaded
      */
-    long upload(String id, SeekableByteChannel src, long length) throws IOException;
+    long upload(String id, ReadableByteChannel src, long length) throws IOException;
 
     /**
      * Downloads the data from the cloud.
      *
      * @param id        the ID used to identify the data
-     * @param target    the target channel to where the data will be written
+     * @param target    the target channel where the data should be written to
      *
      * @return the final number of bytes downloaded
      */
-    long download(String id, SeekableByteChannel target) throws IOException;
+    long download(String id, WritableByteChannel target) throws IOException;
 
     /**
      * Deletes the data.

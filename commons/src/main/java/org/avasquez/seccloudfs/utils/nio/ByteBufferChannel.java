@@ -19,6 +19,10 @@ public class ByteBufferChannel implements SeekableByteChannel {
         this.buffer = buffer;
     }
 
+    public ByteBuffer getBuffer() {
+        return buffer;
+    }
+
     @Override
     public int read(ByteBuffer dst) throws IOException {
         int bytesToRead = buffer.remaining();

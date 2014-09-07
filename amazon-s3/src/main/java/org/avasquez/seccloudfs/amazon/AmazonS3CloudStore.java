@@ -10,7 +10,8 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 
 import org.apache.commons.io.IOUtils;
 import org.avasquez.seccloudfs.cloud.impl.MaxSizeAwareCloudStore;
@@ -82,7 +83,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected long doUpload(String id, Object dataObject, SeekableByteChannel src, long length) throws IOException {
+    protected long doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
         logger.debug("Uploading data {}/{}/{}", name, bucketName, id);
 
         ObjectMetadata metadata = new ObjectMetadata();
@@ -99,7 +100,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected long doDownload(String id, Object dataObject, SeekableByteChannel target) throws IOException {
+    protected long doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
         logger.debug("Downloading data {}/{}/{}", name, bucketName, id);
 
         try {

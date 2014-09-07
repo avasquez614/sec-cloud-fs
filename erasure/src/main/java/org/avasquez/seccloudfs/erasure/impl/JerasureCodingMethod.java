@@ -20,14 +20,13 @@ public interface JerasureCodingMethod {
     int getM();
 
     /**
-     * Returns the word size
+     * Returns the size plus necessary pad size.
+     *
+     * @param size the original size
+     *
+     * @return size + pad size
      */
-    int getW();
-
-    /**
-     * Returns the packet size
-     */
-    int getPacketSize();
+    int getPaddedSize(int size);
 
     /**
      * Encodes the data slices (k) into the coding slices (m).

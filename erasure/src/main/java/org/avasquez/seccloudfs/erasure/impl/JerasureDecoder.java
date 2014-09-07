@@ -2,11 +2,11 @@ package org.avasquez.seccloudfs.erasure.impl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
 import org.avasquez.seccloudfs.erasure.DecodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
-import org.avasquez.seccloudfs.erasure.Slices;
 import org.avasquez.seccloudfs.erasure.utils.ByteBufferUtils;
 import org.bridj.Pointer;
 import org.springframework.beans.factory.annotation.Required;
@@ -26,44 +26,53 @@ public class JerasureDecoder implements ErasureDecoder {
     }
 
     @Override
-    public void decode(Slices slices, int originalSize, WritableByteChannel outputChannel)
-            throws DecodingException {
+    public int getK() {
+        return codingMethod.getK();
+    }
+
+    @Override
+    public int getM() {
+        return codingMethod.getM();
+    }
+
+    @Override
+    public void decode(int originalSize, ReadableByteChannel[] dataSlices, ReadableByteChannel[] codingSlices,
+                       WritableByteChannel output) throws DecodingException {
         int k = codingMethod.getK();
         int m = codingMethod.getM();
-        ByteBuffer[] dataSlices = slices.getDataSlices();
-        ByteBuffer[] codingSlices = slices.getCodingSlices();
-        int[] erasures = new int[k + m];
-        int numErased = 0;
-        int sliceSize = 0;
 
         if (dataSlices.length != k) {
-            throw new DecodingException("Illegal length of data slices array (expected: " + k +
-                ", actual" + dataSlices.length + ")");
+            throw new DecodingException("Illegal length of data slices array (expected: " + k + ", actual: " +
+                dataSlices.length + ")");
         }
-        if (codingSlices.length != k) {
-            throw new DecodingException("Illegal length of coding slices array (expected: " + m +
-                ", actual" + codingSlices.length + ")");
+        if (codingSlices.length != m) {
+            throw new DecodingException("Illegal length of coding slices array (expected: " + m + ", actual: " +
+                codingSlices.length + ")");
         }
 
+        int sliceSize = getSliceSize(originalSize);
+        ByteBuffer[] dataBuffers = createBuffers(dataSlices, sliceSize);
+        ByteBuffer[] codingBuffers = createBuffers(codingSlices, sliceSize);
+        int[] erasures = new int[k + m];
+        int numErased = 0;
+
         // Look for erasures in data slices
-        for (int i = 0; i < dataSlices.length; i++) {
-            if (dataSlices[i] == null) {
+        for (int i = 0; i < dataBuffers.length; i++) {
+            if (dataBuffers[i] == null) {
                 erasures[numErased] = i;
                 numErased++;
-            } else if (sliceSize == 0) {
-                sliceSize = dataSlices[i].capacity();
             }
         }
 
         // If no data slices have been erased, just write them to the output channel
         if (numErased > 0) {
             // Look for erasures in coding slices
-            for (int i = 0; i < codingSlices.length; i++) {
-                if (codingSlices[i] == null) {
+            for (int i = 0; i < codingBuffers.length; i++) {
+                if (codingBuffers[i] == null) {
                     erasures[numErased] = k + i;
                     numErased++;
                 } else if (sliceSize == 0) {
-                    sliceSize = codingSlices[i].capacity();
+                    sliceSize = codingBuffers[i].capacity();
                 }
             }
 
@@ -76,15 +85,15 @@ public class JerasureDecoder implements ErasureDecoder {
             // Allocate memory for missing slices, which will be reconstructed by the decoder
             for (int i = 0; i < numErased; i++) {
                 if (erasures[i] < k) {
-                    dataSlices[erasures[i]] = ByteBuffer.allocateDirect(sliceSize);
+                    dataBuffers[erasures[i]] = ByteBuffer.allocateDirect(sliceSize);
                 } else {
-                    codingSlices[erasures[i] - k] = ByteBuffer.allocateDirect(sliceSize);
+                    codingBuffers[erasures[i] - k] = ByteBuffer.allocateDirect(sliceSize);
                 }
             }
 
             // Get pointers for data and coding slices;
-            Pointer<Pointer<Byte>> dataPtrs = ByteBufferUtils.asPointers(dataSlices);
-            Pointer<Pointer<Byte>> codingPtrs = ByteBufferUtils.asPointers(codingSlices);
+            Pointer<Pointer<Byte>> dataPtrs = ByteBufferUtils.asPointers(dataBuffers);
+            Pointer<Pointer<Byte>> codingPtrs = ByteBufferUtils.asPointers(codingBuffers);
 
             // Do decoding
             boolean success = codingMethod.decode(Pointer.pointerToInts(erasures), dataPtrs, codingPtrs, sliceSize);
@@ -95,18 +104,46 @@ public class JerasureDecoder implements ErasureDecoder {
 
         // Write completed data slices to output channel, until original size has been written
         int totalWritten = 0;
-        for (int i = 0; i < dataSlices.length; i++) {
+        for (int i = 0; i < dataBuffers.length; i++) {
             if (totalWritten + sliceSize > originalSize) {
                 // This is the slice with padded zeroes, so just write the actual bytes
-                dataSlices[i].limit(originalSize - totalWritten);
+                dataBuffers[i].limit(originalSize - totalWritten);
             }
 
             try {
-                totalWritten += outputChannel.write(dataSlices[i]);
+                totalWritten += output.write(dataBuffers[i]);
             } catch (IOException e) {
-                throw new DecodingException("Unable to write data to output channel", e);
+                throw new DecodingException("Unable to write data to output", e);
             }
         }
+    }
+
+    private int getSliceSize(int dataSize) {
+        return codingMethod.getPaddedSize(dataSize) / getK();
+    }
+
+    private ByteBuffer[] createBuffers(ReadableByteChannel[] channels, int sliceSize) throws DecodingException {
+        ByteBuffer[] buffers = new ByteBuffer[channels.length];
+
+        for (int i = 0; i < channels.length; i++) {
+            ReadableByteChannel channel = channels[i];
+            if (channel != null) {
+                try {
+                    ByteBuffer buffer = ByteBuffer.allocateDirect(sliceSize);
+                    channel.read(buffer);
+
+                    buffer.clear();
+
+                    buffers[i] = buffer;
+                } catch (IOException e) {
+                    throw new DecodingException("Error copying channel to byte buffer", e);
+                }
+            } else {
+                buffers[i] = null;
+            }
+        }
+
+        return buffers;
     }
 
 }

@@ -8,7 +8,8 @@ import com.dropbox.core.DbxWriteMode;
 
 import java.io.IOException;
 import java.nio.channels.Channels;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, SeekableByteChannel src, long length) throws IOException {
+    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
         DbxEntry.File file;
 
         logger.debug("Uploading data {}/{}", name, id);
@@ -52,7 +53,7 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public long download(String id, SeekableByteChannel target) throws IOException {
+    public long download(String id, WritableByteChannel target) throws IOException {
         DbxEntry.File file;
 
         logger.debug("Downloading data {}/{}", name, id);
