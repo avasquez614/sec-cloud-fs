@@ -1,11 +1,12 @@
 package org.avasquez.seccloudfs.processing.impl;
 
-import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.processing.db.model.SliceMetadata;
-import org.avasquez.seccloudfs.utils.nio.ByteBufferChannel;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,16 +23,16 @@ public class DownloadTask implements Callable<DownloadResult> {
     private SliceMetadata sliceMetadata;
     private int sliceIndex;
     private boolean dataSlice;
-    private int sliceSize;
     private CloudStore cloudStore;
+    private Path sliceFile;
 
-    public DownloadTask(final SliceMetadata sliceMetadata, final int sliceIndex, final boolean dataSlice,
-                        final int sliceSize, final CloudStore cloudStore) {
+    public DownloadTask(SliceMetadata sliceMetadata, int sliceIndex, boolean dataSlice, CloudStore cloudStore,
+                        Path sliceFile) {
         this.sliceMetadata = sliceMetadata;
         this.sliceIndex = sliceIndex;
         this.dataSlice = dataSlice;
-        this.sliceSize = sliceSize;
         this.cloudStore = cloudStore;
+        this.sliceFile = sliceFile;
     }
 
     @Override
@@ -41,14 +42,12 @@ public class DownloadTask implements Callable<DownloadResult> {
 
         logger.debug("Downloading slice '{}' from [{}]", sliceId, cloudStoreName);
 
-        ByteBuffer slice = ByteBuffer.allocateDirect(sliceSize);
+        try  {
+            FileChannel channel = FileChannel.open(sliceFile, FileUtils.TMP_FILE_OPEN_OPTIONS);
 
-        try {
-            cloudStore.download(sliceId, new ByteBufferChannel(slice));
+            cloudStore.download(sliceId, channel);
 
-            slice.clear();
-
-            return new DownloadResult(slice, dataSlice, sliceIndex);
+            return new DownloadResult(channel, dataSlice, sliceIndex);
         } catch (Exception e) {
             logger.error("Failed to download slice '" + sliceId + "' from [" + cloudStoreName + "]", e);
 

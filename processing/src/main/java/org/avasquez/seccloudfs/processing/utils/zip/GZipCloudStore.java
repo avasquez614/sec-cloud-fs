@@ -1,12 +1,6 @@
 package org.avasquez.seccloudfs.processing.utils.zip;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Required;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
@@ -15,7 +9,14 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.util.zip.GZIPInputStream;
+
+import org.apache.commons.io.IOUtils;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
 
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} decorator that zips the data before upload and unzips it
@@ -46,27 +47,41 @@ public class GZipCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
-        Path tmpFile = Files.createTempFile(tmpDir, id, null, null);
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+        Path tmpFile = Files.createTempFile(tmpDir, id, ".zipped");
 
-        try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            InputStream in = Channels.newInputStream(src);
+        try (FileChannel tmpChannel = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS)) {
+            GZIPInputStream in = new GZIPInputStream(Channels.newInputStream(src));
             OutputStream out = Channels.newOutputStream(tmpChannel);
 
-
+            long zippedBytes = IOUtils.copyLarge(in, out);
 
             logger.debug("Data '{}' successfully zipped", id);
 
             // Reset channel for reading
             tmpChannel.position(0);
 
-            return underlyingStore.upload(id, tmpChannel, length);
+            underlyingStore.upload(id, tmpChannel, zippedBytes);
         }
     }
 
     @Override
-    public long download(String id, WritableByteChannel target) throws IOException {
-        return 0;
+    public void download(String id, WritableByteChannel target) throws IOException {
+        Path tmpFile = Files.createTempFile(tmpDir, id, ".unzipped");
+
+        try (FileChannel tmpChannel = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS)) {
+            underlyingStore.download(id, tmpChannel);
+
+            // Reset channel for reading
+            tmpChannel.position(0);
+
+            GZIPInputStream in = new GZIPInputStream(Channels.newInputStream(tmpChannel));
+            OutputStream out = Channels.newOutputStream(target);
+
+            IOUtils.copyLarge(in, out);
+
+            logger.debug("Data '{}' successfully unzipped", id);
+        }
     }
 
     @Override

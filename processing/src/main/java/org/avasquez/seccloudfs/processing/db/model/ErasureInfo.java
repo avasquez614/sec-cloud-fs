@@ -14,7 +14,7 @@ public class ErasureInfo {
     @ObjectId
     private String id;
     private String dataId;
-    private int sliceSize;
+    private int dataSize;
     private SliceMetadata[] dataSliceMetadata;
     private SliceMetadata[] codingSliceMetadata;
 
@@ -31,7 +31,7 @@ public class ErasureInfo {
     /**
      * Sets the ID of this erasure encoding operation.
      */
-    public void setId(final String id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -45,22 +45,22 @@ public class ErasureInfo {
     /**
      * Sets the ID of the data that was encoded.
      */
-    public void setDataId(final String dataId) {
+    public void setDataId(String dataId) {
         this.dataId = dataId;
     }
 
     /**
-     * Returns the size of all slices.
+     * Returns the original data size
      */
-    public int getSliceSize() {
-        return sliceSize;
+    public int getDataSize() {
+        return dataSize;
     }
 
     /**
-     * Sets the size of all slices.
+     * Sets the original data size.
      */
-    public void setSliceSize(final int sliceSize) {
-        this.sliceSize = sliceSize;
+    public void setDataSize(int dataSize) {
+        this.dataSize = dataSize;
     }
 
     /**
@@ -73,7 +73,7 @@ public class ErasureInfo {
     /**
      * Sets the metadata for the data slices.
      */
-    public void setDataSliceMetadata(final SliceMetadata[] dataSliceMetadata) {
+    public void setDataSliceMetadata(SliceMetadata[] dataSliceMetadata) {
         this.dataSliceMetadata = dataSliceMetadata;
     }
 
@@ -87,7 +87,7 @@ public class ErasureInfo {
     /**
      * Sets the metadata for the data slices.
      */
-    public void setCodingSliceMetadata(final SliceMetadata[] codingSliceMetadata) {
+    public void setCodingSliceMetadata(SliceMetadata[] codingSliceMetadata) {
         this.codingSliceMetadata = codingSliceMetadata;
     }
 

@@ -63,8 +63,8 @@ public class EncryptingCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
-        Path tmpFile = Files.createTempFile(tmpDir, id, null, null);
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+        Path tmpFile = Files.createTempFile(tmpDir, id, ".encrypted");
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
             InputStream in = Channels.newInputStream(src);
@@ -80,16 +80,16 @@ public class EncryptingCloudStore implements CloudStore {
             // Reset channel for reading
             tmpChannel.position(0);
 
-            return underlyingStore.upload(id, tmpChannel, length);
+            underlyingStore.upload(id, tmpChannel, tmpChannel.size());
         }
     }
 
     @Override
-    public long download(String id, WritableByteChannel target) throws IOException {
-        Path tmpFile = Files.createTempFile(tmpDir, id, null, null);
+    public void download(String id, WritableByteChannel target) throws IOException {
+        Path tmpFile = Files.createTempFile(tmpDir, id, ".decrypted");
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            long bytesDownloaded = underlyingStore.download(id, tmpChannel);
+            underlyingStore.download(id, tmpChannel);
 
             // Reset channel for reading
             tmpChannel.position(0);
@@ -101,8 +101,6 @@ public class EncryptingCloudStore implements CloudStore {
             decryptData(id, in, out, key);
 
             logger.debug("Data '{}' successfully decrypted", id);
-
-            return bytesDownloaded;
         }
     }
 

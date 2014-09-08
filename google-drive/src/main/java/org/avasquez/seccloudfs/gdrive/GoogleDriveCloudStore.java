@@ -76,7 +76,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
         File file = fileCache.get(id);
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
 
@@ -103,15 +103,13 @@ public class GoogleDriveCloudStore implements CloudStore {
 
             fileCache.put(id, file);
         }
-
-        return file.getFileSize();
     }
 
     @Override
-    public long download(String id, WritableByteChannel target) throws IOException {
+    public void download(String id, WritableByteChannel target) throws IOException {
         File file = fileCache.get(id);
 
-        if (file != null && StringUtils.isNotEmpty(file.getDownloadUrl())) {
+        if (file != null) {
             logger.debug("Downloading data {}/{}/{}", name, rootFolderName, id);
 
             try {
@@ -119,13 +117,13 @@ public class GoogleDriveCloudStore implements CloudStore {
                 HttpResponse response = request.execute();
 
                 try (InputStream in = response.getContent()) {
-                    return IOUtils.copy(in, Channels.newOutputStream(target));
+                    IOUtils.copy(in, Channels.newOutputStream(target));
                 }
             } catch (IOException e) {
                 throw new IOException("Error downloading data " + name + "/" + rootFolderName + "/" + id, e);
             }
         } else {
-            return 0;
+            throw new IOException("No cached file found for ID '" + id + "'");
         }
     }
 

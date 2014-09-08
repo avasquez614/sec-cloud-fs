@@ -1,12 +1,11 @@
 package org.avasquez.seccloudfs.processing.impl;
 
-import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Queue;
 import java.util.concurrent.Callable;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.processing.db.model.SliceMetadata;
-import org.avasquez.seccloudfs.utils.nio.ByteBufferChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,28 +15,29 @@ import org.slf4j.LoggerFactory;
  *
  * @author avasquez
  */
-public class UploadTask implements Callable<Long> {
+public class UploadTask implements Callable<Boolean> {
 
     private static final Logger logger = LoggerFactory.getLogger(UploadTask.class);
 
-    private ByteBuffer slice;
+    private ReadableByteChannel slice;
+    private int sliceSize;
     private SliceMetadata sliceMetadata;
     private Queue<CloudStore> availableCloudStores;
 
-    public UploadTask(final ByteBuffer slice, final SliceMetadata sliceMetadata, final Queue<CloudStore>
-        availableCloudStores) {
+    public UploadTask(ReadableByteChannel slice, int sliceSize, SliceMetadata sliceMetadata,
+                      Queue<CloudStore> availableCloudStores) {
         this.slice = slice;
+        this.sliceSize = sliceSize;
         this.sliceMetadata = sliceMetadata;
         this.availableCloudStores = availableCloudStores;
     }
 
     @Override
-    public Long call() throws Exception {
+    public Boolean call() throws Exception {
         String sliceId = sliceMetadata.getId();
-        int sliceSize = slice.capacity();
-        Long bytesUploaded = null;
+        boolean uploaded = false;
 
-        while (bytesUploaded != null) {
+        while (!uploaded) {
             CloudStore cloudStore = availableCloudStores.poll();
             if (cloudStore != null) {
                 String cloudStoreName = cloudStore.getName();
@@ -45,9 +45,11 @@ public class UploadTask implements Callable<Long> {
                 logger.debug("Trying to upload slice '{}' to [{}]", sliceId, cloudStoreName);
 
                 try {
-                    bytesUploaded = cloudStore.upload(sliceMetadata.getId(), new ByteBufferChannel(slice), sliceSize);
+                    cloudStore.upload(sliceMetadata.getId(), slice, sliceSize);
 
                     sliceMetadata.setCloudStoreName(cloudStore.getName());
+
+                    uploaded = true;
                 } catch (Exception e) {
                     logger.error("Failed to upload slice '" + sliceId + "' to [" + cloudStoreName + "]", e);
                 }
@@ -58,7 +60,7 @@ public class UploadTask implements Callable<Long> {
             }
         }
 
-        return bytesUploaded;
+        return uploaded;
     }
 
 }

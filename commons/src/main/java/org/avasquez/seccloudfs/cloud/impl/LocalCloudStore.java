@@ -42,21 +42,21 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected long doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
+    protected void doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
         Path path = (Path) dataObject;
 
-        try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
-            return fileChannel.transferFrom(src, 0, length);
+        try (FileChannel fileChannel = FileChannel.open(path,
+            StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+            fileChannel.transferFrom(src, 0, length);
         }
     }
 
     @Override
-    protected long doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
+    protected void doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
         Path path = (Path) dataObject;
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {
-            return fileChannel.transferTo(0, fileChannel.size(), target);
+            fileChannel.transferTo(0, fileChannel.size(), target);
         }
     }
 

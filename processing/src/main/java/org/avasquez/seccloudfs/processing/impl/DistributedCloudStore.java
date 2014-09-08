@@ -1,8 +1,12 @@
 package org.avasquez.seccloudfs.processing.impl;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -12,17 +16,18 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorCompletionService;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.erasure.DecodingException;
 import org.avasquez.seccloudfs.erasure.EncodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
 import org.avasquez.seccloudfs.erasure.ErasureEncoder;
-import org.avasquez.seccloudfs.erasure.Slices;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.processing.db.model.ErasureInfo;
 import org.avasquez.seccloudfs.processing.db.model.SliceMetadata;
 import org.avasquez.seccloudfs.processing.db.repos.ErasureInfoRepository;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
@@ -37,12 +42,15 @@ public class DistributedCloudStore implements CloudStore {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedCloudStore.class);
 
+    private static final String SLICE_FILE_SUFFIX = ".slice";
+
     private String name;
     private CloudStoreRegistry cloudStoreRegistry;
     private ErasureInfoRepository erasureInfoRepository;
     private ErasureEncoder erasureEncoder;
     private ErasureDecoder erasureDecoder;
     private Executor taskExecutor;
+    private Path tmpDir;
 
     @Override
     public String getName() {
@@ -50,121 +58,137 @@ public class DistributedCloudStore implements CloudStore {
     }
 
     @Required
-    public void setName(final String name) {
+    public void setName(String name) {
         this.name = name;
     }
 
     @Required
-    public void setCloudStoreRegistry(final CloudStoreRegistry cloudStoreRegistry) {
+    public void setCloudStoreRegistry(CloudStoreRegistry cloudStoreRegistry) {
         this.cloudStoreRegistry = cloudStoreRegistry;
     }
 
     @Required
-    public void setErasureInfoRepository(final ErasureInfoRepository erasureInfoRepository) {
+    public void setErasureInfoRepository(ErasureInfoRepository erasureInfoRepository) {
         this.erasureInfoRepository = erasureInfoRepository;
     }
 
     @Required
-    public void setErasureEncoder(final ErasureEncoder erasureEncoder) {
+    public void setErasureEncoder(ErasureEncoder erasureEncoder) {
         this.erasureEncoder = erasureEncoder;
     }
 
     @Required
-    public void setErasureDecoder(final ErasureDecoder erasureDecoder) {
+    public void setErasureDecoder(ErasureDecoder erasureDecoder) {
         this.erasureDecoder = erasureDecoder;
     }
 
     @Required
-    public void setTaskExecutor(final Executor taskExecutor) {
+    public void setTaskExecutor(Executor taskExecutor) {
         this.taskExecutor = taskExecutor;
     }
 
+    @Required
+    public void setTmpDir(String tmpDir) {
+        this.tmpDir = Paths.get(tmpDir);
+    }
+
     @Override
-    public long upload(final String id, final SeekableByteChannel src, final long length) throws IOException {
-        Slices slices;
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+        FileChannel[] dataSlices = null;
+        FileChannel[] codingSlices = null;
+
         try {
-            logger.debug("Encoding data '{}'", id);
+            dataSlices = createSliceFiles(erasureEncoder.getK());
+            codingSlices = createSliceFiles(erasureEncoder.getM());
 
-            slices = erasureEncoder.encode(src, (int) src.size());
-        } catch (EncodingException e) {
-            throw new IOException("Unable to encode data '" + id + "'", e);
-        }
+            int sliceSize;
 
-        SliceMetadata[] dataSliceMetadata = createSliceMetadata(slices.getDataSlices());
-        SliceMetadata[] codingSliceMetadata = createSliceMetadata(slices.getCodingSlices());
-        Queue<CloudStore> availableCloudStores = new ConcurrentLinkedQueue<>(cloudStoreRegistry.list());
-        List<UploadTask> uploadTasks = createUploadTasks(slices.getDataSlices(), slices.getCodingSlices(),
-            dataSliceMetadata, codingSliceMetadata, availableCloudStores);
-        CompletionService<Long> uploadCompletionService = new ExecutorCompletionService<>(taskExecutor);
-
-        for (UploadTask task : uploadTasks) {
-            uploadCompletionService.submit(task);
-        }
-
-        long totalBytesUploaded = 0;
-        int slicesUploaded = 0;
-
-        for (int i = 0; i < uploadTasks.size(); i++) {
             try {
-                Long bytesUploaded = uploadCompletionService.take().get();
-                if (bytesUploaded != null) {
-                    totalBytesUploaded += bytesUploaded;
-                    slicesUploaded++;
-                }
-            } catch (Exception e) {
-                logger.error("Error while trying to retrieve upload task result", e);
-            }
-        }
+                logger.debug("Encoding data '{}'", id);
 
-        logger.debug("Slices uploaded for data '{}': {}", id, slicesUploaded);
-
-        if (slicesUploaded == uploadTasks.size()) {
-            ErasureInfo erasureInfo;
-            try {
-                erasureInfo = erasureInfoRepository.findByDataId(id);
-            } catch (DbException e) {
-                throw new IOException("Unable to retrieve erasure info for data '" + id + "'");
+                sliceSize = erasureEncoder.encode(src, (int) length, dataSlices, codingSlices);
+            } catch (EncodingException e) {
+                throw new IOException("Unable to encode data '" + id + "'", e);
             }
 
-            if (erasureInfo == null) {
-                erasureInfo = new ErasureInfo();
-                erasureInfo.setDataId(id);
-                erasureInfo.setSliceSize(slices.getDataSlices()[0].capacity());
-                erasureInfo.setDataSliceMetadata(dataSliceMetadata);
-                erasureInfo.setCodingSliceMetadata(codingSliceMetadata);
+            resetChannels(dataSlices);
+            resetChannels(codingSlices);
 
+            SliceMetadata[] dataSliceMetadata = createSliceMetadata(dataSlices);
+            SliceMetadata[] codingSliceMetadata = createSliceMetadata(codingSlices);
+            Queue<CloudStore> availableCloudStores = new ConcurrentLinkedQueue<>(cloudStoreRegistry.list());
+            List<UploadTask> uploadTasks = createUploadTasks(dataSlices, codingSlices, dataSliceMetadata,
+                codingSliceMetadata, sliceSize, availableCloudStores);
+            CompletionService<Boolean> uploadCompletionService = new ExecutorCompletionService<>(taskExecutor);
+
+            for (UploadTask task : uploadTasks) {
+                uploadCompletionService.submit(task);
+            }
+
+            int slicesUploaded = 0;
+
+            for (int i = 0; i < uploadTasks.size(); i++) {
                 try {
-                    erasureInfoRepository.save(erasureInfo);
+                    boolean uploaded = uploadCompletionService.take().get();
+                    if (uploaded) {
+                        slicesUploaded++;
+                    }
+                } catch (Exception e) {
+                    logger.error("Error while trying to retrieve upload task result", e);
+                }
+            }
+
+            logger.debug("Slices uploaded for data '{}': {}", id, slicesUploaded);
+
+            if (slicesUploaded == uploadTasks.size()) {
+                ErasureInfo erasureInfo;
+                try {
+                    erasureInfo = erasureInfoRepository.findByDataId(id);
                 } catch (DbException e) {
-                    throw new IOException("Unable to save erasure info for data '" + id + "'");
+                    throw new IOException("Unable to retrieve erasure info for data '" + id + "'");
+                }
+
+                if (erasureInfo == null) {
+                    erasureInfo = new ErasureInfo();
+                    erasureInfo.setDataId(id);
+                    erasureInfo.setDataSize((int) length);
+                    erasureInfo.setDataSliceMetadata(dataSliceMetadata);
+                    erasureInfo.setCodingSliceMetadata(codingSliceMetadata);
+
+                    try {
+                        erasureInfoRepository.save(erasureInfo);
+                    } catch (DbException e) {
+                        throw new IOException("Unable to save erasure info for data '" + id + "'");
+                    }
+                } else {
+                    ErasureInfo newErasureInfo = new ErasureInfo();
+                    newErasureInfo.setId(erasureInfo.getId());
+                    newErasureInfo.setDataId(id);
+                    newErasureInfo.setDataSize((int) length);
+                    newErasureInfo.setDataSliceMetadata(dataSliceMetadata);
+                    newErasureInfo.setCodingSliceMetadata(codingSliceMetadata);
+
+                    try {
+                        erasureInfoRepository.save(newErasureInfo);
+                    } catch (DbException e) {
+                        throw new IOException("Unable to save erasure info for data '" + id + "'");
+                    }
+
+                    // Delete the old slices, but just after the new erasure info has been saved, so that no
+                    // data is lost
+                    deleteSlices(erasureInfo);
                 }
             } else {
-                ErasureInfo newErasureInfo = new ErasureInfo();
-                newErasureInfo.setId(erasureInfo.getId());
-                newErasureInfo.setDataId(id);
-                newErasureInfo.setSliceSize(slices.getDataSlices()[0].capacity());
-                newErasureInfo.setDataSliceMetadata(dataSliceMetadata);
-                newErasureInfo.setCodingSliceMetadata(codingSliceMetadata);
-
-                try {
-                    erasureInfoRepository.save(newErasureInfo);
-                } catch (DbException e) {
-                    throw new IOException("Unable to save erasure info for data '" + id + "'");
-                }
-
-                // Delete the old slices, but just after the new erasure info has been saved, so that no
-                // data is lost
-                deleteSlices(erasureInfo);
+                throw new IOException("Some slices for data '" + id + "' couldn't be uploaded");
             }
-
-            return totalBytesUploaded;
-        } else {
-            throw new IOException("Some slices for data '" + id + "' couldn't be uploaded");
+        } finally {
+            closeChannels(dataSlices);
+            closeChannels(codingSlices);
         }
     }
 
     @Override
-    public long download(final String id, final SeekableByteChannel target) throws IOException {
+    public void download(String id, WritableByteChannel target) throws IOException {
         ErasureInfo erasureInfo;
         try {
             erasureInfo = erasureInfoRepository.findByDataId(id);
@@ -186,54 +210,59 @@ public class DistributedCloudStore implements CloudStore {
 
         // Keep polling for slices until we reach the required number. If a slice couldn't be loaded, try with a
         // backup task. If there are no more backup tasks, then stop.
-        ByteBuffer[] dataSlices = new ByteBuffer[erasureInfo.getDataSliceMetadata().length];
-        ByteBuffer[] codingSlices = new ByteBuffer[erasureInfo.getCodingSliceMetadata().length];
-        long totalBytesUploaded = 0;
-        int slicesDownloaded = 0;
-
-        while (slicesDownloaded < requiredNumSlices) {
-            DownloadResult result = null;
-            try {
-                result = downloadCompletionService.take().get();
-                if (result != null) {
-                    totalBytesUploaded += result.getSlice().capacity();
-                    slicesDownloaded++;
-
-                    if (result.isDataSlice()) {
-                        dataSlices[result.getSliceIndex()] = result.getSlice();
-                    } else {
-                        codingSlices[result.getSliceIndex()] = result.getSlice();
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("Error while trying to retrieve load task result", e);
-            }
-
-            if (result == null) {
-                DownloadTask task = downloadTasks.poll();
-                if (task != null) {
-                    downloadCompletionService.submit(task);
-                } else {
-                    throw new IOException("Not enough slices to download");
-                }
-            }
-        }
-
-        logger.debug("Slices downloaded for data '{}': {}", id, slicesDownloaded);
+        FileChannel[] dataSlices = new FileChannel[erasureInfo.getDataSliceMetadata().length];
+        FileChannel[] codingSlices = new FileChannel[erasureInfo.getCodingSliceMetadata().length];
 
         try {
-            logger.debug("Decoding data '{}'", id);
+            int slicesDownloaded = 0;
 
-            erasureDecoder.decode(new Slices(dataSlices, codingSlices), (int) target.size(), target);
-        } catch (DecodingException e) {
-            throw new IOException("Unable to decode data '" + id + "'", e);
+            while (slicesDownloaded < requiredNumSlices) {
+                DownloadResult result = null;
+                try {
+                    result = downloadCompletionService.take().get();
+                    if (result != null) {
+                        slicesDownloaded++;
+
+                        if (result.isDataSlice()) {
+                            dataSlices[result.getSliceIndex()] = result.getSlice();
+                        } else {
+                            codingSlices[result.getSliceIndex()] = result.getSlice();
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("Error while trying to retrieve load task result", e);
+                }
+
+                if (result == null) {
+                    DownloadTask task = downloadTasks.poll();
+                    if (task != null) {
+                        downloadCompletionService.submit(task);
+                    } else {
+                        throw new IOException("Not enough slices to download");
+                    }
+                }
+            }
+
+            logger.debug("Slices downloaded for data '{}': {}", id, slicesDownloaded);
+
+            resetChannels(dataSlices);
+            resetChannels(codingSlices);
+
+            try {
+                logger.debug("Decoding data '{}'", id);
+
+                erasureDecoder.decode(erasureInfo.getDataSize(), dataSlices, codingSlices, target);
+            } catch (DecodingException e) {
+                throw new IOException("Unable to decode data '" + id + "'", e);
+            }
+        } finally {
+            closeChannels(dataSlices);
+            closeChannels(codingSlices);
         }
-
-        return totalBytesUploaded;
     }
 
     @Override
-    public void delete(final String id) throws IOException {
+    public void delete(String id) throws IOException {
         ErasureInfo erasureInfo;
         try {
             erasureInfo = erasureInfoRepository.findByDataId(id);
@@ -300,7 +329,42 @@ public class DistributedCloudStore implements CloudStore {
         logger.debug("Slices deleted for data '{}': {}", erasureInfo.getDataId(), slicesDeleted);
     }
 
-    private SliceMetadata[] createSliceMetadata(ByteBuffer[] slices) {
+    private FileChannel[] createSliceFiles(int num) throws IOException {
+        FileChannel[] channels = new FileChannel[num];
+
+        for (int i = 0; i < num; i++) {
+            Path tmpFile = Files.createTempFile(tmpDir, null, SLICE_FILE_SUFFIX);
+            channels[i] = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS);
+        }
+
+        return channels;
+    }
+
+    private void resetChannels(FileChannel[] channels) throws IOException {
+        if (ArrayUtils.isNotEmpty(channels)) {
+            for (FileChannel channel : channels) {
+                if (channel != null) {
+                    channel.position(0);
+                }
+            }
+        }
+    }
+
+    private void closeChannels(FileChannel[] channels) {
+        if (ArrayUtils.isNotEmpty(channels)) {
+            for (FileChannel channel : channels) {
+                if (channel != null) {
+                    try {
+                        channel.close();
+                    } catch (IOException e) {
+                        logger.trace("Unable to close channel", e);
+                    }
+                }
+            }
+        }
+    }
+
+    private SliceMetadata[] createSliceMetadata(ReadableByteChannel[] slices) {
         SliceMetadata[] sliceMetadata = new SliceMetadata[slices.length];
 
         for (int i = 0; i < slices.length; i++) {
@@ -313,17 +377,17 @@ public class DistributedCloudStore implements CloudStore {
         return sliceMetadata;
     }
 
-    private List<UploadTask> createUploadTasks(ByteBuffer[] dataSlices, ByteBuffer[] codingSlices,
+    private List<UploadTask> createUploadTasks(ReadableByteChannel[] dataSlices, ReadableByteChannel[] codingSlices,
                                                SliceMetadata[] dataSliceMetadata, SliceMetadata[] codingSliceMetadata,
-                                               Queue<CloudStore> availableCloudStores) {
+                                               int sliceSize, Queue<CloudStore> availableCloudStores) {
         List<UploadTask> tasks = new ArrayList<>();
 
         for (int i = 0; i < dataSlices.length; i++) {
-            tasks.add(new UploadTask(dataSlices[i], dataSliceMetadata[i], availableCloudStores));
+            tasks.add(new UploadTask(dataSlices[i], sliceSize, dataSliceMetadata[i], availableCloudStores));
         }
 
         for (int i = 0; i < codingSlices.length; i++) {
-            tasks.add(new UploadTask(codingSlices[i], codingSliceMetadata[i], availableCloudStores));
+            tasks.add(new UploadTask(codingSlices[i], sliceSize, codingSliceMetadata[i], availableCloudStores));
         }
 
         return tasks;
@@ -336,14 +400,16 @@ public class DistributedCloudStore implements CloudStore {
 
         for (int i = 0; i < dataSliceMetadata.length; i++) {
             CloudStore cloudStore = getCloudStoreByName(dataSliceMetadata[i].getCloudStoreName());
+            Path sliceFile = Files.createTempFile(tmpDir, dataSliceMetadata[i].getId(), SLICE_FILE_SUFFIX);
 
-            tasks.add(new DownloadTask(dataSliceMetadata[i], i, true, erasureInfo.getSliceSize(), cloudStore));
+            tasks.add(new DownloadTask(dataSliceMetadata[i], i, true, cloudStore, sliceFile));
         }
 
         for (int i = 0; i < codingSliceMetadata.length; i++) {
             CloudStore cloudStore = getCloudStoreByName(codingSliceMetadata[i].getCloudStoreName());
+            Path sliceFile = Files.createTempFile(tmpDir, dataSliceMetadata[i].getId(), SLICE_FILE_SUFFIX);
 
-            tasks.add(new DownloadTask(codingSliceMetadata[i], i, false, erasureInfo.getSliceSize(), cloudStore));
+            tasks.add(new DownloadTask(codingSliceMetadata[i], i, false, cloudStore, sliceFile));
         }
 
         return tasks;

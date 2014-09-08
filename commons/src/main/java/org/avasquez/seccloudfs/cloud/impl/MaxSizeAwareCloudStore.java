@@ -32,7 +32,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
         Object dataObject = getDataObject(id, false);
 
         synchronized (this) {
@@ -48,12 +48,7 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
         }
 
         try {
-            long bytesUploaded = doUpload(id, dataObject, src, length);
-            long delta = -length + bytesUploaded;
-
-            currentSize.addAndGet(delta);
-
-            return bytesUploaded;
+            doUpload(id, dataObject, src, length);
         } catch (IOException e) {
             // Recalculate size since maybe some bytes were written
             currentSize = new AtomicLong(calculateCurrentSize());
@@ -63,8 +58,8 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
     }
 
     @Override
-    public long download(String id, WritableByteChannel target) throws IOException {
-        return doDownload(id, getDataObject(id, true), target);
+    public void download(String id, WritableByteChannel target) throws IOException {
+        doDownload(id, getDataObject(id, true), target);
     }
 
     @Override
@@ -89,10 +84,10 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
 
     protected abstract Object getDataObject(String id, boolean withData) throws IOException;
 
-    protected abstract long doUpload(String id, Object dataObject, ReadableByteChannel src,
+    protected abstract void doUpload(String id, Object dataObject, ReadableByteChannel src,
                                      long length) throws IOException;
 
-    protected abstract long doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException;
+    protected abstract void doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException;
 
     protected abstract void doDelete(String id, Object dataObject) throws IOException;
 

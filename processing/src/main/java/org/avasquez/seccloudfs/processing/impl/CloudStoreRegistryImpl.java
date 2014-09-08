@@ -1,7 +1,8 @@
 package org.avasquez.seccloudfs.processing.impl;
 
 import java.io.IOException;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,14 +27,14 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         stores = new HashMap<>();
     }
 
-    public void setStores(final Map<String, CloudStore> stores) {
+    public void setStores(Map<String, CloudStore> stores) {
         for (Map.Entry<String, CloudStore> entry : stores.entrySet()) {
             this.stores.put(entry.getKey(), new LastUploadTimeAwareCloudStore(entry.getValue()));
         }
     }
 
     @Override
-    public void register(final CloudStore store) {
+    public void register(CloudStore store) {
         stores.put(store.getName(), new LastUploadTimeAwareCloudStore(store));
     }
 
@@ -48,7 +49,7 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         Collections.sort(list, new Comparator<CloudStore>() {
 
             @Override
-            public int compare(final CloudStore store1, final CloudStore store2) {
+            public int compare(CloudStore store1, CloudStore store2) {
                 long lastUploadTime1 = ((LastUploadTimeAwareCloudStore) store1).getLastUploadTime();
                 long lastUploadTime2 = ((LastUploadTimeAwareCloudStore) store2).getLastUploadTime();
 
@@ -70,7 +71,7 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
      * Returns the {@link org.avasquez.seccloudfs.cloud.CloudStore} from the map of stores.
      */
     @Override
-    public CloudStore find(final String name) {
+    public CloudStore find(String name) {
         return stores.get(name);
     }
 
@@ -79,7 +80,7 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         private CloudStore underlyingStore;
         private volatile long lastUploadTime;
 
-        private LastUploadTimeAwareCloudStore(final CloudStore underlyingStore) {
+        private LastUploadTimeAwareCloudStore(CloudStore underlyingStore) {
             this.underlyingStore = underlyingStore;
         }
 
@@ -93,21 +94,19 @@ public class CloudStoreRegistryImpl implements CloudStoreRegistry {
         }
 
         @Override
-        public long upload(final String id, final SeekableByteChannel src, final long length) throws IOException {
-            long bytesUploaded = underlyingStore.upload(id, src, length);
+        public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+            underlyingStore.upload(id, src, length);
 
             lastUploadTime = System.currentTimeMillis();
-
-            return bytesUploaded;
         }
 
         @Override
-        public long download(final String id, final SeekableByteChannel target) throws IOException {
-            return underlyingStore.download(id, target);
+        public void download(String id, WritableByteChannel target) throws IOException {
+            underlyingStore.download(id, target);
         }
 
         @Override
-        public void delete(final String id) throws IOException {
+        public void delete(String id) throws IOException {
             underlyingStore.delete(id);
         }
 

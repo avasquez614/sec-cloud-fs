@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.processing.impl;
 
-import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 /**
  * Result of a {@link DownloadTask}.
@@ -9,11 +9,11 @@ import java.nio.ByteBuffer;
  */
 public class DownloadResult {
 
-    private ByteBuffer slice;
+    private FileChannel slice;
     private boolean dataSlice;
     private int sliceIndex;
 
-    public DownloadResult(final ByteBuffer slice, final boolean dataSlice, final int sliceIndex) {
+    public DownloadResult(FileChannel slice, boolean dataSlice, int sliceIndex) {
         this.slice = slice;
         this.dataSlice = dataSlice;
         this.sliceIndex = sliceIndex;
@@ -22,7 +22,7 @@ public class DownloadResult {
     /**
      * Returns the slice data.
      */
-    public ByteBuffer getSlice() {
+    public FileChannel getSlice() {
         return slice;
     }
 

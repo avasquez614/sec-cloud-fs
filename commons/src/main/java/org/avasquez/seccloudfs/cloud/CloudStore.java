@@ -22,10 +22,8 @@ public interface CloudStore {
      * @param id        the ID used to identify the data
      * @param src       the source channel from where the data should be retrieved
      * @param length    the length of the data
-     *
-     * @return the final number of bytes uploaded
      */
-    long upload(String id, ReadableByteChannel src, long length) throws IOException;
+    void upload(String id, ReadableByteChannel src, long length) throws IOException;
 
     /**
      * Downloads the data from the cloud.
@@ -35,7 +33,7 @@ public interface CloudStore {
      *
      * @return the final number of bytes downloaded
      */
-    long download(String id, WritableByteChannel target) throws IOException;
+    void download(String id, WritableByteChannel target) throws IOException;
 
     /**
      * Deletes the data.

@@ -2,7 +2,6 @@ package org.avasquez.seccloudfs.dropbox;
 
 import com.dropbox.core.DbxAccountInfo;
 import com.dropbox.core.DbxClient;
-import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxWriteMode;
 
@@ -38,33 +37,25 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public long upload(String id, ReadableByteChannel src, long length) throws IOException {
-        DbxEntry.File file;
-
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
         logger.debug("Uploading data {}/{}", name, id);
 
         try {
-            file = client.uploadFile(id, DbxWriteMode.force(), length, Channels.newInputStream(src));
+            client.uploadFile(id, DbxWriteMode.force(), length, Channels.newInputStream(src));
         } catch (Exception e) {
             throw new IOException("Error uploading data " + name + "/" + id, e);
         }
-
-        return file.numBytes;
     }
 
     @Override
-    public long download(String id, WritableByteChannel target) throws IOException {
-        DbxEntry.File file;
-
+    public void download(String id, WritableByteChannel target) throws IOException {
         logger.debug("Downloading data {}/{}", name, id);
 
         try {
-            file = client.getFile(id, null, Channels.newOutputStream(target));
+            client.getFile(id, null, Channels.newOutputStream(target));
         } catch (Exception e) {
             throw new IOException("Error downloading data " + name + "/" + id, e);
         }
-
-        return file.numBytes;
     }
 
     @Override

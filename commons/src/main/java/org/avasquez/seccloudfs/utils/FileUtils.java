@@ -3,8 +3,10 @@ package org.avasquez.seccloudfs.utils;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,8 +16,15 @@ import java.util.regex.Pattern;
  */
 public class FileUtils {
 
-    public static final Pattern humanReadableSizePattern = Pattern.compile("(\\d+)\\s*(B|KB|MB|GB)?",
-            Pattern.CASE_INSENSITIVE);
+    public static final Pattern HUMAN_READABLE_SIZE_PATTERN =
+        Pattern.compile("(\\d+)\\s*(B|KB|MB|GB)?", Pattern.CASE_INSENSITIVE);
+
+    public static final OpenOption[] TMP_FILE_OPEN_OPTIONS = {
+        StandardOpenOption.READ,
+        StandardOpenOption.WRITE,
+        StandardOpenOption.TRUNCATE_EXISTING,
+        StandardOpenOption.DELETE_ON_CLOSE
+    };
 
     private FileUtils() {
     }
@@ -28,7 +37,7 @@ public class FileUtils {
     }
 
     public static long humanReadableByteSizeToByteCount(String size) {
-        Matcher sizeMatcher = humanReadableSizePattern.matcher(size);
+        Matcher sizeMatcher = HUMAN_READABLE_SIZE_PATTERN.matcher(size);
         if (sizeMatcher.matches()) {
             try {
                 long coeff = Long.parseLong(sizeMatcher.group(1));
