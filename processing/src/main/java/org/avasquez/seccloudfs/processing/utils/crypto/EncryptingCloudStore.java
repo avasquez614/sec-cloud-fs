@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.processing.crypto;
+package org.avasquez.seccloudfs.processing.utils.crypto;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +9,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 import org.apache.shiro.crypto.AbstractSymmetricCipherService;
@@ -34,6 +35,7 @@ public class EncryptingCloudStore implements CloudStore {
     private CloudStore underlyingStore;
     private AbstractSymmetricCipherService cipherService;
     private EncryptionKeyRepository keyRepository;
+    private Path tmpDir;
 
     @Required
     public void setUnderlyingStore(CloudStore underlyingStore) {
@@ -50,6 +52,11 @@ public class EncryptingCloudStore implements CloudStore {
         this.keyRepository = keyRepository;
     }
 
+    @Required
+    public void setTmpDir(String tmpDirPath) {
+        tmpDir = Paths.get(tmpDirPath);
+    }
+
     @Override
     public String getName() {
         return underlyingStore.getName();
@@ -57,7 +64,7 @@ public class EncryptingCloudStore implements CloudStore {
 
     @Override
     public long upload(String id, ReadableByteChannel src, long length) throws IOException {
-        Path tmpFile = Files.createTempFile(id, null, null);
+        Path tmpFile = Files.createTempFile(tmpDir, id, null, null);
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
             InputStream in = Channels.newInputStream(src);
@@ -79,7 +86,7 @@ public class EncryptingCloudStore implements CloudStore {
 
     @Override
     public long download(String id, WritableByteChannel target) throws IOException {
-        Path tmpFile = Files.createTempFile(id, null, null);
+        Path tmpFile = Files.createTempFile(tmpDir, id, null, null);
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
             long bytesDownloaded = underlyingStore.download(id, tmpChannel);
