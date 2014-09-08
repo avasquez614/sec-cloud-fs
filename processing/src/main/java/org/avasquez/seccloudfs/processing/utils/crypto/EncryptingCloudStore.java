@@ -10,7 +10,6 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 
 import org.apache.shiro.crypto.AbstractSymmetricCipherService;
 import org.apache.shiro.crypto.CryptoException;
@@ -18,6 +17,7 @@ import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.processing.db.model.EncryptionKey;
 import org.avasquez.seccloudfs.processing.db.repos.EncryptionKeyRepository;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
@@ -66,7 +66,7 @@ public class EncryptingCloudStore implements CloudStore {
     public void upload(String id, ReadableByteChannel src, long length) throws IOException {
         Path tmpFile = Files.createTempFile(tmpDir, id, ".encrypted");
 
-        try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+        try (FileChannel tmpChannel = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS)) {
             InputStream in = Channels.newInputStream(src);
             OutputStream out = Channels.newOutputStream(tmpChannel);
             byte[] key = cipherService.generateNewKey().getEncoded();
@@ -88,7 +88,7 @@ public class EncryptingCloudStore implements CloudStore {
     public void download(String id, WritableByteChannel target) throws IOException {
         Path tmpFile = Files.createTempFile(tmpDir, id, ".decrypted");
 
-        try (FileChannel tmpChannel = FileChannel.open(tmpFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+        try (FileChannel tmpChannel = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS)) {
             underlyingStore.download(id, tmpChannel);
 
             // Reset channel for reading
