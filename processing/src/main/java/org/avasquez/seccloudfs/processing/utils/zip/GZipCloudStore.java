@@ -1,6 +1,7 @@
 package org.avasquez.seccloudfs.processing.utils.zip;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
@@ -51,17 +53,17 @@ public class GZipCloudStore implements CloudStore {
         Path tmpFile = Files.createTempFile(tmpDir, id, ".zipped");
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS)) {
-            GZIPInputStream in = new GZIPInputStream(Channels.newInputStream(src));
-            OutputStream out = Channels.newOutputStream(tmpChannel);
+            InputStream in = Channels.newInputStream(src);
+            OutputStream out = new GZIPOutputStream(Channels.newOutputStream(tmpChannel));
 
-            long zippedBytes = IOUtils.copyLarge(in, out);
+            IOUtils.copyLarge(in, out);
 
             logger.debug("Data '{}' successfully zipped", id);
 
             // Reset channel for reading
             tmpChannel.position(0);
 
-            underlyingStore.upload(id, tmpChannel, zippedBytes);
+            underlyingStore.upload(id, tmpChannel, tmpChannel.size());
         }
     }
 
@@ -75,7 +77,7 @@ public class GZipCloudStore implements CloudStore {
             // Reset channel for reading
             tmpChannel.position(0);
 
-            GZIPInputStream in = new GZIPInputStream(Channels.newInputStream(tmpChannel));
+            InputStream in = new GZIPInputStream(Channels.newInputStream(tmpChannel));
             OutputStream out = Channels.newOutputStream(target);
 
             IOUtils.copyLarge(in, out);

@@ -84,7 +84,7 @@ public class GoogleDriveCloudStore implements CloudStore {
             logger.debug("Data {}/{}/{} already exists. Updating it...", name, rootFolderName, id);
 
             try {
-                file = drive.files().update(file.getId(), file, content).execute();
+                drive.files().update(file.getId(), file, content).execute();
             } catch (IOException e) {
                 throw new IOException("Error updating file " + name + "/" + rootFolderName + "/" + id, e);
             }
