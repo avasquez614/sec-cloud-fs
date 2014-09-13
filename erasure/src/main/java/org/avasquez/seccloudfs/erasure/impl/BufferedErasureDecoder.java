@@ -9,8 +9,8 @@ import org.springframework.beans.factory.annotation.Required;
 
 /**
  * {@link org.avasquez.seccloudfs.erasure.ErasureDecoder} decorator that does "buffered" decoding, that means,
- * just a certain amount of data is decoded at the same time. This allows that the entire data isn't loaded into
- * memory for coding/decoding.
+ * just a certain amount of data is decoded at the same time. This means that the entire data doesn't need to be
+ * loaded into memory for coding/decoding.
  *
  * @author avasquez
  */

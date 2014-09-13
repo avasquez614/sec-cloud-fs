@@ -17,6 +17,7 @@ subprojects {
         compile 'commons-lang:commons-lang:2.6'
         compile 'commons-io:commons-io:2.3'
         testCompile 'junit:junit:4.11'
+        testCompile 'org.mockito:mockito-all:1.9.5'
     }
 }
 

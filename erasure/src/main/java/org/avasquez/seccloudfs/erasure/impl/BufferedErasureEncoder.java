@@ -8,7 +8,11 @@ import org.avasquez.seccloudfs.erasure.ErasureEncoder;
 import org.springframework.beans.factory.annotation.Required;
 
 /**
- * Created by alfonsovasquez on 07/09/14.
+ * {@link org.avasquez.seccloudfs.erasure.ErasureEncoder} decorator that does "buffered" encoding, that means,
+ * just a certain amount of data is decoded at the same time. This means that the entire data doesn't need to be
+ * loaded into memory for coding/decoding.
+ *
+ * @author avasquez
  */
 public class BufferedErasureEncoder implements ErasureEncoder {
 
