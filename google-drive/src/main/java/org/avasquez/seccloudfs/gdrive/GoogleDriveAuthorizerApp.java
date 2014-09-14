@@ -18,7 +18,7 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
  *
  * @author avasquez
  */
-public class GoogleDriveAuthorizerCli {
+public class GoogleDriveAuthorizerApp {
 
     private static final String CONTEXT_PATH = "application-context.xml";
 
@@ -27,9 +27,8 @@ public class GoogleDriveAuthorizerCli {
     private GoogleDriveAuthorizationSupport authSupport;
     private GoogleDriveCredentialsRepository credentialsRepository;
 
-    public GoogleDriveAuthorizerCli(BufferedReader stdIn, PrintWriter stdOut,
-                                    GoogleDriveAuthorizationSupport authSupport,
-                                    GoogleDriveCredentialsRepository credentialsRepository) {
+    public GoogleDriveAuthorizerApp(BufferedReader stdIn, PrintWriter stdOut, GoogleDriveAuthorizationSupport
+        authSupport, GoogleDriveCredentialsRepository credentialsRepository) {
         this.stdIn = stdIn;
         this.stdOut = stdOut;
         this.authSupport = authSupport;
@@ -86,9 +85,9 @@ public class GoogleDriveAuthorizerCli {
         PrintWriter stdOut = new PrintWriter(System.out);
         GoogleDriveAuthorizationSupport authSupport = context.getBean(GoogleDriveAuthorizationSupport.class);
         GoogleDriveCredentialsRepository credentialsRepository = context.getBean(GoogleDriveCredentialsRepository.class);
-        GoogleDriveAuthorizerCli cli = new GoogleDriveAuthorizerCli(stdIn, stdOut, authSupport, credentialsRepository);
+        GoogleDriveAuthorizerApp app = new GoogleDriveAuthorizerApp(stdIn, stdOut, authSupport, credentialsRepository);
 
-        cli.run();
+        app.run();
     }
 
 }

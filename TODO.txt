@@ -1,4 +1,2 @@
-* Add interfaces for multiple clouds (at least Dropbox, Google Drive and Amazon S3).
-* Don't keep slices in memory (do it by "buffering).
-* Add file chunking.
+* Add file chunking (optional).
 * Work in fs repair service (optional).

@@ -8,9 +8,9 @@
        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
        http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
 
-    <context:property-placeholder location="classpath:filesystem.properties,classpath*:conf/filesystem.properties" />
+    <context:property-placeholder location="classpath:filesystem.properties,classpath*:custom-filesystem.properties" />
 
-    <context:annotation-requestConfig />
+    <context:annotation-config />
 
     <!-- Cache -->
 
@@ -113,6 +113,6 @@
     <task:annotation-driven scheduler="scheduler"/>
     <task:scheduler id="scheduler" pool-size="${scheduler.threads.pool.size}"/>
 
-    <import resource="classpath*:conf/filesystem-context.xml"/>
+    <import resource="classpath*:custom-filesystem-context.xml"/>
 
 </beans>

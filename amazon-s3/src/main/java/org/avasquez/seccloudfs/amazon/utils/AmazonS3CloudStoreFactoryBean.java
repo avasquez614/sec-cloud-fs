@@ -1,6 +1,5 @@
 package org.avasquez.seccloudfs.amazon.utils;
 
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -46,11 +45,13 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
 
     @Override
     public AmazonS3CloudStore getObject() throws Exception {
-        AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
         String storeName = STORE_NAME_PREFIX + username;
-        AmazonS3 s3 = new AmazonS3Client(credentials);
+        AmazonS3 s3 = new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey));
+        AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(storeName, s3, bucketName);
 
-        return new AmazonS3CloudStore(storeName, s3, bucketName);
+        cloudStore.init();
+
+        return cloudStore;
     }
 
     @Override

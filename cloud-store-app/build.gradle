@@ -1,0 +1,6 @@
+dependencies {
+    compile project(':google-drive')
+    compile project(':dropbox')
+    compile project(':amazon-s3')
+    compile 'commons-cli:commons-cli:1.2'
+}

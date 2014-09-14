@@ -38,24 +38,28 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void upload(String id, ReadableByteChannel src, long length) throws IOException {
-        logger.debug("Uploading data {}/{}", name, id);
+        logger.debug("Started uploading of data {}/{}", name, id);
 
         try {
             client.uploadFile(id, DbxWriteMode.force(), length, Channels.newInputStream(src));
         } catch (Exception e) {
             throw new IOException("Error uploading data " + name + "/" + id, e);
         }
+
+        logger.debug("Finished uploading of data {}/{}", name, id);
     }
 
     @Override
     public void download(String id, WritableByteChannel target) throws IOException {
-        logger.debug("Downloading data {}/{}", name, id);
+        logger.debug("Started downloading data {}/{}", name, id);
 
         try {
             client.getFile(id, null, Channels.newOutputStream(target));
         } catch (Exception e) {
             throw new IOException("Error downloading data " + name + "/" + id, e);
         }
+
+        logger.debug("Finished downloading data {}/{}", name, id);
     }
 
     @Override

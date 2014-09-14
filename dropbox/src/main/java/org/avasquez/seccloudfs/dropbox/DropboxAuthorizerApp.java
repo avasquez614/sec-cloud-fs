@@ -21,7 +21,7 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
  *
  * @author avasquez
  */
-public class DropboxAuthorizerCli {
+public class DropboxAuthorizerApp {
 
     private static final String CONTEXT_PATH = "application-context.xml";
 
@@ -30,7 +30,7 @@ public class DropboxAuthorizerCli {
     private DbxWebAuthNoRedirect webAuth;
     private DropboxCredentialsRepository credentialsRepository;
 
-    public DropboxAuthorizerCli(BufferedReader stdIn, PrintWriter stdOut, DbxWebAuthNoRedirect webAuth,
+    public DropboxAuthorizerApp(BufferedReader stdIn, PrintWriter stdOut, DbxWebAuthNoRedirect webAuth,
                                 DropboxCredentialsRepository credentialsRepository) {
         this.stdIn = stdIn;
         this.stdOut = stdOut;
@@ -91,9 +91,9 @@ public class DropboxAuthorizerCli {
         PrintWriter stdOut = new PrintWriter(System.out);
         DbxWebAuthNoRedirect auth = context.getBean(DbxWebAuthNoRedirect.class);
         DropboxCredentialsRepository credentialRepository = context.getBean(DropboxCredentialsRepository.class);
-        DropboxAuthorizerCli cli = new DropboxAuthorizerCli(stdIn, stdOut, auth, credentialRepository);
+        DropboxAuthorizerApp app = new DropboxAuthorizerApp(stdIn, stdOut, auth, credentialRepository);
 
-        cli.run();
+        app.run();
     }
     
 }

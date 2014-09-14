@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.processing.impl;
+package org.avasquez.seccloudfs.cloud.impl;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;

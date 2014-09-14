@@ -84,7 +84,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
 
     @Override
     protected void doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
-        logger.debug("Uploading data {}/{}/{}", name, bucketName, id);
+        logger.debug("Started uploading data {}/{}/{}", name, bucketName, id);
 
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(BINARY_MIME_TYPE);
@@ -95,11 +95,13 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
         } catch (Exception e) {
             throw new IOException("Error uploading data " + name + "/" + bucketName + "/" + id, e);
         }
+
+        logger.debug("Finished uploading data {}/{}/{}", name, bucketName, id);
     }
 
     @Override
     protected void doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
-        logger.debug("Downloading data {}/{}/{}", name, bucketName, id);
+        logger.debug("Started downloading data {}/{}/{}", name, bucketName, id);
 
         try {
             S3Object s3Object = (S3Object) dataObject;
@@ -110,6 +112,8 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
         } catch (Exception e) {
             throw new IOException("Error downloading data " + name + "/" + bucketName + "/" + id, e);
         }
+
+        logger.debug("Finished downloading data {}/{}/{}", name, bucketName, id);
     }
 
     @Override

@@ -10,6 +10,7 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ParentReference;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -77,8 +78,10 @@ public class GoogleDriveCloudStore implements CloudStore {
 
     @Override
     public void upload(String id, ReadableByteChannel src, long length) throws IOException {
-        File file = fileCache.get(id);
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
+        content.setLength(length);
+
+        File file = fileCache.get(id);
 
         if (file != null) {
             logger.debug("Data {}/{}/{} already exists. Updating it...", name, rootFolderName, id);
@@ -103,6 +106,8 @@ public class GoogleDriveCloudStore implements CloudStore {
 
             fileCache.put(id, file);
         }
+
+        logger.debug("Finished uploading data {}/{}/{}", name, rootFolderName, id);
     }
 
     @Override
@@ -110,7 +115,7 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = fileCache.get(id);
 
         if (file != null) {
-            logger.debug("Downloading data {}/{}/{}", name, rootFolderName, id);
+            logger.debug("Started downloading data {}/{}/{}", name, rootFolderName, id);
 
             try {
                 HttpRequest request = drive.getRequestFactory().buildGetRequest(new GenericUrl(file.getDownloadUrl()));
@@ -122,8 +127,10 @@ public class GoogleDriveCloudStore implements CloudStore {
             } catch (IOException e) {
                 throw new IOException("Error downloading data " + name + "/" + rootFolderName + "/" + id, e);
             }
+
+            logger.debug("Completed downloading data {}/{}/{}", name, rootFolderName, id);
         } else {
-            throw new IOException("No cached file found for ID '" + id + "'");
+            throw new FileNotFoundException("No cached file found for ID '" + id + "'");
         }
     }
 

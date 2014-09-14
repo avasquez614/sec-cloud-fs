@@ -6,8 +6,10 @@
        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
 
-    <context:property-placeholder location="classpath:application.properties,classpath*:conf/application.properties,
-    file:#{systemProperties['user.home']}/seccloudfs/conf/dropbox.properties"/>
+    <context:property-placeholder location="
+        classpath:application.properties,
+        file:#{systemProperties['user.home']}/seccloudfs/conf/dropbox.properties,
+        classpath*:custom-application.properties"/>
 
     <context:annotation-config />
 
@@ -41,6 +43,6 @@
         <constructor-arg ref="appInfo"/>
     </bean>
 
-    <import resource="classpath*:conf/application-context.xml"/>
+    <import resource="classpath*:custom-application-context.xml"/>
 
 </beans>

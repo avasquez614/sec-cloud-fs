@@ -13,7 +13,6 @@ import com.google.api.services.drive.model.File;
 import java.io.IOException;
 import javax.annotation.PostConstruct;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.GoogleDriveCloudStore;
@@ -37,8 +36,8 @@ public class GoogleDriveCloudStoreRegistrar {
 
     private String clientId;
     private String clientSecret;
-    private GoogleDriveCredentialsRepository credentialsRepository;
     private String rootFolderName;
+    private GoogleDriveCredentialsRepository credentialsRepository;
     private EmbeddedCacheManager cacheManager;
     private CloudStoreRegistry registry;
 
@@ -53,13 +52,13 @@ public class GoogleDriveCloudStoreRegistrar {
     }
 
     @Required
-    public void setCredentialsRepository(GoogleDriveCredentialsRepository credentialsRepository) {
-        this.credentialsRepository = credentialsRepository;
+    public void setRootFolderName(String rootFolderName) {
+        this.rootFolderName = rootFolderName;
     }
 
     @Required
-    public void setRootFolderName(String rootFolderName) {
-        this.rootFolderName = rootFolderName;
+    public void setCredentialsRepository(GoogleDriveCredentialsRepository credentialsRepository) {
+        this.credentialsRepository = credentialsRepository;
     }
 
     @Required
@@ -68,7 +67,7 @@ public class GoogleDriveCloudStoreRegistrar {
     }
 
     @Required
-    public void setRegistry(final CloudStoreRegistry registry) {
+    public void setRegistry(CloudStoreRegistry registry) {
         this.registry = registry;
     }
 
@@ -80,7 +79,10 @@ public class GoogleDriveCloudStoreRegistrar {
     public void registerStores() throws IOException {
         Iterable<GoogleDriveCredentials> credentialsList = findCredentials();
         for (GoogleDriveCredentials credentials : credentialsList) {
-            registry.register(createStore(credentials));
+            GoogleDriveCloudStore cloudStore = createStore(credentials);
+            cloudStore.init();
+
+            registry.register(cloudStore);
         }
     }
 
@@ -92,7 +94,7 @@ public class GoogleDriveCloudStoreRegistrar {
         }
     }
 
-    private CloudStore createStore(GoogleDriveCredentials storedCredentials) throws IOException {
+    private GoogleDriveCloudStore createStore(GoogleDriveCredentials storedCredentials) throws IOException {
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
         String id = storedCredentials.getId();

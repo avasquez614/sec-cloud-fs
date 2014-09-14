@@ -1,0 +1,2 @@
+* Recordar agregar en politicas de seguridad proteccion para los directorios con las credenciales de las interfaces
+de nube y los directorios con los archivos temporales y de cache
