@@ -1,6 +1,27 @@
+apply plugin:'application'
+
+mainClassName = 'org.avasquez.seccloudfs.cloud.store.CloudStoreApp'
+
 dependencies {
     compile project(':google-drive')
     compile project(':dropbox')
     compile project(':amazon-s3')
     compile 'commons-cli:commons-cli:1.2'
+}
+
+// Install to another dir
+installApp {
+    destinationDir = file('/opt/sec-cloud-fs/cloud-store-app')
+}
+
+// Add conf dir to classpath of start-up scripts
+startScripts {
+    applicationName = 'cloud-store-app'
+    classpath += files('src/dist/conf')
+    doLast {
+        def windowsScriptFile = file getWindowsScript()
+        def unixScriptFile = file getUnixScript()
+        windowsScriptFile.text = windowsScriptFile.text.replace('%APP_HOME%\\lib\\conf', '%APP_HOME%\\conf')
+        unixScriptFile.text = unixScriptFile.text.replace('$APP_HOME/lib/conf', '$APP_HOME/conf')
+    }
 }

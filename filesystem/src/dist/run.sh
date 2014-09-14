@@ -45,6 +45,6 @@ if [ ! -d "$MOUNT_POINT" ]; then
     fi
 fi
 
-export JAVA_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005"
+#export JAVA_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005"
 
 ./bin/seccloudfs "$@"

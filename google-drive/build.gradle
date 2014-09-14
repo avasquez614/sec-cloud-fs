@@ -1,6 +1,6 @@
 apply plugin:'application'
 
-mainClassName = 'org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizerCli'
+mainClassName = 'org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizerApp'
 
 dependencies {
     compile project(':commons')

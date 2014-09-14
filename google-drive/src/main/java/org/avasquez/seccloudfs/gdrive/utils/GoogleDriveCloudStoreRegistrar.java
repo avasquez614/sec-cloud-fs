@@ -11,8 +11,8 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 
 import java.io.IOException;
-import javax.annotation.PostConstruct;
 
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.GoogleDriveCloudStore;
@@ -30,7 +30,7 @@ import org.springframework.beans.factory.annotation.Required;
  *
  * @author avasquez
  */
-public class GoogleDriveCloudStoreRegistrar {
+public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
 
     public static final String STORE_NAME_PREFIX = "gdrive://";
 
@@ -39,7 +39,6 @@ public class GoogleDriveCloudStoreRegistrar {
     private String rootFolderName;
     private GoogleDriveCredentialsRepository credentialsRepository;
     private EmbeddedCacheManager cacheManager;
-    private CloudStoreRegistry registry;
 
     @Required
     public void setClientId(String clientId) {
@@ -66,17 +65,12 @@ public class GoogleDriveCloudStoreRegistrar {
         this.cacheManager = cacheManager;
     }
 
-    @Required
-    public void setRegistry(CloudStoreRegistry registry) {
-        this.registry = registry;
-    }
-
     /**
      * Creates {@link org.avasquez.seccloudfs.cloud.CloudStore}s from the credentials stored in the DB, and then
      * registers them with the registry.
      */
-    @PostConstruct
-    public void registerStores() throws IOException {
+    @Override
+    public void registerStores(CloudStoreRegistry registry) throws IOException {
         Iterable<GoogleDriveCredentials> credentialsList = findCredentials();
         for (GoogleDriveCredentials credentials : credentialsList) {
             GoogleDriveCloudStore cloudStore = createStore(credentials);

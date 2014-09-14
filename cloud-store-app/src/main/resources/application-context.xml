@@ -8,6 +8,8 @@
 
     <context:property-placeholder location="classpath:application.properties,classpath*:custom-application.properties"/>
 
+    <context:annotation-config/>
+
     <import resource="classpath*:custom-application-context.xml"/>
 
 </beans>

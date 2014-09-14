@@ -9,6 +9,8 @@
         </encoder>
     </appender>
 
+    <logger name="org.avasquez.seccloudfs" level="DEBUG"/>
+
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>

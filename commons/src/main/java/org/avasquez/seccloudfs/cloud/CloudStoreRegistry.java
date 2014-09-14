@@ -17,8 +17,9 @@ public interface CloudStoreRegistry {
     void register(CloudStore store);
 
     /**
-     * Returns the list of available {@link org.avasquez.seccloudfs.cloud.CloudStore}s for use. The list might be
-     * ordered according to the usage priority of the stores.
+     * Returns the list of available {@link org.avasquez.seccloudfs.cloud.CloudStore}s for use.
+     *
+     * @return the list of available stores
      */
     Collection<CloudStore> list();
 

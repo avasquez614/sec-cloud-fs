@@ -4,9 +4,9 @@ import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxRequestConfig;
 
 import java.io.IOException;
-import javax.annotation.PostConstruct;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.dropbox.DropboxCloudStore;
 import org.avasquez.seccloudfs.dropbox.db.model.DropboxCredentials;
@@ -21,13 +21,12 @@ import org.springframework.beans.factory.annotation.Required;
  *
  * @author avasquez
  */
-public class DropboxCloudStoreRegistrar {
+public class DropboxCloudStoreRegistrar implements CloudStoreRegistrar {
 
     public static final String STORE_NAME_PREFIX = "dropbox://";
 
     private DbxRequestConfig requestConfig;
     private DropboxCredentialsRepository credentialsRepository;
-    private CloudStoreRegistry registry;
 
     @Required
     public void setRequestConfig(DbxRequestConfig requestConfig) {
@@ -39,17 +38,12 @@ public class DropboxCloudStoreRegistrar {
         this.credentialsRepository = credentialsRepository;
     }
 
-    @Required
-    public void setRegistry(CloudStoreRegistry registry) {
-        this.registry = registry;
-    }
-
     /**
      * Creates {@link org.avasquez.seccloudfs.cloud.CloudStore}s from the credentials stored in the DB, and then
      * registers them with the registry.
      */
-    @PostConstruct
-    public void registerStores() throws IOException {
+    @Override
+    public void registerStores(CloudStoreRegistry registry) throws IOException {
         Iterable<DropboxCredentials> credentialsList = findCredentials();
         for (DropboxCredentials credentials : credentialsList) {
             registry.register(createStore(credentials));
