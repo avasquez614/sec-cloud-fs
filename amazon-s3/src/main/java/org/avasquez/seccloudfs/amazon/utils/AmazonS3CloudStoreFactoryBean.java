@@ -3,8 +3,13 @@ package org.avasquez.seccloudfs.amazon.utils;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 
 import org.avasquez.seccloudfs.amazon.AmazonS3CloudStore;
+import org.infinispan.Cache;
+import org.infinispan.configuration.cache.Configuration;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.manager.EmbeddedCacheManager;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -20,8 +25,11 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
 
     private String accessKey;
     private String secretKey;
-    private String username;
+    private String accountId;
     private String bucketName;
+    private String maxSize;
+    private EmbeddedCacheManager cacheManager;
+    private int maxCacheEntries;
 
     @Required
     public void setAccessKey(String accessKey) {
@@ -34,8 +42,8 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
     }
 
     @Required
-    public void setUsername(String username) {
-        this.username = username;
+    public void setAccountId(String accountId) {
+        this.accountId = accountId;
     }
 
     @Required
@@ -43,12 +51,29 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
         this.bucketName = bucketName;
     }
 
+    @Required
+    public void setMaxSize(String maxSize) {
+        this.maxSize = maxSize;
+    }
+
+    @Required
+    public void setCacheManager(EmbeddedCacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
+    @Required
+    public void setMaxCacheEntries(int maxCacheEntries) {
+        this.maxCacheEntries = maxCacheEntries;
+    }
+
     @Override
     public AmazonS3CloudStore getObject() throws Exception {
-        String storeName = STORE_NAME_PREFIX + username;
+        String storeName = STORE_NAME_PREFIX + accountId;
         AmazonS3 s3 = new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey));
-        AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(storeName, s3, bucketName);
+        Cache<String, ObjectMetadata> metadataCache = createMetadataCache(storeName);
+        AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(storeName, s3, bucketName, metadataCache);
 
+        cloudStore.setMaxSize(maxSize);
         cloudStore.init();
 
         return cloudStore;
@@ -62,6 +87,14 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
     @Override
     public boolean isSingleton() {
         return true;
+    }
+
+    private Cache<String, ObjectMetadata> createMetadataCache(String storeName) {
+        Configuration conf = new ConfigurationBuilder().eviction().maxEntries(maxCacheEntries).build();
+
+        cacheManager.defineConfiguration(storeName, conf);
+
+        return cacheManager.getCache(storeName);
     }
 
 }

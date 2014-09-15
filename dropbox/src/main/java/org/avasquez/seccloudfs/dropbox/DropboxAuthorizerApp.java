@@ -63,17 +63,17 @@ public class DropboxAuthorizerApp {
         DropboxCredentials credentials = new DropboxCredentials();
         credentials.setAccessToken(accessToken);
 
-        stdOut.print("4. Enter the username: ");
+        stdOut.print("4. Enter the account ID: ");
         stdOut.flush();
 
-        String username = null;
+        String accountId = null;
         try {
-            username = CliUtils.readLine(stdIn, stdOut);
+            accountId = CliUtils.readLine(stdIn, stdOut);
         } catch (IOException e) {
-            CliUtils.die("ERROR: Unable to read username input", e, stdOut);
+            CliUtils.die("ERROR: Unable to read account ID input", e, stdOut);
         }
 
-        credentials.setUsername(username);
+        credentials.setAccountId(accountId);
 
         try {
             credentialsRepository.insert(credentials);

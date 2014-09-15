@@ -37,23 +37,23 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected Object getDataObject(String id, boolean withData) throws IOException {
-        return storeDir.resolve(id);
+    protected Object getMetadata(String filename) throws IOException {
+        return storeDir.resolve(filename);
     }
 
     @Override
-    protected void doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
-        Path path = (Path) dataObject;
+    protected void doUpload(String filename, Object metadata, ReadableByteChannel src, long length) throws IOException {
+        Path path = (Path)metadata;
 
-        try (FileChannel fileChannel = FileChannel.open(path,
-            StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+        try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+            StandardOpenOption.TRUNCATE_EXISTING)) {
             fileChannel.transferFrom(src, 0, length);
         }
     }
 
     @Override
-    protected void doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
-        Path path = (Path) dataObject;
+    protected void doDownload(String filename, Object metadata, WritableByteChannel target) throws IOException {
+        Path path = (Path)metadata;
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {
             fileChannel.transferTo(0, fileChannel.size(), target);
@@ -61,13 +61,13 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected void doDelete(String id, Object dataObject) throws IOException {
-        Files.delete((Path) dataObject);
+    protected void doDelete(String filename, Object metadata) throws IOException {
+        Files.delete((Path)metadata);
     }
 
     @Override
-    protected long getDataSize(Object dataObject) throws IOException {
-        return Files.size((Path) dataObject);
+    protected long getDataSize(Object metadata) throws IOException {
+        return Files.size((Path)metadata);
     }
 
     @Override

@@ -7,7 +7,6 @@ import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
-import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ParentReference;
 
 import java.io.FileNotFoundException;
@@ -16,12 +15,10 @@ import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.infinispan.Cache;
 import org.slf4j.Logger;
@@ -40,7 +37,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     private static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
     private static final String ROOT_FOLDER_QUERY = "mimeType = '" + FOLDER_MIME_TYPE + "' and title = '%s'";
-    private static final String LIST_FILES_UNDER_FOLDER_QUERY = "'%s' in parents";
+    private static final String FIND_FILE_QUERY = "'%s' in parents and title = '%s'";
 
     private String name;
     private Drive drive;
@@ -63,63 +60,54 @@ public class GoogleDriveCloudStore implements CloudStore {
 
     public void init() throws IOException {
         rootFolder = getRootFolder();
-
         if (rootFolder == null) {
-            logger.debug("Root folder '{}' already doesn't exist in store {}. Creating it...", rootFolderName, name);
+            logger.debug("Root folder '{}' doesn't exist in store {}. Creating it...", rootFolderName, name);
 
             // Create root folder if it doesn't exist
-            rootFolder = createFolder(rootFolderName);
-        } else {
-            logger.debug("Root folder '{}' found in store {}", rootFolderName, name);
-
-            // Pre-cache existing children
-            List<File> files = listFiles(rootFolder.getId());
-            for (File file : files) {
-                fileCache.put(file.getTitle(), file);
-            }
+            rootFolder = createRootFolder();
         }
     }
 
     @Override
-    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+    public void upload(String filename, ReadableByteChannel src, long length) throws IOException {
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
         content.setLength(length);
 
-        File file = fileCache.get(id);
+        File file = getCachedFile(filename);
 
         if (file != null) {
-            logger.debug("Data {}/{}/{} already exists. Updating it...", name, rootFolderName, id);
+            logger.debug("File {}/{}/{} already exists. Updating it...", name, rootFolderName, filename);
 
             try {
                 drive.files().update(file.getId(), file, content).execute();
             } catch (IOException e) {
-                throw new IOException("Error updating file " + name + "/" + rootFolderName + "/" + id, e);
+                throw new IOException("Error updating file " + name + "/" + rootFolderName + "/" + filename, e);
             }
         } else {
-            logger.debug("Data {}/{}/{} doesn't exist. Inserting it...", name, rootFolderName, id);
+            logger.debug("File {}/{}/{} doesn't exist. Inserting it...", name, rootFolderName, filename);
 
             file = new File();
-            file.setTitle(id);
+            file.setTitle(filename);
             file.setParents(Arrays.asList((new ParentReference()).setId(rootFolder.getId())));
 
             try {
                 file = drive.files().insert(file, content).execute();
-            } catch (IOException e) {
-                throw new IOException("Error inserting data " + name + "/" + rootFolderName + "/" + id, e);
+            } catch (Exception e) {
+                throw new IOException("Error inserting " + name + "/" + rootFolderName + "/" + filename, e);
             }
 
-            fileCache.put(id, file);
+            fileCache.put(filename, file);
         }
 
-        logger.debug("Finished uploading data {}/{}/{}", name, rootFolderName, id);
+        logger.debug("Finished uploading {}/{}/{}", name, rootFolderName, filename);
     }
 
     @Override
-    public void download(String id, WritableByteChannel target) throws IOException {
-        File file = fileCache.get(id);
+    public void download(String filename, WritableByteChannel target) throws IOException {
+        File file = getCachedFile(filename);
 
         if (file != null) {
-            logger.debug("Started downloading data {}/{}/{}", name, rootFolderName, id);
+            logger.debug("Started downloading {}/{}/{}", name, rootFolderName, filename);
 
             try {
                 HttpRequest request = drive.getRequestFactory().buildGetRequest(new GenericUrl(file.getDownloadUrl()));
@@ -128,30 +116,30 @@ public class GoogleDriveCloudStore implements CloudStore {
                 try (InputStream in = response.getContent()) {
                     IOUtils.copy(in, Channels.newOutputStream(target));
                 }
-            } catch (IOException e) {
-                throw new IOException("Error downloading data " + name + "/" + rootFolderName + "/" + id, e);
+            } catch (Exception e) {
+                throw new IOException("Error downloading " + name + "/" + rootFolderName + "/" + filename, e);
             }
 
-            logger.debug("Finished downloading data {}/{}/{}", name, rootFolderName, id);
+            logger.debug("Finished downloading {}/{}/{}", name, rootFolderName, filename);
         } else {
-            throw new FileNotFoundException("No cached file found for ID '" + id + "'");
+            throw new FileNotFoundException("No file " + name + "/" + rootFolderName + "/" + filename + " found");
         }
     }
 
     @Override
-    public void delete(String id) throws IOException {
-        File file = fileCache.get(id);
+    public void delete(String filename) throws IOException {
+        File file = getCachedFile(filename);
 
         if (file != null) {
-            logger.debug("Deleting data {}/{}/{}", name, rootFolderName, id);
+            logger.debug("Deleting {}/{}/{}", name, rootFolderName, filename);
 
             try {
                 drive.files().delete(file.getId()).execute();
-            } catch (IOException e) {
-                throw new IOException("Error deleting data " + name + "/" + rootFolderName + "/" + id, e);
+            } catch (Exception e) {
+                throw new IOException("Error deleting " + name + "/" + rootFolderName + "/" + filename, e);
             }
 
-            fileCache.remove(id);
+            fileCache.remove(filename);
         }
     }
 
@@ -180,46 +168,56 @@ public class GoogleDriveCloudStore implements CloudStore {
             } else if (files.size() == 1) {
                 return files.get(0);
             } else {
-                throw new IllegalStateException("More than one root folder with name '" + rootFolderName +
-                    "' found in store " + name);
+                throw new IllegalStateException("Multiple '" + rootFolderName + "' folders found in store " + name);
             }
         } catch (IOException e) {
             throw new IOException("Error retrieving root folder '" + rootFolderName + "' from store " + name, e);
         }
     }
 
-    private File createFolder(String folderName) throws IOException {
+    private File createRootFolder() throws IOException {
         File folder = new File();
-        folder.setTitle(folderName);
+        folder.setTitle(rootFolderName);
         folder.setMimeType(FOLDER_MIME_TYPE);
 
         try {
             folder = drive.files().insert(folder).execute();
 
-            logger.debug("Folder '" + folderName + " created in store " + name);
+            logger.debug("Root folder '" + rootFolderName + "' created in store " + name);
         } catch (IOException e) {
-            throw new IOException("Error creating folder '" + folderName + "' in store " + name, e);
+            throw new IOException("Error creating root folder '" + rootFolderName + "' in store " + name, e);
         }
 
         return folder;
     }
 
-    private List<File> listFiles(String folderId) throws IOException {
+    private File getCachedFile(String filename) throws IOException {
+        File file = fileCache.get(filename);
+        if (file == null) {
+            file = findFile(filename);
+            if (file != null) {
+                fileCache.put(filename, file);
+            }
+        }
+
+        return file;
+    }
+
+    private File findFile(String filename) throws IOException, IllegalArgumentException {
         try {
-            List<File> result = new ArrayList<>();
-            String query = String.format(LIST_FILES_UNDER_FOLDER_QUERY, folderId);
+            String query = String.format(FIND_FILE_QUERY, rootFolder.getId(), filename);
             Drive.Files.List request = drive.files().list().setQ(query);
 
-            do {
-                FileList files = request.execute();
-                result.addAll(files.getItems());
-
-                request.setPageToken(files.getNextPageToken());
-            } while (StringUtils.isNotEmpty(request.getPageToken()));
-
-            return result;
+            List<File> files = request.execute().getItems();
+            if (files.size() == 0) {
+                return null;
+            } else if (files.size() == 1) {
+                return files.get(0);
+            } else {
+                throw new IllegalStateException("Multiple '" + filename + "' files found in store " + name);
+            }
         } catch (IOException e) {
-            throw new IOException("Error listing files for folder '" + folderId + "' in store " + name, e);
+            throw new IOException("Error finding file '" + filename + "' in store " + name, e);
         }
     }
 

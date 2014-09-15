@@ -60,7 +60,7 @@ public class DropboxCloudStoreRegistrar implements CloudStoreRegistrar {
 
     private CloudStore createStore(DropboxCredentials credentials) throws IOException {
         DbxClient client = new DbxClient(requestConfig, credentials.getAccessToken());
-        String storeName = STORE_NAME_PREFIX + credentials.getUsername();
+        String storeName = STORE_NAME_PREFIX + credentials.getAccountId();
 
         return new DropboxCloudStore(storeName, client);
     }

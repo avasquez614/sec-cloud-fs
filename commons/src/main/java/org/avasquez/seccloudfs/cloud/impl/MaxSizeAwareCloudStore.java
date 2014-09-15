@@ -33,11 +33,11 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
 
     @Override
     public void upload(String id, ReadableByteChannel src, long length) throws IOException {
-        Object dataObject = getDataObject(id, false);
+        Object metadata = getMetadata(id);
 
         synchronized (this) {
-            long dataSize = getDataSize(dataObject);
-            long delta = -dataSize + length;
+            long size = getDataSize(metadata);
+            long delta = -size + length;
             long newSize = currentSize.get() + delta;
 
             if (newSize > maxSize) {
@@ -48,10 +48,12 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
         }
 
         try {
-            doUpload(id, dataObject, src, length);
+            doUpload(id, metadata, src, length);
         } catch (IOException e) {
             // Recalculate size since maybe some bytes were written
-            currentSize = new AtomicLong(calculateCurrentSize());
+            synchronized (this) {
+                currentSize = new AtomicLong(calculateCurrentSize());
+            }
 
             throw e;
         }
@@ -59,17 +61,17 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
 
     @Override
     public void download(String id, WritableByteChannel target) throws IOException {
-        doDownload(id, getDataObject(id, true), target);
+        doDownload(id, getMetadata(id), target);
     }
 
     @Override
     public void delete(String id) throws IOException {
-        Object metadata = getDataObject(id, false);
-        long dataSize = getDataSize(metadata);
+        Object metadata = getMetadata(id);
+        long size = getDataSize(metadata);
 
         doDelete(id, metadata);
 
-        currentSize.addAndGet(-dataSize);
+        currentSize.addAndGet(-size);
     }
 
     @Override
@@ -82,16 +84,16 @@ public abstract class MaxSizeAwareCloudStore implements CloudStore {
         return maxSize - currentSize.get();
     }
 
-    protected abstract Object getDataObject(String id, boolean withData) throws IOException;
+    protected abstract Object getMetadata(String id) throws IOException;
 
-    protected abstract void doUpload(String id, Object dataObject, ReadableByteChannel src,
+    protected abstract void doUpload(String id, Object metadata, ReadableByteChannel src,
                                      long length) throws IOException;
 
-    protected abstract void doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException;
+    protected abstract void doDownload(String id, Object metadata, WritableByteChannel target) throws IOException;
 
-    protected abstract void doDelete(String id, Object dataObject) throws IOException;
+    protected abstract void doDelete(String id, Object metadata) throws IOException;
 
-    protected abstract long getDataSize(Object dataObject) throws IOException;
+    protected abstract long getDataSize(Object metadata) throws IOException;
 
     protected abstract long calculateCurrentSize() throws IOException;
 

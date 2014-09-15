@@ -1,5 +1,6 @@
 package org.avasquez.seccloudfs.amazon;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
@@ -7,6 +8,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -15,6 +17,7 @@ import java.nio.channels.WritableByteChannel;
 
 import org.apache.commons.io.IOUtils;
 import org.avasquez.seccloudfs.cloud.impl.MaxSizeAwareCloudStore;
+import org.infinispan.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +35,14 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     private String name;
     private AmazonS3 s3;
     private String bucketName;
+    private Cache<String, ObjectMetadata> metadataCache;
 
-    public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName) {
+    public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName,
+                              Cache<String, ObjectMetadata> metadataCache) {
         this.name = name;
         this.s3 = s3;
         this.bucketName = bucketName;
+        this.metadataCache = metadataCache;
     }
 
     @Override
@@ -68,71 +74,92 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected Object getDataObject(String id, boolean withData) throws IOException {
-        logger.debug("Retrieving data object {}/{}/{}", name, bucketName, id);
+    protected Object getMetadata(String filename) throws IOException {
+        logger.debug("Retrieving metadata for {}/{}/{}", name, bucketName, filename);
 
-        try {
-            if (withData) {
-                return s3.getObject(bucketName, id);
-            } else {
-                return s3.getObjectMetadata(bucketName, id);
+        ObjectMetadata metadata = metadataCache.get(filename);
+        if (metadata == null) {
+            try {
+                metadata = s3.getObjectMetadata(bucketName, filename);
+                metadataCache.put(filename, metadata);
+            } catch (Exception e) {
+                if (e instanceof AmazonServiceException && ((AmazonServiceException)e).getStatusCode() == 404) {
+                    // Return null when not found
+                    return null;
+                }
+
+                throw new IOException("Error retrieving metadata for " + name + "/" + bucketName + "/" + filename, e);
             }
-        } catch (Exception e) {
-            throw new IOException("Error retrieving data object " + name + "/" + bucketName + "/" + id, e);
         }
+
+        return metadata;
     }
 
     @Override
-    protected void doUpload(String id, Object dataObject, ReadableByteChannel src, long length) throws IOException {
-        logger.debug("Started uploading data {}/{}/{}", name, bucketName, id);
+    protected void doUpload(String filename, Object metadata, ReadableByteChannel src, long length) throws IOException {
+        logger.debug("Started uploading {}/{}/{}", name, bucketName, filename);
 
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentType(BINARY_MIME_TYPE);
-        metadata.setContentLength(length);
-
-        try {
-            s3.putObject(bucketName, id, Channels.newInputStream(src), metadata);
-        } catch (Exception e) {
-            throw new IOException("Error uploading data " + name + "/" + bucketName + "/" + id, e);
+        ObjectMetadata objectMetadata;
+        if (metadata != null) {
+            objectMetadata = (ObjectMetadata)metadata;
+        } else {
+            objectMetadata = new ObjectMetadata();
         }
 
-        logger.debug("Finished uploading data {}/{}/{}", name, bucketName, id);
+        objectMetadata.setContentType(BINARY_MIME_TYPE);
+        objectMetadata.setContentLength(length);
+
+        try {
+            s3.putObject(bucketName, filename, Channels.newInputStream(src), objectMetadata);
+        } catch (Exception e) {
+            throw new IOException("Error uploading " + name + "/" + bucketName + "/" + filename, e);
+        }
+
+        metadataCache.put(filename, objectMetadata);
+
+        logger.debug("Finished uploading {}/{}/{}", name, bucketName, filename);
     }
 
     @Override
-    protected void doDownload(String id, Object dataObject, WritableByteChannel target) throws IOException {
-        logger.debug("Started downloading data {}/{}/{}", name, bucketName, id);
+    protected void doDownload(String filename, Object metadata, WritableByteChannel target) throws IOException {
+        if (metadata == null) {
+            throw new FileNotFoundException("No file " + name + "/" + bucketName + "/" + filename + " found");
+        }
+
+        logger.debug("Started downloading {}/{}/{}", name, bucketName, filename);
 
         try {
-            S3Object s3Object = (S3Object) dataObject;
+            S3Object s3Object = s3.getObject(bucketName, filename);
 
             try (InputStream in = s3Object.getObjectContent()) {
                 IOUtils.copy(in, Channels.newOutputStream(target));
             }
         } catch (Exception e) {
-            throw new IOException("Error downloading data " + name + "/" + bucketName + "/" + id, e);
+            throw new IOException("Error downloading " + name + "/" + bucketName + "/" + filename, e);
         }
 
-        logger.debug("Finished downloading data {}/{}/{}", name, bucketName, id);
+        logger.debug("Finished downloading {}/{}/{}", name, bucketName, filename);
     }
 
     @Override
-    protected void doDelete(String id, Object dataObject) throws IOException {
-        logger.debug("Deleting data {}/{}/{}", name, bucketName, id);
+    protected void doDelete(String filename, Object metadata) throws IOException {
+        if (metadata != null) {
+            logger.debug("Deleting {}/{}/{}", name, bucketName, filename);
 
-        try {
-            s3.deleteObject(bucketName, id);
-        } catch (Exception e) {
-            throw new IOException("Error deleting data " + name + "/" + bucketName + "/" + id, e);
+            try {
+                s3.deleteObject(bucketName, filename);
+            } catch (Exception e) {
+                throw new IOException("Error deleting " + name + "/" + bucketName + "/" + filename, e);
+            }
         }
     }
 
     @Override
-    protected long getDataSize(Object dataObject) throws IOException {
-        if (dataObject instanceof S3Object) {
-            return ((S3Object) dataObject).getObjectMetadata().getContentLength();
+    protected long getDataSize(Object metadata) throws IOException {
+        if (metadata != null) {
+            return ((ObjectMetadata)metadata).getContentLength();
         } else {
-            return ((ObjectMetadata) dataObject).getContentLength();
+            return 0;
         }
     }
 

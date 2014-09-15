@@ -12,6 +12,7 @@
                 <value>classpath:application.properties</value>
                 <value>file:#{systemProperties['user.home']}/seccloudfs/conf/google-drive.properties</value>
                 <value>file:#{systemProperties['user.home']}/seccloudfs/conf/dropbox.properties</value>
+                <value>file:#{systemProperties['user.home']}/seccloudfs/conf/amazon-s3.properties</value>
                 <value>classpath*:custom-application.properties</value>
             </list>
         </property>
@@ -55,6 +56,7 @@
         <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
         <property name="rootFolderName" value="${google.drive.rootFolder.name}"/>
         <property name="cacheManager" ref="cacheManager"/>
+        <property name="maxCacheEntries" value="${google.drive.cache.maxEntries}"/>
     </bean>
 
     <bean id="dropboxCloudStoreRegistrar" class="org.avasquez.seccloudfs.dropbox.utils.DropboxCloudStoreRegistrar">

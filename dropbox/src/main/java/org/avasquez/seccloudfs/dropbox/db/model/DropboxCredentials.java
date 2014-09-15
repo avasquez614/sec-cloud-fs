@@ -13,7 +13,7 @@ public class DropboxCredentials {
     @Id
     @ObjectId
     private String id;
-    private String username;
+    private String accountId;
     private String accessToken;
 
     public String getId() {
@@ -24,12 +24,12 @@ public class DropboxCredentials {
         this.id = id;
     }
 
-    public String getUsername() {
-        return username;
+    public String getAccountId() {
+        return accountId;
     }
 
-    public void setUsername(final String username) {
-        this.username = username;
+    public void setAccountId(final String accountId) {
+        this.accountId = accountId;
     }
 
     public String getAccessToken() {

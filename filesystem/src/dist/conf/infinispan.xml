@@ -5,11 +5,11 @@
         xmlns="urn:infinispan:requestConfig:6.0">
 
     <namedCache name="content">
-        <eviction maxEntries="100" />
+        <eviction maxEntries="1000" />
     </namedCache>
 
     <namedCache name="fileNodes">
-        <eviction maxEntries="100" />
+        <eviction maxEntries="1000" />
     </namedCache>
 
     <namedCache name="fileHandles">

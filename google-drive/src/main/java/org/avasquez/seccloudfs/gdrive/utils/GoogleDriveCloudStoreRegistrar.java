@@ -19,6 +19,7 @@ import org.avasquez.seccloudfs.gdrive.GoogleDriveCloudStore;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.infinispan.Cache;
+import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.springframework.beans.factory.annotation.Required;
@@ -40,6 +41,7 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     private GoogleDriveCredentialsRepository credentialsRepository;
     private String rootFolderName;
     private EmbeddedCacheManager cacheManager;
+    private int maxCacheEntries;
 
     @Required
     public void setClientId(String clientId) {
@@ -69,6 +71,11 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     @Required
     public void setCacheManager(EmbeddedCacheManager cacheManager) {
         this.cacheManager = cacheManager;
+    }
+
+    @Required
+    public void setMaxCacheEntries(final int maxCacheEntries) {
+        this.maxCacheEntries = maxCacheEntries;
     }
 
     /**
@@ -114,14 +121,16 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
             .setApplicationName(applicationName)
             .build();
 
-        String storeName = STORE_NAME_PREFIX + storedCredentials.getUsername();
+        String storeName = STORE_NAME_PREFIX + storedCredentials.getAccountId();
         Cache<String, File> fileCache = createFileCache(storeName);
 
         return new GoogleDriveCloudStore(storeName, drive, fileCache, rootFolderName);
     }
 
     private Cache<String, File> createFileCache(String storeName) {
-        cacheManager.defineConfiguration(storeName, new ConfigurationBuilder().build());
+        Configuration conf = new ConfigurationBuilder().eviction().maxEntries(maxCacheEntries).build();
+
+        cacheManager.defineConfiguration(storeName, conf);
 
         return cacheManager.getCache(storeName);
     }

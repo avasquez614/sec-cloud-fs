@@ -13,7 +13,7 @@ public class GoogleDriveCredentials {
     @Id
     @ObjectId
     private String id;
-    private String username;
+    private String accountId;
     private String accessToken;
     private String refreshToken;
     private Long expirationTime;
@@ -29,12 +29,12 @@ public class GoogleDriveCredentials {
         this.id = id;
     }
 
-    public String getUsername() {
-        return username;
+    public String getAccountId() {
+        return accountId;
     }
 
-    public void setUsername(final String username) {
-        this.username = username;
+    public void setAccountId(final String accountId) {
+        this.accountId = accountId;
     }
 
     public String getAccessToken() {
