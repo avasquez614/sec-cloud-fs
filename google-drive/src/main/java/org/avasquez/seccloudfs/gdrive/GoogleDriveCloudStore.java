@@ -65,9 +65,13 @@ public class GoogleDriveCloudStore implements CloudStore {
         rootFolder = getRootFolder();
 
         if (rootFolder == null) {
+            logger.debug("Root folder '{}' already doesn't exist in store {}. Creating it...", rootFolderName, name);
+
             // Create root folder if it doesn't exist
             rootFolder = createFolder(rootFolderName);
         } else {
+            logger.debug("Root folder '{}' found in store {}", rootFolderName, name);
+
             // Pre-cache existing children
             List<File> files = listFiles(rootFolder.getId());
             for (File file : files) {
@@ -128,7 +132,7 @@ public class GoogleDriveCloudStore implements CloudStore {
                 throw new IOException("Error downloading data " + name + "/" + rootFolderName + "/" + id, e);
             }
 
-            logger.debug("Completed downloading data {}/{}/{}", name, rootFolderName, id);
+            logger.debug("Finished downloading data {}/{}/{}", name, rootFolderName, id);
         } else {
             throw new FileNotFoundException("No cached file found for ID '" + id + "'");
         }

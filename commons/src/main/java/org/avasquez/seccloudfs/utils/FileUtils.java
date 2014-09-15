@@ -1,6 +1,8 @@
 package org.avasquez.seccloudfs.utils;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
@@ -16,8 +18,15 @@ import java.util.regex.Pattern;
  */
 public class FileUtils {
 
+    public static final long ONE_KB = 1024;
+    public static final long ONE_MB = 1024 * ONE_KB;
+    public static final long ONE_GB = 1024 * ONE_MB;
+    public static final long ONE_TB = 1024 * ONE_GB;
+    public static final long ONE_PB = 1024 * ONE_TB;
+    public static final long ONE_EB = 1024 * ONE_PB;
+
     public static final Pattern HUMAN_READABLE_SIZE_PATTERN =
-        Pattern.compile("(\\d+)\\s*(B|KB|MB|GB)?", Pattern.CASE_INSENSITIVE);
+        Pattern.compile("(\\d+)\\s*(B|KB|MB|GB|TB|PB|EB)?", Pattern.CASE_INSENSITIVE);
 
     public static final OpenOption[] TMP_FILE_OPEN_OPTIONS = {
         StandardOpenOption.READ,
@@ -34,6 +43,24 @@ public class FileUtils {
         Files.walkFileTree(directory, visitor);
 
         return visitor.totalSize;
+    }
+
+    public static String byteCountToHumanReadableByteSize(long size) {
+        if (size / ONE_EB > 0) {
+            return "" + BigDecimal.valueOf((double)size / (double)ONE_EB).setScale(2, RoundingMode.CEILING) + " EB";
+        } else if (size / ONE_PB > 0) {
+            return "" + BigDecimal.valueOf((double)size / (double)ONE_PB).setScale(2, RoundingMode.CEILING) + " PB";
+        } else if (size / ONE_TB > 0) {
+            return "" + BigDecimal.valueOf((double)size / (double)ONE_TB).setScale(2, RoundingMode.CEILING) + " TB";
+        } else if (size / ONE_GB > 0) {
+            return "" + BigDecimal.valueOf((double)size / (double)ONE_GB).setScale(2, RoundingMode.CEILING) + " GB";
+        } else if (size / ONE_MB > 0) {
+            return "" + BigDecimal.valueOf((double)size / (double)ONE_MB).setScale(2, RoundingMode.CEILING) + " MB";
+        } else if (size / ONE_KB > 0) {
+            return "" + BigDecimal.valueOf((double)size / (double)ONE_KB).setScale(2, RoundingMode.CEILING) + " KB";
+        } else {
+            return String.valueOf(size) + " B";
+        }
     }
 
     public static long humanReadableByteSizeToByteCount(String size) {
@@ -54,6 +81,15 @@ public class FileUtils {
                         break;
                     case "GB":
                         exp = 3;
+                        break;
+                    case "TB":
+                        exp = 4;
+                        break;
+                    case "PB":
+                        exp = 5;
+                        break;
+                    case "EB":
+                        exp = 6;
                         break;
                     default:
                         exp = 0;

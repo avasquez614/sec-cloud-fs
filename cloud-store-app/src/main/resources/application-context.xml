@@ -6,9 +6,77 @@
        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
 
-    <context:property-placeholder location="classpath:application.properties,classpath*:custom-application.properties"/>
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:application.properties</value>
+                <value>file:#{systemProperties['user.home']}/seccloudfs/conf/google-drive.properties</value>
+                <value>file:#{systemProperties['user.home']}/seccloudfs/conf/dropbox.properties</value>
+                <value>classpath*:custom-application.properties</value>
+            </list>
+        </property>
+    </bean>
 
     <context:annotation-config/>
+
+    <!-- Cache -->
+
+    <bean id="cacheManager" class="org.infinispan.manager.DefaultCacheManager"/>
+
+    <!-- Mongo -->
+
+    <bean id="mongoClient" class="com.mongodb.MongoClient">
+        <constructor-arg value="${mongo.host}"/>
+        <constructor-arg value="${mongo.port}"/>
+    </bean>
+
+    <bean id="jongo" class="org.avasquez.seccloudfs.db.mongo.JongoFactoryBean">
+        <property name="dbName" value="${mongo.db.name}"/>
+        <property name="mongoClient" ref="mongoClient"/>
+    </bean>
+
+    <bean id="googleDriveCredentialsRepo"
+          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialsRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <bean id="dropboxCredentialsRepo"
+          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.JongoDropboxCredentialsRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <!-- Cloud Store Registrars -->
+
+    <bean id="googleDriveCloudStoreRegistrar"
+          class="org.avasquez.seccloudfs.gdrive.utils.GoogleDriveCloudStoreRegistrar">
+        <property name="clientId" value="${google.clientId}"/>
+        <property name="clientSecret" value="${google.clientSecret}"/>
+        <property name="applicationName" value="${google.applicationName}"/>
+        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
+        <property name="rootFolderName" value="${google.drive.rootFolder.name}"/>
+        <property name="cacheManager" ref="cacheManager"/>
+    </bean>
+
+    <bean id="dropboxCloudStoreRegistrar" class="org.avasquez.seccloudfs.dropbox.utils.DropboxCloudStoreRegistrar">
+        <property name="credentialsRepository" ref="dropboxCredentialsRepo"/>
+        <property name="requestConfig">
+            <bean class="com.dropbox.core.DbxRequestConfig">
+                <constructor-arg value="${dropbox.clientIdentifier}"/>
+                <constructor-arg value="#{T(java.util.Locale).default.toString()}"/>
+            </bean>
+        </property>
+    </bean>
+
+    <!-- Cloud Store Registry -->
+
+    <bean id="cloudStoreRegistry" class="org.avasquez.seccloudfs.cloud.CloudStoreRegistryFactoryBean">
+        <property name="cloudStoreRegistrars">
+            <list>
+                <ref bean="googleDriveCloudStoreRegistrar"/>
+                <ref bean="dropboxCloudStoreRegistrar"/>
+            </list>
+        </property>
+    </bean>
 
     <import resource="classpath*:custom-application-context.xml"/>
 

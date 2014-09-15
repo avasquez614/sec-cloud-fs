@@ -35,10 +35,15 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
 
     @Override
     public void onTokenResponse(Credential credentials, TokenResponse tokenResponse) throws IOException {
-        logger.debug("Credentials '" + credentialsId + "' refreshed");
+        logger.debug("Credentials '{}' refreshed", credentialsId);
 
-        GoogleDriveCredentials storedCredentials = new GoogleDriveCredentials();
-        storedCredentials.setId(credentialsId);
+        GoogleDriveCredentials storedCredentials;
+        try {
+            storedCredentials = credentialsRepository.find(credentialsId);
+        } catch (DbException e) {
+            throw new IOException("Unable to retrieve credentials '" + credentialsId + "' from DB", e);
+        }
+
         storedCredentials.setAccessToken(credentials.getAccessToken());
         storedCredentials.setRefreshToken(credentials.getRefreshToken());
         storedCredentials.setExpirationTime(credentials.getExpirationTimeMilliseconds());
@@ -46,8 +51,10 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
         try {
             credentialsRepository.save(storedCredentials);
         } catch (DbException e) {
-            throw new IOException("Unable to save credentials '" + credentialsId + "'");
+            throw new IOException("Unable to save credentials '" + credentialsId + "' in DB", e);
         }
+
+        logger.debug("Refreshed credentials '{}' saved in DB", credentialsId);
     }
 
     @Override
@@ -60,8 +67,10 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
         try {
             credentialsRepository.delete(credentialsId);
         } catch (DbException e) {
-            throw new IOException("Unable to delete credentials '" + credentialsId + "'", e);
+            throw new IOException("Unable to delete credentials '" + credentialsId + "' from DB", e);
         }
+
+        logger.debug("Deleted credentials '{}' from DB", credentialsId);
     }
 
 }

@@ -34,9 +34,9 @@
     </bean>
 
     <bean id="authSupport" class="org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizationSupport">
-        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
         <property name="clientId" value="${google.clientId}"/>
         <property name="clientSecret" value="${google.clientSecret}"/>
+        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
     </bean>
 
     <import resource="classpath*:custom-application-context.xml"/>

@@ -36,8 +36,9 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
 
     private String clientId;
     private String clientSecret;
-    private String rootFolderName;
+    private String applicationName;
     private GoogleDriveCredentialsRepository credentialsRepository;
+    private String rootFolderName;
     private EmbeddedCacheManager cacheManager;
 
     @Required
@@ -51,13 +52,18 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     }
 
     @Required
-    public void setRootFolderName(String rootFolderName) {
-        this.rootFolderName = rootFolderName;
+    public void setApplicationName(final String applicationName) {
+        this.applicationName = applicationName;
     }
 
     @Required
     public void setCredentialsRepository(GoogleDriveCredentialsRepository credentialsRepository) {
         this.credentialsRepository = credentialsRepository;
+    }
+
+    @Required
+    public void setRootFolderName(String rootFolderName) {
+        this.rootFolderName = rootFolderName;
     }
 
     @Required
@@ -104,7 +110,9 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
             .setRefreshToken(storedCredentials.getRefreshToken())
             .setExpirationTimeMilliseconds(storedCredentials.getExpirationTime());
 
-        Drive drive = new Drive.Builder(transport, jsonFactory, credentials).build();
+        Drive drive = new Drive.Builder(transport, jsonFactory, credentials)
+            .setApplicationName(applicationName)
+            .build();
         String storeName = STORE_NAME_PREFIX + storedCredentials.getUsername();
         Cache<String, File> fileCache = createFileCache(storeName);
 

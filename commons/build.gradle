@@ -3,9 +3,9 @@ configurations {
 }
 
 dependencies {
-    compile 'org.springframework:spring-context:4.0.4.RELEASE'
-    compile 'org.slf4j:jcl-over-slf4j:1.7.6'
-    compile 'org.mongodb:mongo-java-driver:2.11.3'
-    compile 'org.jongo:jongo:1.0'
+    compile 'org.springframework:spring-context:4.1.0.RELEASE'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.7'
+    compile 'org.mongodb:mongo-java-driver:2.12.3'
+    compile 'org.jongo:jongo:1.1'
     compile 'org.infinispan:infinispan-core:6.0.1.Final'
 }
