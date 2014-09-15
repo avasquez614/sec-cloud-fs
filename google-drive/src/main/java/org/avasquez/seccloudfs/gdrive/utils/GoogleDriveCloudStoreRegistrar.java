@@ -97,8 +97,8 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     private GoogleDriveCloudStore createStore(GoogleDriveCredentials storedCredentials) throws IOException {
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
-        String id = storedCredentials.getId();
-        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialsRepository);
+        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(storedCredentials,
+            credentialsRepository);
 
         Credential credentials = new GoogleCredential.Builder()
             .setTransport(transport)
@@ -113,6 +113,7 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
         Drive drive = new Drive.Builder(transport, jsonFactory, credentials)
             .setApplicationName(applicationName)
             .build();
+
         String storeName = STORE_NAME_PREFIX + storedCredentials.getUsername();
         Cache<String, File> fileCache = createFileCache(storeName);
 

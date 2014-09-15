@@ -1,9 +1,7 @@
 package org.avasquez.seccloudfs.gdrive.db.model;
 
-import com.google.api.client.auth.oauth2.Credential;
-
-import org.bson.types.ObjectId;
 import org.jongo.marshall.jackson.oid.Id;
+import org.jongo.marshall.jackson.oid.ObjectId;
 
 /**
  * Represents Google Drive credentials info that's stored in the DB.
@@ -13,27 +11,14 @@ import org.jongo.marshall.jackson.oid.Id;
 public class GoogleDriveCredentials {
 
     @Id
+    @ObjectId
     private String id;
     private String username;
     private String accessToken;
     private String refreshToken;
     private Long expirationTime;
 
-    /**
-     * Generates an ID for the credential.
-     */
-    public static String generateId() {
-        return ObjectId.get().toString();
-    }
-
     public GoogleDriveCredentials() {
-    }
-
-    public GoogleDriveCredentials(String id, Credential credential) {
-        this.id = id;
-        this.accessToken = credential.getAccessToken();
-        this.refreshToken = credential.getRefreshToken();
-        this.expirationTime = credential.getExpirationTimeMilliseconds();
     }
 
     public String getId() {

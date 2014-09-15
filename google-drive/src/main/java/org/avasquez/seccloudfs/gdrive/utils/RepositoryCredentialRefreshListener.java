@@ -24,25 +24,18 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
 
     private static final Logger logger = LoggerFactory.getLogger(RepositoryCredentialRefreshListener.class);
 
-    private String credentialsId;
+    private GoogleDriveCredentials storedCredentials;
     private GoogleDriveCredentialsRepository credentialsRepository;
 
-    public RepositoryCredentialRefreshListener(String credentialsId,
+    public RepositoryCredentialRefreshListener(GoogleDriveCredentials storedCredentials,
                                                GoogleDriveCredentialsRepository credentialsRepository) {
-        this.credentialsId = credentialsId;
+        this.storedCredentials = storedCredentials;
         this.credentialsRepository = credentialsRepository;
     }
 
     @Override
     public void onTokenResponse(Credential credentials, TokenResponse tokenResponse) throws IOException {
-        logger.debug("Credentials '{}' refreshed", credentialsId);
-
-        GoogleDriveCredentials storedCredentials;
-        try {
-            storedCredentials = credentialsRepository.find(credentialsId);
-        } catch (DbException e) {
-            throw new IOException("Unable to retrieve credentials '" + credentialsId + "' from DB", e);
-        }
+        logger.debug("Credentials '{}' refreshed", storedCredentials.getId());
 
         storedCredentials.setAccessToken(credentials.getAccessToken());
         storedCredentials.setRefreshToken(credentials.getRefreshToken());
@@ -51,10 +44,10 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
         try {
             credentialsRepository.save(storedCredentials);
         } catch (DbException e) {
-            throw new IOException("Unable to save credentials '" + credentialsId + "' in DB", e);
+            throw new IOException("Unable to save credentials '" + storedCredentials.getId() + "' in DB", e);
         }
 
-        logger.debug("Refreshed credentials '{}' saved in DB", credentialsId);
+        logger.debug("Refreshed credentials '{}' saved in DB", storedCredentials.getId());
     }
 
     @Override
@@ -65,12 +58,12 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
             tokenErrorResponse.getErrorUri());
 
         try {
-            credentialsRepository.delete(credentialsId);
+            credentialsRepository.delete(storedCredentials.getId());
         } catch (DbException e) {
-            throw new IOException("Unable to delete credentials '" + credentialsId + "' from DB", e);
+            throw new IOException("Unable to delete credentials '" + storedCredentials.getId() + "' from DB", e);
         }
 
-        logger.debug("Deleted credentials '{}' from DB", credentialsId);
+        logger.debug("Deleted credentials '{}' from DB", storedCredentials.getId());
     }
 
 }

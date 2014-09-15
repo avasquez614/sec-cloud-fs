@@ -38,15 +38,15 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void upload(String id, ReadableByteChannel src, long length) throws IOException {
-        logger.debug("Started uploading of data {}/{}", name, id);
+        logger.debug("Started uploading data {}/{}", name, id);
 
         try {
-            client.uploadFile(id, DbxWriteMode.force(), length, Channels.newInputStream(src));
+            client.uploadFile("/" + id, DbxWriteMode.force(), length, Channels.newInputStream(src));
         } catch (Exception e) {
             throw new IOException("Error uploading data " + name + "/" + id, e);
         }
 
-        logger.debug("Finished uploading of data {}/{}", name, id);
+        logger.debug("Finished uploading data {}/{}", name, id);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class DropboxCloudStore implements CloudStore {
         logger.debug("Started downloading data {}/{}", name, id);
 
         try {
-            client.getFile(id, null, Channels.newOutputStream(target));
+            client.getFile("/" + id, null, Channels.newOutputStream(target));
         } catch (Exception e) {
             throw new IOException("Error downloading data " + name + "/" + id, e);
         }
@@ -67,7 +67,7 @@ public class DropboxCloudStore implements CloudStore {
         logger.debug("Deleting data {}/{}", name, id);
 
         try {
-            client.delete(id);
+            client.delete("/" + id);
         } catch (Exception e) {
             throw new IOException("Error deleting data " + name + "/" + id, e);
         }

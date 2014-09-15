@@ -1,7 +1,6 @@
 package org.avasquez.seccloudfs.gdrive;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.auth.oauth2.CredentialRefreshListener;
 import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -17,7 +16,6 @@ import javax.annotation.PostConstruct;
 
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
-import org.avasquez.seccloudfs.gdrive.utils.RepositoryCredentialRefreshListener;
 import org.springframework.beans.factory.annotation.Required;
 
 /**
@@ -77,11 +75,8 @@ public class GoogleDriveAuthorizationSupport {
      */
     public GoogleDriveCredentials exchangeCode(String authorizationCode) throws IOException {
         TokenResponse response = flow.newTokenRequest(authorizationCode).setRedirectUri(REDIRECT_URI).execute();
-        String credentialId = GoogleDriveCredentials.generateId();
-        Credential credentials = createCredentials(credentialId, response);
-        GoogleDriveCredentials storedCredentials = new GoogleDriveCredentials(credentialId, credentials);
 
-        return storedCredentials;
+        return createCredentials(response);
     }
 
     private void createFlow() {
@@ -93,18 +88,23 @@ public class GoogleDriveAuthorizationSupport {
             .build();
     }
 
-    private Credential createCredentials(String id, TokenResponse tokenResponse) {
+    private GoogleDriveCredentials createCredentials(TokenResponse tokenResponse) {
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
-        CredentialRefreshListener refreshListener = new RepositoryCredentialRefreshListener(id, credentialsRepository);
 
-        return new GoogleCredential.Builder()
+        Credential credentials = new GoogleCredential.Builder()
             .setTransport(transport)
             .setJsonFactory(jsonFactory)
             .setClientSecrets(clientId, clientSecret)
-            .addRefreshListener(refreshListener)
             .build()
             .setFromTokenResponse(tokenResponse);
+
+        GoogleDriveCredentials storedCredentials = new GoogleDriveCredentials();
+        storedCredentials.setAccessToken(credentials.getAccessToken());
+        storedCredentials.setRefreshToken(credentials.getRefreshToken());
+        storedCredentials.setExpirationTime(credentials.getExpirationTimeMilliseconds());
+
+        return storedCredentials;
     }
 
 }
