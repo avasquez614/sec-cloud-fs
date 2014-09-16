@@ -50,6 +50,7 @@ public class CliUtils {
         stdOut.flush();
 
         e.printStackTrace(stdOut);
+        stdOut.flush();
 
         System.exit(1);
     }
