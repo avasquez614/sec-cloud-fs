@@ -1,5 +1,7 @@
 dependencies {
     compile project(':commons')
     compile project(':erasure')
+    compile 'org.bouncycastle:bcprov-jdk15on:1.51'
+    compile 'org.bouncycastle:bcprov-ext-jdk15on:1.51'
     compile 'org.apache.shiro:shiro-core:1.2.3'
 }
