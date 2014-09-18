@@ -150,7 +150,7 @@ public class EncryptingCloudStore implements CloudStore {
 
     private void saveEncryptionKey(String dataId, byte[] key) throws IOException {
         try {
-            keyRepository.save(new EncryptionKey(dataId, key));
+            keyRepository.insert(new EncryptionKey(dataId, key));
         } catch (DbException e) {
             throw new IOException("Unable to save encryption key for data '" + dataId + "' in repository", e);
         }
