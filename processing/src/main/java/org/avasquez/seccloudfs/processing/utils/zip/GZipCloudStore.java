@@ -54,9 +54,11 @@ public class GZipCloudStore implements CloudStore {
 
         try (FileChannel tmpChannel = FileChannel.open(tmpFile, FileUtils.TMP_FILE_OPEN_OPTIONS)) {
             InputStream in = Channels.newInputStream(src);
-            OutputStream out = new GZIPOutputStream(Channels.newOutputStream(tmpChannel));
+            GZIPOutputStream out = new GZIPOutputStream(Channels.newOutputStream(tmpChannel));
 
             IOUtils.copyLarge(in, out);
+
+            out.finish();
 
             logger.debug("Data '{}' successfully zipped", id);
 
@@ -77,7 +79,7 @@ public class GZipCloudStore implements CloudStore {
             // Reset channel for reading
             tmpChannel.position(0);
 
-            InputStream in = new GZIPInputStream(Channels.newInputStream(tmpChannel));
+            GZIPInputStream in = new GZIPInputStream(Channels.newInputStream(tmpChannel));
             OutputStream out = Channels.newOutputStream(target);
 
             IOUtils.copyLarge(in, out);
