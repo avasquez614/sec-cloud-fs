@@ -35,6 +35,8 @@ public class DeleteTask implements Callable<Boolean> {
         try {
             cloudStore.delete(sliceId);
 
+            logger.debug("Slice '{}' deleted from [{}]", sliceId, cloudStoreName);
+
             return true;
         } catch (Exception e) {
             logger.error("Failed to delete slice '" + sliceId + "' from [" + cloudStoreName + "]", e);

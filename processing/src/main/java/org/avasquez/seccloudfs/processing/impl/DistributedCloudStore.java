@@ -156,7 +156,7 @@ public class DistributedCloudStore implements CloudStore {
                     erasureInfo.setCodingSliceMetadata(codingSliceMetadata);
 
                     try {
-                        erasureInfoRepository.save(erasureInfo);
+                        erasureInfoRepository.insert(erasureInfo);
                     } catch (DbException e) {
                         throw new IOException("Unable to save erasure info for data '" + id + "'");
                     }
@@ -437,7 +437,7 @@ public class DistributedCloudStore implements CloudStore {
 
     private CloudStore getCloudStoreByName(String name) throws IOException {
         CloudStore cloudStore = cloudStoreRegistry.find(name);
-        if (cloudStore == null) {
+        if (cloudStore != null) {
             return cloudStore;
         } else {
             throw new IOException("No cloud store found for name '" + name + "'");

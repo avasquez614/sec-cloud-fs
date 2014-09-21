@@ -28,10 +28,10 @@ import static org.junit.Assert.assertNotNull;
  */
 public class LiberationEncodingTest {
 
-    private static final int K =            6;
-    private static final int M =            2;
-    private static final int W =            7;
-    private static final int PACKET_SIZE =  8;
+    private static final int K = 6;
+    private static final int M = 2;
+    private static final int W = 7;
+    private static final int PACKET_SIZE = 8;
 
     private static final String FILE_PATH = "gpl-3.0.txt";
 
@@ -40,11 +40,10 @@ public class LiberationEncodingTest {
 
     private JerasureEncoder encoder;
     private JerasureDecoder decoder;
-    private Liberation liberation;
 
     @Before
     public void setUp() throws Exception {
-        liberation = new Liberation();
+        Liberation liberation = new Liberation();
         liberation.setK(K);
         liberation.setM(M);
         liberation.setW(W);

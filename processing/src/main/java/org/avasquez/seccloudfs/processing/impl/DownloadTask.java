@@ -47,6 +47,8 @@ public class DownloadTask implements Callable<DownloadResult> {
 
             cloudStore.download(sliceId, channel);
 
+            logger.debug("Slice '{}' downloaded from [{}]", sliceId, cloudStoreName);
+
             return new DownloadResult(channel, dataSlice, sliceIndex);
         } catch (Exception e) {
             logger.error("Failed to download slice '" + sliceId + "' from [" + cloudStoreName + "]", e);

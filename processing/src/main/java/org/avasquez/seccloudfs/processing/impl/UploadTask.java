@@ -42,7 +42,7 @@ public class UploadTask implements Callable<Boolean> {
             if (cloudStore != null) {
                 String cloudStoreName = cloudStore.getName();
 
-                logger.debug("Trying to upload slice '{}' to [{}]", sliceId, cloudStoreName);
+                logger.debug("Uploading slice '{}' to [{}]", sliceId, cloudStoreName);
 
                 try {
                     cloudStore.upload(sliceMetadata.getId(), slice, sliceSize);
@@ -50,6 +50,8 @@ public class UploadTask implements Callable<Boolean> {
                     sliceMetadata.setCloudStoreName(cloudStore.getName());
 
                     uploaded = true;
+
+                    logger.debug("Slice '{}' uploaded to [{}]", sliceId, cloudStoreName);
                 } catch (Exception e) {
                     logger.error("Failed to upload slice '" + sliceId + "' to [" + cloudStoreName + "]", e);
                 }

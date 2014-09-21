@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.processing.db.model;
 
-import org.bson.types.ObjectId;
+import java.util.UUID;
 
 /**
  * The slice metadata, stored in a {@link org.avasquez.seccloudfs.cloud.CloudStore} to be used for later fragment
@@ -17,7 +17,7 @@ public class SliceMetadata {
      * Generates an ID for a slice.
      */
     public static String generateId() {
-        return ObjectId.get().toString();
+        return UUID.randomUUID().toString();
     }
 
     /**
