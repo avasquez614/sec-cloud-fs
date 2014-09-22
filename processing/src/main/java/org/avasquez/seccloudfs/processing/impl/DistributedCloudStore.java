@@ -238,7 +238,7 @@ public class DistributedCloudStore implements CloudStore {
                     if (task != null) {
                         downloadCompletionService.submit(task);
                     } else {
-                        throw new IOException("Not enough slices to download");
+                        throw new IOException("Not enough slices could be downloaded to reconstruct data " + id);
                     }
                 }
             }

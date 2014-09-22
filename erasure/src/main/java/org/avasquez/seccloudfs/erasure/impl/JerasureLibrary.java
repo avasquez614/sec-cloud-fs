@@ -15,7 +15,7 @@ import org.bridj.util.DefaultParameterizedType;
  *
  * @author avasquez
  */
-@Library("Jerasure")
+@Library(value = "Jerasure", dependencies = { "gf_complete" })
 @Runtime(CRuntime.class)
 public class JerasureLibrary {
 

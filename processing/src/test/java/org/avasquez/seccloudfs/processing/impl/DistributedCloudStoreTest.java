@@ -23,14 +23,7 @@ import org.junit.rules.TemporaryFolder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyLong;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link org.avasquez.seccloudfs.processing.impl.DistributedCloudStore}.
@@ -86,8 +79,13 @@ public class DistributedCloudStoreTest {
 
         cloudStore.upload(DATA_ID, mock(ReadableByteChannel.class), SLICE_SIZE * K);
 
-        verifyUploadOnStores(registry);
-        verify(repository).insert(any(ErasureInfo.class));
+        verify(registry.find("store1")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store2")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store3")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store4")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store5")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store6")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store7")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
     }
 
     @Test
@@ -112,7 +110,12 @@ public class DistributedCloudStoreTest {
             assertEquals("Some slices for data '" + DATA_ID + "' couldn't be uploaded", e.getMessage());
         }
 
-        verifyUploadOnStores(registry);
+        verify(registry.find("store1")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store2")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store3")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store4")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store5")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store6")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
     }
 
     @Test
@@ -125,16 +128,9 @@ public class DistributedCloudStoreTest {
         registry.register(createDefaultCloudStore("store5"));
         registry.register(createDefaultCloudStore("store6"));
 
-        Queue<CloudStore> stores = new LinkedList<>(registry.list());
-
-        ErasureInfo erasureInfo = new ErasureInfo();
-        erasureInfo.setId(ObjectId.get().toString());
-        erasureInfo.setDataId(DATA_ID);
-        erasureInfo.setDataSize(SLICE_SIZE * K);
-        erasureInfo.setDataSliceMetadata(createSliceMetadata(K, stores));
-        erasureInfo.setCodingSliceMetadata(createSliceMetadata(M, stores));
-
         ErasureInfoRepository repository = mock(ErasureInfoRepository.class);
+        ErasureInfo erasureInfo = createDefaultErasureInfo(registry);
+
         when(repository.findByDataId(DATA_ID)).thenReturn(erasureInfo);
 
         cloudStore.setCloudStoreRegistry(registry);
@@ -142,19 +138,146 @@ public class DistributedCloudStoreTest {
 
         cloudStore.upload(DATA_ID, mock(ReadableByteChannel.class), SLICE_SIZE * K);
 
-        verifyUploadOnStores(registry);
-        verifyDeleteOnStores(registry);
-        verify(repository).save(any(ErasureInfo.class));
+        verify(registry.find("store1")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store2")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store3")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store4")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store5")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+        verify(registry.find("store6")).upload(anyString(), any(ReadableByteChannel.class), anyLong());
+
+        verify(registry.find("store1")).delete(anyString());
+        verify(registry.find("store2")).delete(anyString());
+        verify(registry.find("store3")).delete(anyString());
+        verify(registry.find("store4")).delete(anyString());
+        verify(registry.find("store5")).delete(anyString());
+        verify(registry.find("store6")).delete(anyString());
     }
 
-    private CloudStore createDefaultCloudStore(String name) {
+    @Test
+    public void testDownload() throws Exception {
+        CloudStoreRegistry registry = new CloudStoreRegistryImpl();
+        registry.register(createDefaultCloudStore("store1"));
+        registry.register(createDefaultCloudStore("store2"));
+        registry.register(createDefaultCloudStore("store3"));
+        registry.register(createDefaultCloudStore("store4"));
+        registry.register(createDefaultCloudStore("store5"));
+        registry.register(createDefaultCloudStore("store6"));
+
+        ErasureInfoRepository repository = mock(ErasureInfoRepository.class);
+        ErasureInfo erasureInfo = createDefaultErasureInfo(registry);
+
+        when(repository.findByDataId(DATA_ID)).thenReturn(erasureInfo);
+
+        cloudStore.setCloudStoreRegistry(registry);
+        cloudStore.setErasureInfoRepository(repository);
+
+        cloudStore.download(DATA_ID, mock(WritableByteChannel.class));
+
+        verify(registry.find("store1")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store2")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store3")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store4")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store5"), never()).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store6"), never()).download(anyString(), any(WritableByteChannel.class));
+    }
+
+    @Test
+    public void testDownloadWithSomeMissingSlices() throws Exception {
+        CloudStoreRegistry registry = new CloudStoreRegistryImpl();
+        registry.register(createDefaultCloudStore("store1"));
+        registry.register(createDefaultCloudStore("store2"));
+        registry.register(createFailingCloudStore("store3"));
+        registry.register(createFailingCloudStore("store4"));
+        registry.register(createDefaultCloudStore("store5"));
+        registry.register(createDefaultCloudStore("store6"));
+
+        ErasureInfoRepository repository = mock(ErasureInfoRepository.class);
+        ErasureInfo erasureInfo = createDefaultErasureInfo(registry);
+
+        when(repository.findByDataId(DATA_ID)).thenReturn(erasureInfo);
+
+        cloudStore.setCloudStoreRegistry(registry);
+        cloudStore.setErasureInfoRepository(repository);
+
+        cloudStore.download(DATA_ID, mock(WritableByteChannel.class));
+
+        verify(registry.find("store1")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store2")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store3")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store4")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store5")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store6")).download(anyString(), any(WritableByteChannel.class));
+    }
+
+    @Test
+    public void testDownloadWithNotEnoughSlices() throws Exception {
+        CloudStoreRegistry registry = new CloudStoreRegistryImpl();
+        registry.register(createDefaultCloudStore("store1"));
+        registry.register(createDefaultCloudStore("store2"));
+        registry.register(createFailingCloudStore("store3"));
+        registry.register(createFailingCloudStore("store4"));
+        registry.register(createFailingCloudStore("store5"));
+        registry.register(createDefaultCloudStore("store6"));
+
+        ErasureInfoRepository repository = mock(ErasureInfoRepository.class);
+        ErasureInfo erasureInfo = createDefaultErasureInfo(registry);
+
+        when(repository.findByDataId(DATA_ID)).thenReturn(erasureInfo);
+
+        cloudStore.setCloudStoreRegistry(registry);
+        cloudStore.setErasureInfoRepository(repository);
+
+        try {
+            cloudStore.download(DATA_ID, mock(WritableByteChannel.class));
+            fail("Expected " + IOException.class);
+        } catch (IOException e) {
+            assertEquals("Not enough slices could be downloaded to reconstruct data " + DATA_ID, e.getMessage());
+        }
+
+        verify(registry.find("store1")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store2")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store3")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store4")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store5")).download(anyString(), any(WritableByteChannel.class));
+        verify(registry.find("store6")).download(anyString(), any(WritableByteChannel.class));
+    }
+
+    @Test
+    public void testDelete() throws Exception {
+        CloudStoreRegistry registry = new CloudStoreRegistryImpl();
+        registry.register(createDefaultCloudStore("store1"));
+        registry.register(createDefaultCloudStore("store2"));
+        registry.register(createFailingCloudStore("store3"));
+        registry.register(createDefaultCloudStore("store4"));
+        registry.register(createDefaultCloudStore("store5"));
+        registry.register(createDefaultCloudStore("store6"));
+
+        ErasureInfoRepository repository = mock(ErasureInfoRepository.class);
+        ErasureInfo erasureInfo = createDefaultErasureInfo(registry);
+
+        when(repository.findByDataId(DATA_ID)).thenReturn(erasureInfo);
+
+        cloudStore.setCloudStoreRegistry(registry);
+        cloudStore.setErasureInfoRepository(repository);
+
+        cloudStore.delete(DATA_ID);
+
+        verify(registry.find("store1")).delete(anyString());
+        verify(registry.find("store2")).delete(anyString());
+        verify(registry.find("store3")).delete(anyString());
+        verify(registry.find("store4")).delete(anyString());
+        verify(registry.find("store5")).delete(anyString());
+        verify(registry.find("store6")).delete(anyString());
+    }
+
+    private CloudStore createDefaultCloudStore(final String name) {
         CloudStore store = mock(CloudStore.class);
         when(store.getName()).thenReturn(name);
 
         return store;
     }
 
-    private CloudStore createFailingCloudStore(String name) throws IOException {
+    private CloudStore createFailingCloudStore(final String name) throws IOException {
         CloudStore store = mock(CloudStore.class);
         when(store.getName()).thenReturn(name);
         doThrow(IOException.class).when(store).upload(anyString(), any(ReadableByteChannel.class), anyLong());
@@ -175,16 +298,17 @@ public class DistributedCloudStoreTest {
         return metadata;
     }
 
-    private void verifyUploadOnStores(CloudStoreRegistry registry) throws IOException {
-        for (CloudStore store : registry.list()) {
-            verify(store).upload(anyString(), any(ReadableByteChannel.class), anyLong());
-        }
-    }
+    private ErasureInfo createDefaultErasureInfo(CloudStoreRegistry registry) {
+        Queue<CloudStore> stores = new LinkedList<>(registry.list());
 
-    private void verifyDeleteOnStores(CloudStoreRegistry registry) throws IOException {
-        for (CloudStore store : registry.list()) {
-            verify(store).delete(anyString());
-        }
+        ErasureInfo erasureInfo = new ErasureInfo();
+        erasureInfo.setId(ObjectId.get().toString());
+        erasureInfo.setDataId(DATA_ID);
+        erasureInfo.setDataSize(SLICE_SIZE * K);
+        erasureInfo.setDataSliceMetadata(createSliceMetadata(K, stores));
+        erasureInfo.setCodingSliceMetadata(createSliceMetadata(M, stores));
+
+        return erasureInfo;
     }
 
 }
