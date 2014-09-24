@@ -1,8 +1,11 @@
-package org.avasquez.seccloudfs.cloud;
+package org.avasquez.seccloudfs.cloud.impl;
 
 import java.util.List;
 
-import org.avasquez.seccloudfs.cloud.impl.CloudStoreRegistryImpl;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
+import org.avasquez.seccloudfs.utils.DecoratorFactory;
 import org.springframework.beans.factory.FactoryBean;
 
 /**
@@ -15,6 +18,7 @@ public class CloudStoreRegistryFactoryBean implements FactoryBean<CloudStoreRegi
 
     private List<CloudStore> cloudStores;
     private List<CloudStoreRegistrar> cloudStoreRegistrars;
+    private List<DecoratorFactory<CloudStore>> decoratorFactories;
 
     public void setCloudStores(List<CloudStore> cloudStores) {
         this.cloudStores = cloudStores;
@@ -22,6 +26,10 @@ public class CloudStoreRegistryFactoryBean implements FactoryBean<CloudStoreRegi
 
     public void setCloudStoreRegistrars(List<CloudStoreRegistrar> cloudStoreRegistrars) {
         this.cloudStoreRegistrars = cloudStoreRegistrars;
+    }
+
+    public void setDecoratorFactories(List<DecoratorFactory<CloudStore>> decoratorFactories) {
+        this.decoratorFactories = decoratorFactories;
     }
 
     @Override
@@ -53,7 +61,15 @@ public class CloudStoreRegistryFactoryBean implements FactoryBean<CloudStoreRegi
     }
 
     protected CloudStoreRegistry createCloudStoreRegistry() {
-        return new CloudStoreRegistryImpl();
+        if (decoratorFactories != null && !decoratorFactories.isEmpty()) {
+            DecoratingCloudStoreRegistry registry = new DecoratingCloudStoreRegistry();
+            registry.setActualRegistry(new CloudStoreRegistryImpl());
+            registry.setDecoratorFactories(decoratorFactories);
+
+            return registry;
+        } else {
+            return new CloudStoreRegistryImpl();
+        }
     }
 
 }

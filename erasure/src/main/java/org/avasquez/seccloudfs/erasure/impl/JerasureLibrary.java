@@ -67,7 +67,7 @@ public class JerasureLibrary {
         long codingPtrsAddress = Pointer.getPeer(codingPtrs);
 
         return jerasure_schedule_decode_lazy(k, m, w, bitmatrixAddress, erasuresAddress, dataPtrsAddress,
-                codingPtrsAddress, size, packetSize, 1);
+                codingPtrsAddress, size, packetSize, smart? 1 : 0);
     }
 
     @Ptr

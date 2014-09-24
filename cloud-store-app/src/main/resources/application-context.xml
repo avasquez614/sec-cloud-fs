@@ -70,7 +70,7 @@
 
     <!-- Cloud Store Registry -->
 
-    <bean id="cloudStoreRegistry" class="org.avasquez.seccloudfs.cloud.CloudStoreRegistryFactoryBean">
+    <bean id="cloudStoreRegistry" class="org.avasquez.seccloudfs.cloud.impl.CloudStoreRegistryFactoryBean">
         <property name="cloudStoreRegistrars">
             <list>
                 <ref bean="googleDriveCloudStoreRegistrar"/>
