@@ -3,6 +3,7 @@
 DOWNLOADS_DIR="downloads"
 SNAPSHOTS_DIR="snapshots"
 LOGS_DIR="logs"
+TMP_DIR="tmp"
 MOUNT_POINT="$1"
 
 if [ ! -d "$DOWNLOADS_DIR" ]; then
@@ -32,6 +33,16 @@ if [ ! -d "$LOGS_DIR" ]; then
         exit 1
     else
         echo "Directory $LOGS_DIR created"
+    fi
+fi
+
+if [ ! -d "$TMP_DIR" ]; then
+    mkdir -p "$TMP_DIR"
+    if [ $? -ne 0 ] ; then
+        echo "Directory $TMP_DIR couldn't be created"
+        exit 1
+    else
+        echo "Directory $TMP_DIR created"
     fi
 fi
 

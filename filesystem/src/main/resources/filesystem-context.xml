@@ -3,19 +3,30 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:context="http://www.springframework.org/schema/context"
        xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:util="http://www.springframework.org/schema/util"
        xsi:schemaLocation="
        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
-       http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+       http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd
+       http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
-    <context:property-placeholder location="classpath:filesystem.properties,classpath*:custom-filesystem.properties" />
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:filesystem.properties</value>
+                <value>file:#{systemProperties['user.home']}/sec-cloud-dfs/conf/google-drive.properties</value>
+                <value>file:#{systemProperties['user.home']}/sec-cloud-fs/conf/dropbox.properties</value>
+                <value>classpath*:custom-filesystem.properties</value>
+            </list>
+        </property>
+    </bean>
 
     <context:annotation-config />
 
     <!-- Cache -->
 
     <bean id="cacheManager" class="org.infinispan.manager.DefaultCacheManager">
-        <constructor-arg value="${cache.requestConfig.file}" />
+        <constructor-arg value="${cache.config.file}" />
     </bean>
 
     <!-- DB -->
@@ -30,11 +41,13 @@
         <property name="mongoClient" ref="mongoClient" />
     </bean>
 
-    <bean id="contentMetadataRepo" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoContentMetadataRepository">
+    <bean id="contentMetadataRepo"
+          class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoContentMetadataRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
-    <bean id="directoryEntryRepo" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoDirectoryEntryRepository">
+    <bean id="directoryEntryRepo"
+          class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoDirectoryEntryRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
@@ -42,7 +55,26 @@
         <constructor-arg ref="jongo"/>
     </bean>
 
-    <bean id="fileSystemInfoRepo" class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoFileSystemInfoRepository">
+    <bean id="fileSystemInfoRepo"
+          class="org.avasquez.seccloudfs.filesystem.db.repos.impl.JongoFileSystemInfoRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <bean id="googleDriveCredentialsRepo"
+          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialsRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <bean id="dropboxCredentialsRepo"
+          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.JongoDropboxCredentialsRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <bean id="encryptionKeyRepo" class="org.avasquez.seccloudfs.processing.db.repos.impl.JongoEncryptionKeyRepository">
+        <constructor-arg ref="jongo"/>
+    </bean>
+
+    <bean id="erasureInfoRepo" class="org.avasquez.seccloudfs.processing.db.repos.impl.JongoErasureInfoRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
@@ -54,16 +86,10 @@
 
     <!-- Content Store -->
 
-    <bean id="cloudStore" class="org.avasquez.seccloudfs.cloud.impl.LocalCloudStore">
-        <property name="name" value="userHome"/>
-        <property name="storeDir" value="${cloud.store.local.dir}"/>
-        <property name="maxSize" value="${cloud.store.local.dir.maxSize}"/>
-    </bean>
-
     <bean id="contentStore" class="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentStoreImpl">
         <property name="cacheContainer" ref="cacheManager"/>
         <property name="metadataRepo" ref="contentMetadataRepo"/>
-        <property name="cloudStore" ref="cloudStore"/>
+        <property name="cloudStore" ref="distributedCloudStore"/>
         <property name="downloadsDir" value="${cloud.content.downloads.dir}"/>
         <property name="snapshotDir" value="${cloud.content.snapshots.dir}"/>
         <property name="executorService" ref="threadPool"/>
@@ -112,6 +138,71 @@
 
     <task:annotation-driven scheduler="scheduler"/>
     <task:scheduler id="scheduler" pool-size="${scheduler.threads.pool.size}"/>
+
+    <!-- Cloud Store Registrars -->
+
+    <bean id="googleDriveCloudStoreRegistrar"
+          class="org.avasquez.seccloudfs.gdrive.utils.GoogleDriveCloudStoreRegistrar">
+        <property name="clientId" value="${google.clientId}"/>
+        <property name="clientSecret" value="${google.clientSecret}"/>
+        <property name="applicationName" value="${google.applicationName}"/>
+        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
+        <property name="rootFolderName" value="${google.drive.rootFolder.name}"/>
+        <property name="cacheManager" ref="cacheManager"/>
+        <property name="maxCacheEntries" value="${google.drive.cache.maxEntries}"/>
+    </bean>
+
+    <bean id="dropboxCloudStoreRegistrar" class="org.avasquez.seccloudfs.dropbox.utils.DropboxCloudStoreRegistrar">
+        <property name="credentialsRepository" ref="dropboxCredentialsRepo"/>
+        <property name="requestConfig">
+            <bean class="com.dropbox.core.DbxRequestConfig">
+                <constructor-arg value="${dropbox.clientIdentifier}"/>
+                <constructor-arg value="#{T(java.util.Locale).default.toString()}"/>
+            </bean>
+        </property>
+    </bean>
+
+    <!-- Cloud Store Registry -->
+
+    <bean id="cloudStoreRegistry" class="org.avasquez.seccloudfs.cloud.impl.CloudStoreRegistryFactoryBean">
+        <property name="cloudStoreRegistrars">
+            <list>
+                <ref bean="googleDriveCloudStoreRegistrar"/>
+                <ref bean="dropboxCloudStoreRegistrar"/>
+            </list>
+        </property>
+        <property name="cloudStores" ref="cloudStores"/>
+    </bean>
+
+    <util:list id="cloudStores"/>
+
+    <!-- Erasure -->
+
+    <bean id="liberation" class="org.avasquez.seccloudfs.erasure.impl.Liberation">
+        <property name="k" value="${erasure.k}"/>
+        <property name="m" value="${erasure.m}"/>
+        <property name="w" value="${erasure.w}"/>
+        <property name="packetSize" value="${erasure.packetSize}"/>
+    </bean>
+
+    <bean id="erasureEncoder" class="org.avasquez.seccloudfs.erasure.impl.JerasureEncoder">
+        <property name="codingMethod" ref="liberation"/>
+    </bean>
+
+    <bean id="erasureDecoder" class="org.avasquez.seccloudfs.erasure.impl.JerasureDecoder">
+        <property name="codingMethod" ref="liberation"/>
+    </bean>
+
+    <!-- Processing -->
+
+    <bean id="distributedCloudStore" class="org.avasquez.seccloudfs.processing.impl.DistributedCloudStore">
+        <property name="erasureEncoder" ref="erasureEncoder"/>
+        <property name="erasureDecoder" ref="erasureDecoder"/>
+        <property name="erasureInfoRepository" ref="erasureInfoRepo"/>
+        <property name="tmpDir" value="${tmp.dir}"/>
+        <property name="cloudStoreRegistry" ref="cloudStoreRegistry"/>
+        <property name="taskExecutor" ref="threadPool"/>
+    </bean>
 
     <import resource="classpath*:custom-filesystem-context.xml"/>
 

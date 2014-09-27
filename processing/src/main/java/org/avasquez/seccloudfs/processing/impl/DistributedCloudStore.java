@@ -44,7 +44,6 @@ public class DistributedCloudStore implements CloudStore {
 
     private static final String SLICE_FILE_SUFFIX = ".slice";
 
-    private String name;
     private CloudStoreRegistry cloudStoreRegistry;
     private ErasureInfoRepository erasureInfoRepository;
     private ErasureEncoder erasureEncoder;
@@ -54,12 +53,7 @@ public class DistributedCloudStore implements CloudStore {
 
     @Override
     public String getName() {
-        return name;
-    }
-
-    @Required
-    public void setName(String name) {
-        this.name = name;
+        return DistributedCloudStore.class.getSimpleName();
     }
 
     @Required
