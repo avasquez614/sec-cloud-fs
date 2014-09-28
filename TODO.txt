@@ -1,2 +1,3 @@
-* Make the cloud stores upload in chunks, or add local file chunking (optional).
-* Work in fs repair service (optional).
+* Start file upload of cached files that have changes but have not yet being uploaded.
+* Make the cloud stores upload in chunks, or add local file chunking.
+* Work in fs repair service.

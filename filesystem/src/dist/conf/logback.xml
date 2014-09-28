@@ -22,7 +22,12 @@
     <!--logger name="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS" level="DEBUG"/-->
     <logger name="org.avasquez.seccloudfs.filesystem.files.impl.FileObjectStoreImpl" level="DEBUG"/>
     <logger name="org.avasquez.seccloudfs.filesystem.files.impl.DirectoryEntries" level="DEBUG"/>
-    <logger name="org.avasquez.seccloudfs.filesystem.content.impl.Uploader" level="ERROR"/>
+    <logger name="org.avasquez.seccloudfs.filesystem.content.impl.Uploader" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.erasure" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.processing" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.dropbox" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.gdrive" level="DEBUG"/>
+    <logger name="org.avasquez.seccloudfs.amazon" level="DEBUG"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

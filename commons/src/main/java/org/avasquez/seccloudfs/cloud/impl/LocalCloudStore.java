@@ -6,6 +6,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 import org.avasquez.seccloudfs.utils.FileUtils;
@@ -32,8 +33,8 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Required
-    public void setStoreDir(Path storeDir) {
-        this.storeDir = storeDir;
+    public void setStoreDir(String storeDir) {
+        this.storeDir = Paths.get(storeDir);
     }
 
     @Override
@@ -67,7 +68,12 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
 
     @Override
     protected long getDataSize(Object metadata) throws IOException {
-        return Files.size((Path)metadata);
+        Path path = (Path)metadata;
+        if (Files.exists(path)) {
+            return Files.size(path);
+        } else {
+            return 0;
+        }
     }
 
     @Override

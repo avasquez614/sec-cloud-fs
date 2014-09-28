@@ -4,14 +4,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.collections4.IteratorUtils;
+import org.apache.commons.collections4.ListUtils;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.filesystem.db.repos.DirectoryEntryRepository;
-import org.avasquez.seccloudfs.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,15 +33,15 @@ public class DirectoryEntries {
         this.directoryId = directoryId;
         this.entries = new ConcurrentHashMap<>();
 
-        List<DirectoryEntry> entries;
+        Iterable<DirectoryEntry> entries;
         try {
-            entries = CollectionUtils.asList(entryRepo.findByDirectoryId(directoryId));
+            entries = entryRepo.findByDirectoryId(directoryId);
         } catch (DbException e) {
             throw new IOException("Unable to retrieve dir entries for dir ID '" + directoryId + "'", e);
         }
 
         if (entries != null) {
-            entries = deleteDuplicateEntries(entries);
+            entries = deleteDuplicateEntries(IteratorUtils.toList(entries.iterator()));
             for (DirectoryEntry entry : entries) {
                 this.entries.put(entry.getFileName(), entry);
             }
@@ -137,55 +139,50 @@ public class DirectoryEntries {
     }
 
     private List<DirectoryEntry> deleteDuplicateEntries(List<DirectoryEntry> entries) throws IOException {
-        List<DirectoryEntry> nonDupEntries = new ArrayList<>();
-        List<DirectoryEntry> dupEntries = new ArrayList<>();
+        List<DirectoryEntry> finalEntries = new ArrayList<>();
 
         for (DirectoryEntry entry : entries) {
-            if (!hasEntryWithSameName(nonDupEntries, entry)) {
-                DirectoryEntry dupEntry = getDuplicateEntry(entries, entry);
-                if (dupEntry != null) {
-                    if (dupEntry.getAddedDate().after(entry.getAddedDate())) {
-                        nonDupEntries.add(dupEntry);
-                        dupEntries.add(entry);
-                    } else {
-                        nonDupEntries.add(entry);
-                        dupEntries.add(dupEntry);
-                    }
-                } else {
-                    nonDupEntries.add(entry);
+            int idx = indexOfDuplicateEntry(finalEntries, entry);
+            if (idx >= 0) {
+                DirectoryEntry duplicateEntry = finalEntries.get(idx);
+                if (entry.getAddedDate().after(duplicateEntry.getAddedDate())) {
+                    finalEntries.set(idx, entry);
                 }
+            } else {
+                finalEntries.add(entry);
             }
         }
 
-        for (DirectoryEntry dupEntry : dupEntries) {
+        List<DirectoryEntry> duplicateEntries = ListUtils.removeAll(entries, finalEntries);
+
+        if (!duplicateEntries.isEmpty()) {
+            logger.debug("Duplicate directory entries found: " + duplicateEntries);
+        }
+
+        for (DirectoryEntry duplicateEntry : duplicateEntries) {
             try {
-                entryRepo.delete(dupEntry.getId());
+                entryRepo.delete(duplicateEntry.getId());
             } catch (DbException e) {
-                throw new IOException("Unable to delete " + dupEntry + " from DB", e);
+                throw new IOException("Unable to delete " + duplicateEntry + " from DB", e);
             }
         }
 
-        return nonDupEntries;
+        return finalEntries;
     }
 
-    private boolean hasEntryWithSameName(List<DirectoryEntry> entries, DirectoryEntry entry) {
-        for (DirectoryEntry ent : entries) {
-            if (ent.getFileName().equals(entry.getFileName())) {
-                return true;
+    private int indexOfDuplicateEntry(List<DirectoryEntry> entries, DirectoryEntry entry) {
+        for (ListIterator<DirectoryEntry> iter = entries.listIterator(); iter.hasNext();) {
+            int idx = iter.nextIndex();
+            if (duplicateEntries(iter.next(), entry)) {
+                return idx;
             }
         }
 
-        return false;
+        return -1;
     }
 
-    private DirectoryEntry getDuplicateEntry(List<DirectoryEntry> entries, DirectoryEntry entry) {
-        for (DirectoryEntry ent : entries) {
-            if (ent.getFileName().equals(entry.getFileName())) {
-                return ent;
-            }
-        }
-
-        return null;
+    private boolean duplicateEntries(DirectoryEntry entry1, DirectoryEntry entry2) {
+        return !entry1.equals(entry2) && entry1.getFileName().equals(entry2.getFileName());
     }
 
 }

@@ -14,7 +14,7 @@
         <property name="locations">
             <list>
                 <value>classpath:filesystem.properties</value>
-                <value>file:#{systemProperties['user.home']}/sec-cloud-dfs/conf/google-drive.properties</value>
+                <value>file:#{systemProperties['user.home']}/sec-cloud-fs/conf/google-drive.properties</value>
                 <value>file:#{systemProperties['user.home']}/sec-cloud-fs/conf/dropbox.properties</value>
                 <value>classpath*:custom-filesystem.properties</value>
             </list>
@@ -165,12 +165,12 @@
     <!-- Cloud Store Registry -->
 
     <bean id="cloudStoreRegistry" class="org.avasquez.seccloudfs.cloud.impl.CloudStoreRegistryFactoryBean">
-        <property name="cloudStoreRegistrars">
+        <!--property name="cloudStoreRegistrars">
             <list>
                 <ref bean="googleDriveCloudStoreRegistrar"/>
                 <ref bean="dropboxCloudStoreRegistrar"/>
             </list>
-        </property>
+        </property-->
         <property name="cloudStores" ref="cloudStores"/>
     </bean>
 
