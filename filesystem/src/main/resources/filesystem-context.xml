@@ -172,6 +172,11 @@
             </list>
         </property-->
         <property name="cloudStores" ref="cloudStores"/>
+        <property name="decoratorFactories">
+            <list>
+                <ref bean="encryptingCloudStoreDecoratorFactory"/>
+            </list>
+        </property>
     </bean>
 
     <util:list id="cloudStores"/>
@@ -194,6 +199,17 @@
     </bean>
 
     <!-- Processing -->
+
+    <bean id="encryptingCloudStoreDecoratorFactory"
+          class="org.avasquez.seccloudfs.processing.utils.crypto.EncryptingCloudStoreDecoratorFactory">
+        <property name="keyRepository" ref="encryptionKeyRepo"/>
+        <property name="tmpDir" value="${tmp.dir}"/>
+    </bean>
+
+    <bean id="gZipCloudStoreDecoratorFactory"
+          class="org.avasquez.seccloudfs.processing.utils.zip.GZipCloudStoreDecoratorFactory">
+        <property name="tmpDir" value="${tmp.dir}"/>
+    </bean>
 
     <bean id="distributedCloudStore" class="org.avasquez.seccloudfs.processing.impl.DistributedCloudStore">
         <property name="erasureEncoder" ref="erasureEncoder"/>

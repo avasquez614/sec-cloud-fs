@@ -1,6 +1,5 @@
 package org.avasquez.seccloudfs.processing.utils.crypto;
 
-import org.apache.shiro.crypto.AbstractSymmetricCipherService;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.processing.db.repos.EncryptionKeyRepository;
 import org.avasquez.seccloudfs.utils.DecoratorFactory;
@@ -14,14 +13,8 @@ import org.springframework.beans.factory.annotation.Required;
  */
 public class EncryptingCloudStoreDecoratorFactory implements DecoratorFactory<CloudStore> {
 
-    private AbstractSymmetricCipherService cipherService;
     private EncryptionKeyRepository keyRepository;
     private String tmpDir;
-
-    @Required
-    public void setCipherService(AbstractSymmetricCipherService cipherService) {
-        this.cipherService = cipherService;
-    }
 
     @Required
     public void setKeyRepository(EncryptionKeyRepository keyRepository) {
@@ -37,7 +30,6 @@ public class EncryptingCloudStoreDecoratorFactory implements DecoratorFactory<Cl
     public CloudStore decorate(CloudStore cloudStore) {
         EncryptingCloudStore encryptingCloudStore = new EncryptingCloudStore();
         encryptingCloudStore.setUnderlyingStore(cloudStore);
-        encryptingCloudStore.setCipherService(cipherService);
         encryptingCloudStore.setKeyRepository(keyRepository);
         encryptingCloudStore.setTmpDir(tmpDir);
 

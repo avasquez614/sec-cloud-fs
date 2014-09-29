@@ -39,4 +39,13 @@ public class JongoEncryptionKeyRepository extends JongoRepository<EncryptionKey>
         }
     }
 
+    @Override
+    public void deleteByDataId(final String dataId) throws DbException {
+        try {
+            collection.remove(FIND_BY_DATA_ID_QUERY, dataId);
+        } catch (MongoException e) {
+            throw new DbException("[" + collection.getName() + "] Find by data ID '" + dataId + "' failed", e);
+        }
+    }
+
 }

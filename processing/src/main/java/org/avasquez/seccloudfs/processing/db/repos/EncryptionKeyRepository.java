@@ -12,12 +12,19 @@ import org.avasquez.seccloudfs.processing.db.model.EncryptionKey;
 public interface EncryptionKeyRepository extends Repository<EncryptionKey> {
 
     /**
-     * Finds the encryption key associated to a data ID
+     * Finds the encryption key associated to the specified data ID
      *
      * @param dataId the ID of the encrypted data
      *
      * @return the encryption key
      */
     EncryptionKey findByDataId(String dataId) throws DbException;
+
+    /**
+     * Deletes the encryption key associated to the specified data ID.
+     *
+     * @param dataId the ID of the encrypted data
+     */
+    void deleteByDataId(String dataId) throws DbException;
 
 }
