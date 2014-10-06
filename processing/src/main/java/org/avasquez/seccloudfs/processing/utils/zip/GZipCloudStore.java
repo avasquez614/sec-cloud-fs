@@ -56,7 +56,7 @@ public class GZipCloudStore implements CloudStore {
             InputStream in = Channels.newInputStream(src);
             GZIPOutputStream out = new GZIPOutputStream(Channels.newOutputStream(tmpChannel));
 
-            IOUtils.copyLarge(in, out);
+            IOUtils.copy(in, out);
 
             out.finish();
 
@@ -82,7 +82,7 @@ public class GZipCloudStore implements CloudStore {
             GZIPInputStream in = new GZIPInputStream(Channels.newInputStream(tmpChannel));
             OutputStream out = Channels.newOutputStream(target);
 
-            IOUtils.copyLarge(in, out);
+            IOUtils.copy(in, out);
 
             logger.debug("Data '{}' successfully unzipped", id);
         }

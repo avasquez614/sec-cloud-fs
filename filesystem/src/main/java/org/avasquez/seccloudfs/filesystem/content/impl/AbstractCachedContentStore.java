@@ -15,7 +15,7 @@ public abstract class AbstractCachedContentStore implements ContentStore {
 
     public static final String CONTENT_CACHE_NAME = "content";
 
-    private Cache<String, Content> cache;
+    protected Cache<String, Content> cache;
 
     @Required
     public void setCacheContainer(CacheContainer cacheContainer) {

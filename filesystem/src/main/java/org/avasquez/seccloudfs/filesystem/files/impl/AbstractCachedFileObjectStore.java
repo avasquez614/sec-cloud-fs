@@ -14,7 +14,7 @@ public abstract class AbstractCachedFileObjectStore implements FileObjectStore {
 
     public static final String FILE_NODE_CACHE_NAME = "fileNodes";
 
-    private Cache<String, FileObject> cache;
+    protected Cache<String, FileObject> cache;
 
     @Required
     public void setCacheContainer(CacheContainer cacheContainer) {

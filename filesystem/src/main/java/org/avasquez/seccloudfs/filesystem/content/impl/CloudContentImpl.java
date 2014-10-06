@@ -101,6 +101,20 @@ public class CloudContentImpl implements CloudContent {
         return false;
     }
 
+    @Override
+    public void forceUpload() throws IOException {
+        if (isDownloaded()) {
+            accessLock.lock();
+            try {
+                uploader.notifyUpdate();
+
+                logger.info("Forced upload of content '{}'", getId());
+            } finally {
+                accessLock.unlock();
+            }
+        }
+    }
+
     public void delete() throws IOException {
         metadata.setMarkedAsDeleted(true);
         try {

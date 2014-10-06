@@ -11,4 +11,6 @@ public interface CloudContent extends Content {
 
     boolean deleteDownload() throws IOException;
 
+    void forceUpload() throws IOException;
+
 }

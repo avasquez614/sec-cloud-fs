@@ -1,14 +1,19 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.annotation.PostConstruct;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.content.CloudContent;
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
 import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
@@ -67,14 +72,23 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     }
 
     @Override
-    protected Content doFind(String id) throws IOException {
-        ContentMetadata metadata;
-        try {
-            metadata = metadataRepo.find(id);
-        } catch (DbException e) {
-            throw new IOException("Unable to find content by ID '" + id + "'", e);
-        }
+    public long getTotalSpace() throws IOException {
+        return cloudStore.getTotalSpace();
+    }
 
+    @Override
+    public long getAvailableSpace() throws IOException {
+        return cloudStore.getAvailableSpace();
+    }
+
+    @PostConstruct
+    public void init() throws IOException {
+        resumeUploads();
+    }
+
+    @Override
+    protected Content doFind(String id) throws IOException {
+        ContentMetadata metadata = findMetadata(id);
         if (metadata != null) {
             return createContentObject(metadata);
         } else {
@@ -103,7 +117,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         ((CloudContentImpl) content).delete();
     }
 
-    private Content createContentObject(ContentMetadata metadata) throws IOException {
+    private CloudContent createContentObject(ContentMetadata metadata) throws IOException {
         Path downloadPath = downloadsDir.resolve(metadata.getId());
         Lock accessLock = new ReentrantLock();
         Uploader uploader = new Uploader(metadata, metadataRepo, cloudStore, downloadPath, accessLock,
@@ -112,13 +126,36 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         return new CloudContentImpl(metadata, metadataRepo, downloadPath, accessLock, cloudStore, uploader);
     }
 
-    @Override
-    public long getTotalSpace() throws IOException {
-        return cloudStore.getTotalSpace();
+    private ContentMetadata findMetadata(String id) throws IOException {
+        try {
+            return metadataRepo.find(id);
+        } catch (DbException e) {
+            throw new IOException("Unable to find content by ID '" + id + "'", e);
+        }
     }
 
-    @Override
-    public long getAvailableSpace() throws IOException {
-        return cloudStore.getAvailableSpace();
+    private void resumeUploads() throws IOException {
+        logger.info("Checking for pending uploads...");
+
+        try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(downloadsDir)) {
+            for (Path file : dirStream) {
+                String id = file.getFileName().toString();
+                ContentMetadata metadata = findMetadata(id);
+                FileTime lastUploadTime = FileTime.fromMillis(metadata.getLastUploadTime().getTime());
+                FileTime lastModifiedTime = Files.getLastModifiedTime(file);
+
+                if (lastModifiedTime.compareTo(lastUploadTime) > 0) {
+                    logger.info("Upload of content '{}' pending. Restarting it...", id);
+
+                    CloudContent content = createContentObject(metadata);
+                    content.forceUpload();
+
+                    cache.put(id, content);
+                }
+            }
+        } catch (IOException e) {
+            throw new IOException("Error resuming pending uploads", e);
+        }
     }
+
 }

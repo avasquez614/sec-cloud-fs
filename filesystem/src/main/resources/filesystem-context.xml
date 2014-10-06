@@ -175,6 +175,7 @@
         <property name="decoratorFactories">
             <list>
                 <ref bean="encryptingCloudStoreDecoratorFactory"/>
+                <ref bean="gZipCloudStoreDecoratorFactory"/>
             </list>
         </property>
     </bean>
