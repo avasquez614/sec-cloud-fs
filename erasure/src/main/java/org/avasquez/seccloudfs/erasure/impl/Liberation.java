@@ -23,8 +23,14 @@ public class Liberation extends AbstractJerasureCodingMethod {
             throw new IllegalStateException("packetSize must be a multiple of " + CLong.SIZE);
         }
 
+        m = 2;
         bitMatrix = JerasureLibrary.liberationCodingBitmatrix(k, w);
         schedule = JerasureLibrary.smartBitmatrixToSchedule(k, m, w, bitMatrix);
+    }
+
+    @Override
+    public void setM(int m) {
+        throw new UnsupportedOperationException("m should always be 2 in Liberation coding");
     }
 
 }

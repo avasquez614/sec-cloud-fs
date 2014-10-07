@@ -28,7 +28,7 @@ import static org.junit.Assert.assertNotNull;
  */
 public class LiberationEncodingTest {
 
-    private static final int K = 6;
+    private static final int K = 4;
     private static final int M = 2;
     private static final int W = 7;
     private static final int PACKET_SIZE = 8;
