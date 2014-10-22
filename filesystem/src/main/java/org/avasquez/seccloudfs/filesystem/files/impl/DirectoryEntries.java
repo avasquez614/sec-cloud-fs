@@ -145,7 +145,7 @@ public class DirectoryEntries {
             int idx = indexOfDuplicateEntry(finalEntries, entry);
             if (idx >= 0) {
                 DirectoryEntry duplicateEntry = finalEntries.get(idx);
-                if (entry.getAddedDate().after(duplicateEntry.getAddedDate())) {
+                if (entry.getCreatedDate().after(duplicateEntry.getCreatedDate())) {
                     finalEntries.set(idx, entry);
                 }
             } else {

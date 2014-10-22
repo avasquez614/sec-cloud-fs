@@ -16,7 +16,7 @@ public class DirectoryEntry {
     private String directoryId;
     private String fileName;
     private String fileId;
-    private Date addedDate;
+    private Date createdDate;
 
     /**
      * Private no-arg constructor, for use by frameworks like Jongo/Jackson.
@@ -24,19 +24,19 @@ public class DirectoryEntry {
     private DirectoryEntry() {
     }
 
-    public DirectoryEntry(String directoryId, String fileName, String fileId, Date addedDate) {
+    public DirectoryEntry(String directoryId, String fileName, String fileId, Date createdDate) {
         this.directoryId = directoryId;
         this.fileName = fileName;
         this.fileId = fileId;
-        this.addedDate = addedDate;
+        this.createdDate = createdDate;
     }
 
-    public DirectoryEntry(String id, String directoryId, String fileName, String fileId, Date addedDate) {
+    public DirectoryEntry(String id, String directoryId, String fileName, String fileId, Date createdDate) {
         this.id = id;
         this.directoryId = directoryId;
         this.fileName = fileName;
         this.fileId = fileId;
-        this.addedDate = addedDate;
+        this.createdDate = createdDate;
     }
 
     public String getId() {
@@ -55,8 +55,8 @@ public class DirectoryEntry {
         return fileId;
     }
 
-    public Date getAddedDate() {
-        return addedDate;
+    public Date getCreatedDate() {
+        return createdDate;
     }
 
     @Override
@@ -89,7 +89,7 @@ public class DirectoryEntry {
                 ", directoryId='" + directoryId + '\'' +
                 ", fileName='" + fileName + '\'' +
                 ", fileId='" + fileId + '\'' +
-                ", addedDate=" + addedDate +
+                ", createdDate=" + createdDate +
                 '}';
     }
 
