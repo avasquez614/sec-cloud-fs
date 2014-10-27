@@ -11,7 +11,7 @@ dependencies {
 
 // Install to another dir
 installApp {
-    destinationDir = file('/opt/sec-cloud-fs/cloud-store-app')
+    destinationDir = file(installDirRoot + '/cloud-store-app')
 }
 
 // Add conf dir to classpath of start-up scripts

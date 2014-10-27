@@ -9,7 +9,7 @@ dependencies {
 
 // Install to another dir
 installApp {
-    destinationDir = file('/opt/sec-cloud-fs/google-drive')
+    destinationDir = file(installDirRoot + '/google-drive')
 }
 
 // Add conf dir to classpath of start-up scripts

@@ -10,10 +10,11 @@
         <property name="locations">
             <list>
                 <value>classpath:application.properties</value>
-                <value>file:#{systemProperties['user.home']}/sec-cloud-fs/conf/google-drive.properties</value>
-                <value>classpath*:custom-application.properties</value>
+                <value>file:@installDirRoot@/shared/conf/google-drive.properties</value>
+                <value>classpath:custom-application.properties</value>
             </list>
         </property>
+        <property name="ignoreResourceNotFound" value="true"/>
     </bean>
 
     <context:annotation-config />

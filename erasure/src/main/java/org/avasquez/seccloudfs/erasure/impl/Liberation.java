@@ -30,7 +30,11 @@ public class Liberation extends AbstractJerasureCodingMethod {
 
     @Override
     public void setM(int m) {
-        throw new UnsupportedOperationException("m should always be 2 in Liberation coding");
+        if (m == 2) {
+            this.m = m;
+        } else {
+            throw new IllegalArgumentException("m should always be 2 in Liberation coding");
+        }
     }
 
 }

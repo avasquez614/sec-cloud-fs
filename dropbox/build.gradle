@@ -9,7 +9,7 @@ dependencies {
 
 // Install to another dir
 installApp {
-    destinationDir = file('/opt/sec-cloud-fs/dropbox')
+    destinationDir = file(installDirRoot + '/dropbox')
 }
 
 // Add conf dir to classpath of start-up scripts
