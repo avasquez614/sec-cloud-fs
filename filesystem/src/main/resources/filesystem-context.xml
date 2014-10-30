@@ -37,7 +37,7 @@
         <constructor-arg value="${mongo.port}" />
     </bean>
 
-    <bean id="jongo" class="org.avasquez.seccloudfs.db.mongo.JongoFactoryBean">
+    <bean id="jongo" class="org.avasquez.seccloudfs.db.impl.JongoFactoryBean">
         <property name="dbName" value="${mongo.db.name}" />
         <property name="mongoClient" ref="mongoClient" />
     </bean>
@@ -62,13 +62,13 @@
     </bean>
 
     <bean id="googleDriveCredentialsRepo"
-          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialsRepository">
-        <constructor-arg ref="jongo"/>
+          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.FileGoogleDriveCredentialsRepository">
+        <constructor-arg value="@installDirRoot@/shared/credentials/google-drive"/>
     </bean>
 
     <bean id="dropboxCredentialsRepo"
-          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.JongoDropboxCredentialsRepository">
-        <constructor-arg ref="jongo"/>
+          class="org.avasquez.seccloudfs.dropbox.db.repos.impl.FileDropboxCredentialsRepository">
+        <constructor-arg value="@installDirRoot@/shared/credentials/dropbox"/>
     </bean>
 
     <bean id="encryptionKeyRepo" class="org.avasquez.seccloudfs.processing.db.repos.impl.JongoEncryptionKeyRepository">

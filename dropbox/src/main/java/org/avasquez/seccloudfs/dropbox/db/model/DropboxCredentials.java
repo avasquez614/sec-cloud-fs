@@ -1,8 +1,5 @@
 package org.avasquez.seccloudfs.dropbox.db.model;
 
-import org.jongo.marshall.jackson.oid.Id;
-import org.jongo.marshall.jackson.oid.ObjectId;
-
 /**
  * Represents Dropbox credentials info that's stored in the DB.
  *
@@ -10,8 +7,8 @@ import org.jongo.marshall.jackson.oid.ObjectId;
  */
 public class DropboxCredentials {
 
-    @Id
-    @ObjectId
+    //@Id
+    //@ObjectId
     private String id;
     private String accountId;
     private String accessToken;

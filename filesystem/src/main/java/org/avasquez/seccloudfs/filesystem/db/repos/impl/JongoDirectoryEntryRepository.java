@@ -2,7 +2,7 @@ package org.avasquez.seccloudfs.filesystem.db.repos.impl;
 
 import com.mongodb.MongoException;
 
-import org.avasquez.seccloudfs.db.mongo.JongoRepository;
+import org.avasquez.seccloudfs.db.impl.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.db.model.DirectoryEntry;
 import org.avasquez.seccloudfs.filesystem.db.repos.DirectoryEntryRepository;

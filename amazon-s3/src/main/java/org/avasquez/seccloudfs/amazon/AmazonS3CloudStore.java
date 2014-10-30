@@ -2,11 +2,7 @@ package org.avasquez.seccloudfs.amazon;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ListObjectsRequest;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.*;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -35,6 +31,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     private String name;
     private AmazonS3 s3;
     private String bucketName;
+    private Region region;
     private Cache<String, ObjectMetadata> metadataCache;
 
     public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName,
@@ -42,6 +39,15 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
         this.name = name;
         this.s3 = s3;
         this.bucketName = bucketName;
+        this.metadataCache = metadataCache;
+    }
+
+    public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName, Region region,
+                              Cache<String, ObjectMetadata> metadataCache) {
+        this.name = name;
+        this.s3 = s3;
+        this.bucketName = bucketName;
+        this.region = region;
         this.metadataCache = metadataCache;
     }
 
@@ -64,7 +70,11 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
             logger.info("Bucket '" + bucketName + "' of store " + name + " does not exist. Creating it...");
 
             try {
-                s3.createBucket(bucketName);
+                if (region != null) {
+                    s3.createBucket(bucketName, region);
+                } else {
+                    s3.createBucket(bucketName);
+                }
             } catch (Exception e) {
                 throw new IOException("Error creating bucket '" + name + "' of store " + name, e);
             }

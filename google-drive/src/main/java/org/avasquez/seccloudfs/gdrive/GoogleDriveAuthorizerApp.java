@@ -72,10 +72,10 @@ public class GoogleDriveAuthorizerApp {
         try {
             credentialsRepository.insert(credentials);
 
-            stdOut.println("Credentials successfully obtained and stored in DB with ID '" + credentials.getId() + "'");
+            stdOut.println("Credentials successfully obtained and stored with ID '" + credentials.getId() + "'");
             stdOut.flush();
         } catch (DbException e) {
-            CliUtils.die("ERROR: Unable to store credentials in DB", e, stdOut);
+            CliUtils.die("ERROR: Unable to store credentials", e, stdOut);
         }
     }
 

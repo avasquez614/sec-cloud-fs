@@ -2,7 +2,7 @@ package org.avasquez.seccloudfs.processing.db.repos.impl;
 
 import com.mongodb.MongoException;
 
-import org.avasquez.seccloudfs.db.mongo.JongoRepository;
+import org.avasquez.seccloudfs.db.impl.JongoRepository;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.processing.db.model.EncryptionKey;
 import org.avasquez.seccloudfs.processing.db.repos.EncryptionKeyRepository;

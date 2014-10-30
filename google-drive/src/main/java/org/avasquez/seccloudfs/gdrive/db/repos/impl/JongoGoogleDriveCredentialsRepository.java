@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.gdrive.db.repos.impl;
 
-import org.avasquez.seccloudfs.db.mongo.JongoRepository;
+import org.avasquez.seccloudfs.db.impl.JongoRepository;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.jongo.Jongo;

@@ -1,6 +1,6 @@
 package org.avasquez.seccloudfs.dropbox.db.repos.impl;
 
-import org.avasquez.seccloudfs.db.mongo.JongoRepository;
+import org.avasquez.seccloudfs.db.impl.JongoRepository;
 import org.avasquez.seccloudfs.dropbox.db.model.DropboxCredentials;
 import org.avasquez.seccloudfs.dropbox.db.repos.DropboxCredentialsRepository;
 import org.jongo.Jongo;

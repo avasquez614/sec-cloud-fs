@@ -1,4 +1,4 @@
-package org.avasquez.seccloudfs.db.mongo;
+package org.avasquez.seccloudfs.db.impl;
 
 import com.mongodb.MongoException;
 
