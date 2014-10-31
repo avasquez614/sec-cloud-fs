@@ -9,20 +9,20 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
-
-import java.io.IOException;
-
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.GoogleDriveCloudStore;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.springframework.beans.factory.annotation.Required;
+
+import java.io.IOException;
 
 /**
  * Creates {@link org.avasquez.seccloudfs.cloud.CloudStore}s from the {@link org.avasquez.seccloudfs.gdrive.db.model
@@ -39,6 +39,7 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     private String clientSecret;
     private String applicationName;
     private GoogleDriveCredentialsRepository credentialsRepository;
+    private long chunkedUploadThreshold;
     private String rootFolderName;
     private EmbeddedCacheManager cacheManager;
     private int maxCacheEntries;
@@ -61,6 +62,11 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
     @Required
     public void setCredentialsRepository(GoogleDriveCredentialsRepository credentialsRepository) {
         this.credentialsRepository = credentialsRepository;
+    }
+
+    @Required
+    public void setChunkedUploadThreshold(String chunkedUploadThreshold) {
+        this.chunkedUploadThreshold = FileUtils.humanReadableByteSizeToByteCount(chunkedUploadThreshold);
     }
 
     @Required
@@ -124,7 +130,7 @@ public class GoogleDriveCloudStoreRegistrar implements CloudStoreRegistrar {
         String storeName = STORE_NAME_PREFIX + storedCredentials.getAccountId();
         Cache<String, File> fileCache = createFileCache(storeName);
 
-        return new GoogleDriveCloudStore(storeName, drive, fileCache, rootFolderName);
+        return new GoogleDriveCloudStore(storeName, drive, chunkedUploadThreshold, fileCache, rootFolderName);
     }
 
     private Cache<String, File> createFileCache(String storeName) {

@@ -4,14 +4,13 @@ import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.CredentialRefreshListener;
 import com.google.api.client.auth.oauth2.TokenErrorResponse;
 import com.google.api.client.auth.oauth2.TokenResponse;
-
-import java.io.IOException;
-
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.gdrive.db.model.GoogleDriveCredentials;
 import org.avasquez.seccloudfs.gdrive.db.repos.GoogleDriveCredentialsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * Implementation of {@link com.google.api.client.auth.oauth2.CredentialRefreshListener} that updates the stored
@@ -44,10 +43,10 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
         try {
             credentialsRepository.save(storedCredentials);
         } catch (DbException e) {
-            throw new IOException("Unable to save credentials '" + storedCredentials.getId() + "' in DB", e);
+            throw new IOException("Unable to save credentials '" + storedCredentials.getId(), e);
         }
 
-        logger.debug("Refreshed credentials '{}' saved in DB", storedCredentials.getId());
+        logger.debug("Refreshed credentials '{}' saved", storedCredentials.getId());
     }
 
     @Override
@@ -60,10 +59,10 @@ public class RepositoryCredentialRefreshListener implements CredentialRefreshLis
         try {
             credentialsRepository.delete(storedCredentials.getId());
         } catch (DbException e) {
-            throw new IOException("Unable to delete credentials '" + storedCredentials.getId() + "' from DB", e);
+            throw new IOException("Unable to delete credentials '" + storedCredentials.getId(), e);
         }
 
-        logger.debug("Deleted credentials '{}' from DB", storedCredentials.getId());
+        logger.debug("Deleted credentials '{}'", storedCredentials.getId());
     }
 
 }

@@ -148,6 +148,7 @@
         <property name="clientSecret" value="${google.clientSecret}"/>
         <property name="applicationName" value="${google.applicationName}"/>
         <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
+        <property name="chunkedUploadThreshold" value="${cloud.store.chunkedUploadThreshold}"/>
         <property name="rootFolderName" value="${google.drive.rootFolder.name}"/>
         <property name="cacheManager" ref="cacheManager"/>
         <property name="maxCacheEntries" value="${google.drive.cache.maxEntries}"/>
@@ -161,6 +162,7 @@
                 <constructor-arg value="#{T(java.util.Locale).default.toString()}"/>
             </bean>
         </property>
+        <property name="chunkedUploadThreshold" value="${cloud.store.chunkedUploadThreshold}"/>
     </bean>
 
     <!-- Cloud Store Registry -->

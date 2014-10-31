@@ -4,8 +4,9 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-
+import com.amazonaws.services.s3.model.Region;
 import org.avasquez.seccloudfs.amazon.AmazonS3CloudStore;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -27,9 +28,15 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
     private String secretKey;
     private String accountId;
     private String bucketName;
+    private Region region;
     private String maxSize;
+    private long chunkedUploadThreshold;
     private EmbeddedCacheManager cacheManager;
     private int maxCacheEntries;
+
+    public AmazonS3CloudStoreFactoryBean() {
+        region = Region.US_Standard;
+    }
 
     @Required
     public void setAccessKey(String accessKey) {
@@ -51,9 +58,18 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
         this.bucketName = bucketName;
     }
 
+    public void setRegion(Region region) {
+        this.region = region;
+    }
+
     @Required
     public void setMaxSize(String maxSize) {
         this.maxSize = maxSize;
+    }
+
+    @Required
+    public void setChunkedUploadThreshold(String chunkedUploadThreshold) {
+        this.chunkedUploadThreshold = FileUtils.humanReadableByteSizeToByteCount(chunkedUploadThreshold);
     }
 
     @Required
@@ -71,7 +87,13 @@ public class AmazonS3CloudStoreFactoryBean implements FactoryBean<AmazonS3CloudS
         String storeName = STORE_NAME_PREFIX + accountId;
         AmazonS3 s3 = new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey));
         Cache<String, ObjectMetadata> metadataCache = createMetadataCache(storeName);
-        AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(storeName, s3, bucketName, metadataCache);
+        AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(
+                storeName,
+                s3,
+                bucketName,
+                region,
+                chunkedUploadThreshold,
+                metadataCache);
 
         cloudStore.setMaxSize(maxSize);
         cloudStore.init();

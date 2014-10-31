@@ -2,9 +2,6 @@ package org.avasquez.seccloudfs.dropbox.utils;
 
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxRequestConfig;
-
-import java.io.IOException;
-
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
@@ -12,7 +9,10 @@ import org.avasquez.seccloudfs.dropbox.DropboxCloudStore;
 import org.avasquez.seccloudfs.dropbox.db.model.DropboxCredentials;
 import org.avasquez.seccloudfs.dropbox.db.repos.DropboxCredentialsRepository;
 import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.springframework.beans.factory.annotation.Required;
+
+import java.io.IOException;
 
 /**
  * Creates {@link org.avasquez.seccloudfs.cloud.CloudStore}s from the {@link org.avasquez.seccloudfs.dropbox.db.model
@@ -27,6 +27,7 @@ public class DropboxCloudStoreRegistrar implements CloudStoreRegistrar {
 
     private DbxRequestConfig requestConfig;
     private DropboxCredentialsRepository credentialsRepository;
+    private long chunkedUploadThreshold;
 
     @Required
     public void setRequestConfig(DbxRequestConfig requestConfig) {
@@ -36,6 +37,11 @@ public class DropboxCloudStoreRegistrar implements CloudStoreRegistrar {
     @Required
     public void setCredentialsRepository(DropboxCredentialsRepository credentialsRepository) {
         this.credentialsRepository = credentialsRepository;
+    }
+
+    @Required
+    public void setChunkedUploadThreshold(String chunkedUploadThreshold) {
+        this.chunkedUploadThreshold = FileUtils.humanReadableByteSizeToByteCount(chunkedUploadThreshold);
     }
 
     /**
@@ -62,7 +68,7 @@ public class DropboxCloudStoreRegistrar implements CloudStoreRegistrar {
         DbxClient client = new DbxClient(requestConfig, credentials.getAccessToken());
         String storeName = STORE_NAME_PREFIX + credentials.getAccountId();
 
-        return new DropboxCloudStore(storeName, client);
+        return new DropboxCloudStore(storeName, client, chunkedUploadThreshold);
     }
 
 }

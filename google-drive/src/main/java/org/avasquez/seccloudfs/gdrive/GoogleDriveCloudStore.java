@@ -1,5 +1,7 @@
 package org.avasquez.seccloudfs.gdrive;
 
+import com.google.api.client.googleapis.media.MediaHttpUploader;
+import com.google.api.client.googleapis.services.AbstractGoogleClientRequest;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpResponse;
@@ -8,6 +10,11 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.ParentReference;
+import org.apache.commons.io.IOUtils;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.infinispan.Cache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -17,12 +24,6 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.List;
-
-import org.apache.commons.io.IOUtils;
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.infinispan.Cache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Google Drive implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}.
@@ -41,15 +42,18 @@ public class GoogleDriveCloudStore implements CloudStore {
 
     private String name;
     private Drive drive;
+    private long chunkedUploadThreshold;
     private Cache<String, File> fileCache;
     private String rootFolderName;
 
     private File rootFolder;
 
-    public GoogleDriveCloudStore(String name, Drive drive, Cache<String, File> fileCache, String rootFolderName) {
+    public GoogleDriveCloudStore(String name, Drive drive, long chunkedUploadThreshold, Cache<String, File> fileCache,
+                                 String rootFolderName) {
         this.name = name;
         this.drive = drive;
         this.fileCache = fileCache;
+        this.chunkedUploadThreshold = chunkedUploadThreshold;
         this.rootFolderName = rootFolderName;
     }
 
@@ -79,7 +83,7 @@ public class GoogleDriveCloudStore implements CloudStore {
             logger.debug("File {}/{}/{} already exists. Updating it...", name, rootFolderName, filename);
 
             try {
-                drive.files().update(file.getId(), file, content).execute();
+                executeUpload(drive.files().update(file.getId(), file, content), filename, length);
             } catch (IOException e) {
                 throw new IOException("Error updating file " + name + "/" + rootFolderName + "/" + filename, e);
             }
@@ -91,7 +95,7 @@ public class GoogleDriveCloudStore implements CloudStore {
             file.setParents(Arrays.asList((new ParentReference()).setId(rootFolder.getId())));
 
             try {
-                file = drive.files().insert(file, content).execute();
+                file = executeUpload(drive.files().insert(file, content), filename, length);
             } catch (Exception e) {
                 throw new IOException("Error inserting " + name + "/" + rootFolderName + "/" + filename, e);
             }
@@ -227,6 +231,24 @@ public class GoogleDriveCloudStore implements CloudStore {
         } catch (IOException e) {
             throw new IOException("Error retrieving Google Drive account info for store " + name, e);
         }
+    }
+
+    private File executeUpload(AbstractGoogleClientRequest<File> uploadRequest, String filename,
+                               long length) throws IOException {
+        MediaHttpUploader uploader = uploadRequest.getMediaHttpUploader();
+        uploader.setDisableGZipContent(true);
+
+        if (length < chunkedUploadThreshold) {
+            logger.debug("Using direct upload for {}/{}/{}", name, rootFolderName, filename);
+
+            uploader.setDirectUploadEnabled(true);
+        } else {
+            logger.debug("Using chunked upload for {}/{}/{}", name, rootFolderName, filename);
+
+            uploader.setDirectUploadEnabled(false);
+        }
+
+        return uploadRequest.execute();
     }
 
 }

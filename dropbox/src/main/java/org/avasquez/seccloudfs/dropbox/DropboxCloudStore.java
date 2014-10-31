@@ -2,16 +2,17 @@ package org.avasquez.seccloudfs.dropbox;
 
 import com.dropbox.core.DbxAccountInfo;
 import com.dropbox.core.DbxClient;
+import com.dropbox.core.DbxStreamWriter;
 import com.dropbox.core.DbxWriteMode;
-
-import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 
 /**
  * Dropbox implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}.
@@ -24,10 +25,12 @@ public class DropboxCloudStore implements CloudStore {
 
     private String name;
     private DbxClient client;
+    private long chunkedUploadThreshold;
 
-    public DropboxCloudStore(String name, DbxClient client) {
+    public DropboxCloudStore(String name, DbxClient client, long chunkedUploadThreshold) {
         this.name = name;
         this.client = client;
+        this.chunkedUploadThreshold = chunkedUploadThreshold;
     }
 
     @Override
@@ -40,7 +43,19 @@ public class DropboxCloudStore implements CloudStore {
         logger.debug("Started uploading {}/{}", name, filename);
 
         try {
-            client.uploadFile("/" + filename, DbxWriteMode.force(), length, Channels.newInputStream(src));
+            InputStream content = Channels.newInputStream(src);
+            DbxStreamWriter.InputStreamCopier streamWriter = new DbxStreamWriter.InputStreamCopier(content);
+            String path = "/" + filename;
+
+            if (length < chunkedUploadThreshold) {
+                logger.debug("Using direct upload for {}/{}", name, filename);
+
+                client.uploadFile(path, DbxWriteMode.force(), length, streamWriter);
+            } else {
+                logger.debug("Using chunked upload for {}/{}", name, filename);
+
+                client.uploadFileChunked(path, DbxWriteMode.force(), length, streamWriter);
+            }
         } catch (Exception e) {
             throw new IOException("Error uploading " + name + "/" + filename, e);
         }

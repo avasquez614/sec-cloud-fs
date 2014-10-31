@@ -1,2 +1,1 @@
-* Make the cloud stores upload in chunks, or add local file chunking.
 * Work in fs repair service.
