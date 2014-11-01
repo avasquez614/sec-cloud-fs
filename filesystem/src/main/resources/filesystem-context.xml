@@ -140,22 +140,23 @@
     <task:annotation-driven scheduler="scheduler"/>
     <task:scheduler id="scheduler" pool-size="${scheduler.threads.pool.size}"/>
 
-    <!-- Cloud Store Registrars -->
+    <!-- Cloud Store Factory Templates -->
 
-    <bean id="googleDriveCloudStoreRegistrar"
-          class="org.avasquez.seccloudfs.gdrive.utils.GoogleDriveCloudStoreRegistrar">
+    <bean id="googleDriveCloudStoreFactoryTemplate"
+          class="org.avasquez.seccloudfs.gdrive.utils.GoogleDriveCloudStoreFactory"
+          abstract="true">
         <property name="clientId" value="${google.clientId}"/>
         <property name="clientSecret" value="${google.clientSecret}"/>
         <property name="applicationName" value="${google.applicationName}"/>
-        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
         <property name="chunkedUploadThreshold" value="${cloud.store.chunkedUploadThreshold}"/>
-        <property name="rootFolderName" value="${google.drive.rootFolder.name}"/>
         <property name="cacheManager" ref="cacheManager"/>
         <property name="maxCacheEntries" value="${google.drive.cache.maxEntries}"/>
+        <property name="credentialsRepository" ref="googleDriveCredentialsRepo"/>
     </bean>
 
-    <bean id="dropboxCloudStoreRegistrar" class="org.avasquez.seccloudfs.dropbox.utils.DropboxCloudStoreRegistrar">
-        <property name="credentialsRepository" ref="dropboxCredentialsRepo"/>
+    <bean id="dropboxCloudStoreFactoryTemplate"
+          class="org.avasquez.seccloudfs.dropbox.utils.DropboxCloudStoreFactory"
+          abstract="true">
         <property name="requestConfig">
             <bean class="com.dropbox.core.DbxRequestConfig">
                 <constructor-arg value="${dropbox.clientIdentifier}"/>
@@ -163,17 +164,20 @@
             </bean>
         </property>
         <property name="chunkedUploadThreshold" value="${cloud.store.chunkedUploadThreshold}"/>
+        <property name="credentialsRepository" ref="dropboxCredentialsRepo"/>
+    </bean>
+
+    <bean id="amazonS3CloudStoreFactoryTemplate"
+          class="org.avasquez.seccloudfs.amazon.utils.AmazonS3CloudStoreFactory"
+          abstract="true">
+        <property name="chunkedUploadThreshold" value="${cloud.store.chunkedUploadThreshold}"/>
+        <property name="cacheManager" ref="cacheManager"/>
+        <property name="maxCacheEntries" value="${google.drive.cache.maxEntries}"/>
     </bean>
 
     <!-- Cloud Store Registry -->
 
     <bean id="cloudStoreRegistry" class="org.avasquez.seccloudfs.cloud.impl.CloudStoreRegistryFactoryBean">
-        <property name="cloudStoreRegistrars">
-            <list>
-                <ref bean="googleDriveCloudStoreRegistrar"/>
-                <ref bean="dropboxCloudStoreRegistrar"/>
-            </list>
-        </property>
         <property name="cloudStores" ref="cloudStores"/>
         <property name="decoratorFactories">
             <list>

@@ -10,6 +10,7 @@ import org.infinispan.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,21 +38,11 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     private long chunkedUploadThreshold;
     private Cache<String, ObjectMetadata> metadataCache;
 
-    public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName, long chunkedUploadThreshold,
-                              Cache<String, ObjectMetadata> metadataCache) {
+    public AmazonS3CloudStore(String name, AmazonS3 s3, TransferManager transferManager, String bucketName,
+                              Region region, long chunkedUploadThreshold, Cache<String, ObjectMetadata> metadataCache) {
         this.name = name;
         this.s3 = s3;
-        this.transferManager = new TransferManager(s3);
-        this.bucketName = bucketName;
-        this.chunkedUploadThreshold = chunkedUploadThreshold;
-        this.metadataCache = metadataCache;
-    }
-
-    public AmazonS3CloudStore(String name, AmazonS3 s3, String bucketName, Region region, long chunkedUploadThreshold,
-                              Cache<String, ObjectMetadata> metadataCache) {
-        this.name = name;
-        this.s3 = s3;
-        this.transferManager = new TransferManager(s3);
+        this.transferManager = transferManager;
         this.bucketName = bucketName;
         this.region = region;
         this.chunkedUploadThreshold = chunkedUploadThreshold;
@@ -64,6 +55,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
+    @PostConstruct
     public void init() throws IOException {
         // Check if bucket exists, if not create it
         boolean bucketExists;
@@ -77,11 +69,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
             logger.info("Bucket '" + bucketName + "' of store " + name + " does not exist. Creating it...");
 
             try {
-                if (region != null) {
-                    s3.createBucket(bucketName, region);
-                } else {
-                    s3.createBucket(bucketName);
-                }
+                s3.createBucket(bucketName, region);
             } catch (Exception e) {
                 throw new IOException("Error creating bucket '" + name + "' of store " + name, e);
             }
@@ -97,7 +85,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
 
     @Override
     protected Object getMetadata(String filename) throws IOException {
-        logger.debug("Retrieving metadata for {}/{}/{}", name, bucketName, filename);
+        logger.debug("Retrieving metadata for {}/{}", name, filename);
 
         ObjectMetadata metadata = metadataCache.get(filename);
         if (metadata == null) {
@@ -110,7 +98,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
                     return null;
                 }
 
-                throw new IOException("Error retrieving metadata for " + name + "/" + bucketName + "/" + filename, e);
+                throw new IOException("Error retrieving metadata for " + name + "/" + filename, e);
             }
         }
 
@@ -119,7 +107,7 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
 
     @Override
     protected void doUpload(String filename, Object metadata, ReadableByteChannel src, long length) throws IOException {
-        logger.debug("Started uploading {}/{}/{}", name, bucketName, filename);
+        logger.debug("Started uploading {}/{}", name, filename);
 
         ObjectMetadata objectMetadata;
         if (metadata != null) {
@@ -135,30 +123,30 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
             InputStream content = Channels.newInputStream(src);
 
             if (length < chunkedUploadThreshold) {
-                logger.debug("Using direct upload for {}/{}/{}", name, bucketName, filename);
+                logger.debug("Using direct upload for {}/{}", name, filename);
 
                 s3.putObject(bucketName, filename, content, objectMetadata);
             } else {
-                logger.debug("Using chunked upload for {}/{}/{}", name, bucketName, filename);
+                logger.debug("Using chunked upload for {}/{}", name, filename);
 
                 transferManager.upload(bucketName, filename, content, objectMetadata).waitForCompletion();
             }
         } catch (Exception e) {
-            throw new IOException("Error uploading " + name + "/" + bucketName + "/" + filename, e);
+            throw new IOException("Error uploading " + name + "/" + filename, e);
         }
 
         metadataCache.put(filename, objectMetadata);
 
-        logger.debug("Finished uploading {}/{}/{}", name, bucketName, filename);
+        logger.debug("Finished uploading {}/{}", name, filename);
     }
 
     @Override
     protected void doDownload(String filename, Object metadata, WritableByteChannel target) throws IOException {
         if (metadata == null) {
-            throw new FileNotFoundException("No file " + name + "/" + bucketName + "/" + filename + " found");
+            throw new FileNotFoundException("No file " + name + "/" + filename + " found");
         }
 
-        logger.debug("Started downloading {}/{}/{}", name, bucketName, filename);
+        logger.debug("Started downloading {}/{}", name, filename);
 
         try {
             S3Object s3Object = s3.getObject(bucketName, filename);
@@ -167,21 +155,21 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
                 IOUtils.copy(in, Channels.newOutputStream(target));
             }
         } catch (Exception e) {
-            throw new IOException("Error downloading " + name + "/" + bucketName + "/" + filename, e);
+            throw new IOException("Error downloading " + name + "/" + filename, e);
         }
 
-        logger.debug("Finished downloading {}/{}/{}", name, bucketName, filename);
+        logger.debug("Finished downloading {}/{}", name, filename);
     }
 
     @Override
     protected void doDelete(String filename, Object metadata) throws IOException {
         if (metadata != null) {
-            logger.debug("Deleting {}/{}/{}", name, bucketName, filename);
+            logger.debug("Deleting {}/{}", name, filename);
 
             try {
                 s3.deleteObject(bucketName, filename);
             } catch (Exception e) {
-                throw new IOException("Error deleting " + name + "/" + bucketName + "/" + filename, e);
+                throw new IOException("Error deleting " + name + "/" + filename, e);
             }
         }
     }

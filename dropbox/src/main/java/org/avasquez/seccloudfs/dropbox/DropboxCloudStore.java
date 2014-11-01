@@ -25,11 +25,13 @@ public class DropboxCloudStore implements CloudStore {
 
     private String name;
     private DbxClient client;
+    private String rootFolderName;
     private long chunkedUploadThreshold;
 
-    public DropboxCloudStore(String name, DbxClient client, long chunkedUploadThreshold) {
+    public DropboxCloudStore(String name, DbxClient client, String rootFolderName, long chunkedUploadThreshold) {
         this.name = name;
         this.client = client;
+        this.rootFolderName = rootFolderName;
         this.chunkedUploadThreshold = chunkedUploadThreshold;
     }
 
@@ -40,12 +42,13 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void upload(String filename, ReadableByteChannel src, long length) throws IOException {
+        String path = getPath(filename);
+
         logger.debug("Started uploading {}/{}", name, filename);
 
         try {
             InputStream content = Channels.newInputStream(src);
             DbxStreamWriter.InputStreamCopier streamWriter = new DbxStreamWriter.InputStreamCopier(content);
-            String path = "/" + filename;
 
             if (length < chunkedUploadThreshold) {
                 logger.debug("Using direct upload for {}/{}", name, filename);
@@ -65,10 +68,12 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void download(String filename, WritableByteChannel target) throws IOException {
+        String path = getPath(filename);
+
         logger.debug("Started downloading {}/{}", name, filename);
 
         try {
-            client.getFile("/" + filename, null, Channels.newOutputStream(target));
+            client.getFile(path, null, Channels.newOutputStream(target));
         } catch (Exception e) {
             throw new IOException("Error downloading " + name + "/" + filename, e);
         }
@@ -78,10 +83,12 @@ public class DropboxCloudStore implements CloudStore {
 
     @Override
     public void delete(String filename) throws IOException {
+        String path = getPath(filename);
+
         logger.debug("Deleting {}/{}", name, filename);
 
         try {
-            client.delete("/" + filename);
+            client.delete(path);
         } catch (Exception e) {
             throw new IOException("Error deleting " + name + "/" + filename, e);
         }
@@ -105,6 +112,10 @@ public class DropboxCloudStore implements CloudStore {
         } catch (Exception e) {
             throw new IOException("Error retrieving Dropbox account info for store " + name, e);
         }
+    }
+
+    private String getPath(String filename) {
+        return "/" + rootFolderName + "/" + filename;
     }
 
 }

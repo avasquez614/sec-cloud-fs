@@ -19,21 +19,6 @@
 
     <context:annotation-config />
 
-    <!--bean id="mongoClient" class="com.mongodb.MongoClient">
-        <constructor-arg value="${mongo.host}" />
-        <constructor-arg value="${mongo.port}" />
-    </bean>
-
-    <bean id="jongo" class="org.avasquez.seccloudfs.db.impl.JongoFactoryBean">
-        <property name="dbName" value="${mongo.db.name}" />
-        <property name="mongoClient" ref="mongoClient" />
-    </bean>
-
-    <bean id="googleDriveCredentialsRepo"
-          class="org.avasquez.seccloudfs.gdrive.db.repos.impl.JongoGoogleDriveCredentialsRepository">
-        <constructor-arg ref="jongo"/>
-    </bean-->
-
     <bean id="googleDriveCredentialsRepo"
           class="org.avasquez.seccloudfs.gdrive.db.repos.impl.FileGoogleDriveCredentialsRepository">
         <constructor-arg value="@installDirRoot@/shared/credentials/google-drive"/>

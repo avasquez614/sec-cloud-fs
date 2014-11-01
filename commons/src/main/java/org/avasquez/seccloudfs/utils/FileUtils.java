@@ -3,12 +3,7 @@ package org.avasquez.seccloudfs.utils;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,7 +21,7 @@ public class FileUtils {
     public static final long ONE_EB = 1024 * ONE_PB;
 
     public static final Pattern HUMAN_READABLE_SIZE_PATTERN =
-        Pattern.compile("(\\d+)\\s*(B|KB|MB|GB|TB|PB|EB)?", Pattern.CASE_INSENSITIVE);
+        Pattern.compile("(\\d{1,3}(\\.\\d{1,2})?)\\s*(B|KB|MB|GB|TB|PB|EB)?", Pattern.CASE_INSENSITIVE);
 
     public static final OpenOption[] TMP_FILE_OPEN_OPTIONS = {
         StandardOpenOption.READ,
@@ -67,10 +62,10 @@ public class FileUtils {
         Matcher sizeMatcher = HUMAN_READABLE_SIZE_PATTERN.matcher(size);
         if (sizeMatcher.matches()) {
             try {
-                long coeff = Long.parseLong(sizeMatcher.group(1));
+                double coeff = Double.parseDouble(sizeMatcher.group(1));
                 int unit = 1024;
                 int exp;
-                String suffix = sizeMatcher.group(2).toUpperCase();
+                String suffix = sizeMatcher.group(3).toUpperCase();
 
                 switch (suffix) {
                     case "KB":

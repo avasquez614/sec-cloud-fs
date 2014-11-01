@@ -16,6 +16,7 @@ import org.infinispan.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,14 +43,14 @@ public class GoogleDriveCloudStore implements CloudStore {
 
     private String name;
     private Drive drive;
+    private String rootFolderName;
     private long chunkedUploadThreshold;
     private Cache<String, File> fileCache;
-    private String rootFolderName;
 
     private File rootFolder;
 
-    public GoogleDriveCloudStore(String name, Drive drive, long chunkedUploadThreshold, Cache<String, File> fileCache,
-                                 String rootFolderName) {
+    public GoogleDriveCloudStore(String name, Drive drive, String rootFolderName, long chunkedUploadThreshold,
+                                 Cache<String, File> fileCache) {
         this.name = name;
         this.drive = drive;
         this.fileCache = fileCache;
@@ -62,6 +63,7 @@ public class GoogleDriveCloudStore implements CloudStore {
         return name;
     }
 
+    @PostConstruct
     public void init() throws IOException {
         rootFolder = getRootFolder();
         if (rootFolder == null) {
@@ -80,15 +82,15 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = getCachedFile(filename);
 
         if (file != null) {
-            logger.debug("File {}/{}/{} already exists. Updating it...", name, rootFolderName, filename);
+            logger.debug("File {}/{} already exists. Updating it...", name, filename);
 
             try {
                 executeUpload(drive.files().update(file.getId(), file, content), filename, length);
             } catch (IOException e) {
-                throw new IOException("Error updating file " + name + "/" + rootFolderName + "/" + filename, e);
+                throw new IOException("Error updating file " + name + "/" + filename, e);
             }
         } else {
-            logger.debug("File {}/{}/{} doesn't exist. Inserting it...", name, rootFolderName, filename);
+            logger.debug("File {}/{} doesn't exist. Inserting it...", name, filename);
 
             file = new File();
             file.setTitle(filename);
@@ -97,13 +99,13 @@ public class GoogleDriveCloudStore implements CloudStore {
             try {
                 file = executeUpload(drive.files().insert(file, content), filename, length);
             } catch (Exception e) {
-                throw new IOException("Error inserting " + name + "/" + rootFolderName + "/" + filename, e);
+                throw new IOException("Error inserting " + name + "/" + filename, e);
             }
 
             fileCache.put(filename, file);
         }
 
-        logger.debug("Finished uploading {}/{}/{}", name, rootFolderName, filename);
+        logger.debug("Finished uploading {}/{}", name, filename);
     }
 
     @Override
@@ -111,7 +113,7 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = getCachedFile(filename);
 
         if (file != null) {
-            logger.debug("Started downloading {}/{}/{}", name, rootFolderName, filename);
+            logger.debug("Started downloading {}/{}", name, filename);
 
             try {
                 HttpRequest request = drive.getRequestFactory().buildGetRequest(new GenericUrl(file.getDownloadUrl()));
@@ -121,12 +123,12 @@ public class GoogleDriveCloudStore implements CloudStore {
                     IOUtils.copy(in, Channels.newOutputStream(target));
                 }
             } catch (Exception e) {
-                throw new IOException("Error downloading " + name + "/" + rootFolderName + "/" + filename, e);
+                throw new IOException("Error downloading " + name + "/" + filename, e);
             }
 
-            logger.debug("Finished downloading {}/{}/{}", name, rootFolderName, filename);
+            logger.debug("Finished downloading {}/{}", name, filename);
         } else {
-            throw new FileNotFoundException("No file " + name + "/" + rootFolderName + "/" + filename + " found");
+            throw new FileNotFoundException("No file " + name + "/" + filename + " found");
         }
     }
 
@@ -135,12 +137,12 @@ public class GoogleDriveCloudStore implements CloudStore {
         File file = getCachedFile(filename);
 
         if (file != null) {
-            logger.debug("Deleting {}/{}/{}", name, rootFolderName, filename);
+            logger.debug("Deleting {}/{}", name, filename);
 
             try {
                 drive.files().delete(file.getId()).execute();
             } catch (Exception e) {
-                throw new IOException("Error deleting " + name + "/" + rootFolderName + "/" + filename, e);
+                throw new IOException("Error deleting " + name + "/" + filename, e);
             }
 
             fileCache.remove(filename);
@@ -239,11 +241,11 @@ public class GoogleDriveCloudStore implements CloudStore {
         uploader.setDisableGZipContent(true);
 
         if (length < chunkedUploadThreshold) {
-            logger.debug("Using direct upload for {}/{}/{}", name, rootFolderName, filename);
+            logger.debug("Using direct upload for {}/{}", name, filename);
 
             uploader.setDirectUploadEnabled(true);
         } else {
-            logger.debug("Using chunked upload for {}/{}/{}", name, rootFolderName, filename);
+            logger.debug("Using chunked upload for {}/{}", name, filename);
 
             uploader.setDirectUploadEnabled(false);
         }
