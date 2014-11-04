@@ -1,5 +1,14 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.content.CloudContent;
+import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -10,15 +19,6 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.util.concurrent.locks.Lock;
-
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.content.CloudContent;
-import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Created by alfonsovasquez on 11/01/14.
@@ -80,13 +80,14 @@ public class CloudContentImpl implements CloudContent {
     @Override
     public boolean deleteDownload() throws IOException {
         if (isDownloaded()) {
-            FileTime lastUploadTime = FileTime.fromMillis(metadata.getLastUploadTime().getTime());
+            FileTime lastUploadTime = metadata.getLastUploadTime() != null ? FileTime.fromMillis(metadata
+                    .getLastUploadTime().getTime()) : null;
             FileTime lastModifiedTime = Files.getLastModifiedTime(downloadPath);
 
             accessLock.lock();
             try {
                 // If no updates are pending and there are no open channels, delete.
-                if (lastModifiedTime.compareTo(lastUploadTime) < 0 && openChannels == 0) {
+                if (lastUploadTime != null && lastModifiedTime.compareTo(lastUploadTime) < 0 && openChannels == 0) {
                     Files.deleteIfExists(downloadPath);
 
                     logger.info("Download for content '{}' deleted", getId());

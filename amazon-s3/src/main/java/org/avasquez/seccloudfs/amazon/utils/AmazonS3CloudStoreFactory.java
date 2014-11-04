@@ -28,7 +28,6 @@ public class AmazonS3CloudStoreFactory {
 
     private AWSCredentials credentials;
     private String accountId;
-    private String maxSize;
     private long chunkedUploadThreshold;
     private EmbeddedCacheManager cacheManager;
     private int maxCacheEntries;
@@ -44,11 +43,6 @@ public class AmazonS3CloudStoreFactory {
     @Required
     public void setAccountId(String accountId) {
         this.accountId = accountId;
-    }
-
-    @Required
-    public void setMaxSize(String maxSize) {
-        this.maxSize = maxSize;
     }
 
     @Required
@@ -72,7 +66,7 @@ public class AmazonS3CloudStoreFactory {
         transferManager = new TransferManager(s3);
     }
 
-    public AmazonS3CloudStore createStore(String bucketName, Region region) throws Exception {
+    public AmazonS3CloudStore createStore(String bucketName, Region region, String maxSize) throws Exception {
         String storeName = getStoreName(bucketName);
         AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(
                 storeName,

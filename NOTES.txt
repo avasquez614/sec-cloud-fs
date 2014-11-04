@@ -1,2 +1,5 @@
 * Recordar agregar en politicas de seguridad proteccion para los directorios con las credenciales de las interfaces
 de nube y los directorios con los archivos temporales y de cache
+* En la instalacion:
+ ** Agregar al usuario que esta montando el sistema al grupo fuse (ver http://blog.tordeu.com/?p=50)
+ ** Habilitar user_allow_other a /etc/fuse.conf

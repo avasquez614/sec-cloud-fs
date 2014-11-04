@@ -1,21 +1,5 @@
 package org.avasquez.seccloudfs.processing.impl;
 
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorCompletionService;
-
 import org.apache.commons.lang3.ArrayUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
@@ -31,6 +15,22 @@ import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
+
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorCompletionService;
 
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} implementation that uses erasure coding to distribute the data
@@ -90,15 +90,17 @@ public class DistributedCloudStore implements CloudStore {
     public void upload(String id, ReadableByteChannel src, long length) throws IOException {
         FileChannel[] dataSlices = null;
         FileChannel[] codingSlices = null;
+        int k = erasureEncoder.getK();
+        int m = erasureEncoder.getM();
 
         try {
-            dataSlices = createSliceFiles(erasureEncoder.getK());
-            codingSlices = createSliceFiles(erasureEncoder.getM());
+            dataSlices = createSliceFiles(k);
+            codingSlices = createSliceFiles(m);
 
             int sliceSize;
 
             try {
-                logger.debug("Encoding data '{}'", id);
+                logger.debug("Encoding data '{}' with k = {} and m = {}", id, k, m);
 
                 sliceSize = erasureEncoder.encode(src, (int) length, dataSlices, codingSlices);
             } catch (EncodingException e) {

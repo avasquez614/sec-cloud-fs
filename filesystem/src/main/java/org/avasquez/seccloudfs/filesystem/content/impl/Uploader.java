@@ -1,5 +1,12 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -9,13 +16,6 @@ import java.util.Date;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
-
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Created by alfonsovasquez on 11/01/14.
@@ -54,6 +54,8 @@ public class Uploader {
 
     public synchronized void notifyUpdate() {
         if (!uploading) {
+            uploading = true;
+
             runUploadInThread();
         } else {
             notify();
@@ -65,8 +67,6 @@ public class Uploader {
 
             @Override
             public void run() {
-                uploading = true;
-
                 logger.debug("Uploading thread for content '{}' started", metadata.getId());
 
                 uploadUntilNoUpdatesReceived();

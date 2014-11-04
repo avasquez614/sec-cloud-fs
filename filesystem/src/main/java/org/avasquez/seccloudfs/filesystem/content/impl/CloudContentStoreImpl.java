@@ -1,16 +1,5 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
-import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.FileTime;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import javax.annotation.PostConstruct;
-
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.content.CloudContent;
@@ -20,6 +9,17 @@ import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
+
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by alfonsovasquez on 12/01/14.
@@ -141,10 +141,11 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
             for (Path file : dirStream) {
                 String id = file.getFileName().toString();
                 ContentMetadata metadata = findMetadata(id);
-                FileTime lastUploadTime = FileTime.fromMillis(metadata.getLastUploadTime().getTime());
+                FileTime lastUploadTime = metadata.getLastUploadTime() != null ? FileTime.fromMillis(metadata
+                        .getLastUploadTime().getTime()) : null;
                 FileTime lastModifiedTime = Files.getLastModifiedTime(file);
 
-                if (lastModifiedTime.compareTo(lastUploadTime) > 0) {
+                if (lastUploadTime == null || lastModifiedTime.compareTo(lastUploadTime) > 0) {
                     logger.info("Upload of content '{}' pending. Restarting it...", id);
 
                     CloudContent content = createContentObject(metadata);

@@ -67,7 +67,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     public void init() throws IOException {
         rootFolder = getRootFolder();
         if (rootFolder == null) {
-            logger.debug("Root folder '{}' doesn't exist in store {}. Creating it...", rootFolderName, name);
+            logger.info("Root folder '{}' doesn't exist in store {}. Creating it...", rootFolderName, name);
 
             // Create root folder if it doesn't exist
             rootFolder = createRootFolder();

@@ -1,23 +1,15 @@
 package org.avasquez.seccloudfs.cloud.store;
 
+import org.apache.commons.cli.*;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.utils.FileUtils;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-
-import org.apache.commons.cli.BasicParser;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.utils.FileUtils;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 /**
  * Command line application for uploading, downloading and deleting files directly through a {@link org.avasquez
@@ -168,7 +160,9 @@ public class CloudStoreApp {
     }
 
     public static void main(String... args) {
-        ApplicationContext context = new ClassPathXmlApplicationContext(CONTEXT_PATH);
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(CONTEXT_PATH);
+        context.registerShutdownHook();
+
         CloudStore cloudStore = context.getBean(CloudStore.class);
         CloudStoreApp app = new CloudStoreApp(cloudStore);
 
