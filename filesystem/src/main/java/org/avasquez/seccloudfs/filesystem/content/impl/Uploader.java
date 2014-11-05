@@ -81,8 +81,8 @@ public class Uploader {
         synchronized (this) {
             try {
                 while (!metadata.isMarkedAsDeleted() && !hasTimeoutOccurred()) {
-                    logger.info("Update received for content '{}'. Waiting {} secs for next update", metadata.getId(),
-                            timeoutForNextUpdateSecs);
+                    logger.trace("Update received for content '{}'. Waiting {} secs for next update",
+                            metadata.getId(), timeoutForNextUpdateSecs);
 
                     wait(TimeUnit.SECONDS.toMillis(timeoutForNextUpdateSecs));
                 }
