@@ -146,7 +146,7 @@ public class DistributedCloudStore implements CloudStore {
                 try {
                     lastUpload = uploadRepository.findLastSuccessfulByDataId(id);
                 } catch (DbException e) {
-                    throw new IOException("Unable to retrieve upload for data '" + id + "'");
+                    throw new IOException("Unable to retrieve upload for data '" + id + "' from DB");
                 }
 
                 upload.setSuccess(true);
@@ -154,7 +154,7 @@ public class DistributedCloudStore implements CloudStore {
                 try {
                     uploadRepository.insert(upload);
                 } catch (DbException e) {
-                    throw new IOException("Unable to save upload for data '" + id + "'");
+                    throw new IOException("Unable to save upload for data '" + id + "' to DB");
                 }
 
                 if (lastUpload != null) {
@@ -167,7 +167,7 @@ public class DistributedCloudStore implements CloudStore {
                 try {
                     uploadRepository.insert(upload);
                 } catch (DbException e) {
-                    throw new IOException("Unable to save upload for data '" + id + "'");
+                    throw new IOException("Unable to save upload for data '" + id + "' to DB");
                 }
 
                 logger.error("Upload '{}' for data '{}' failed. Trying to rollback...", upload.getId(), id);
@@ -188,10 +188,10 @@ public class DistributedCloudStore implements CloudStore {
         try {
             upload = uploadRepository.findLastSuccessfulByDataId(id);
             if (upload == null) {
-                throw new IOException("No last successful upload found for data '" + id + "'");
+                throw new IOException("No last successful upload found for data '" + id + "' in DB");
             }
         } catch (DbException e) {
-            throw new IOException("Unable to retrieve last successful upload found for data '" + id + "'", e);
+            throw new IOException("Unable to retrieve last successful upload found for data '" + id + "' from DB", e);
         }
 
         Queue<DownloadTask> downloadTasks = new LinkedList<>(createDownloadTasks(upload));
@@ -262,10 +262,10 @@ public class DistributedCloudStore implements CloudStore {
         try {
             upload = uploadRepository.findLastSuccessfulByDataId(id);
             if (upload == null) {
-                throw new IOException("No last successful upload found for data '" + id + "'");
+                throw new IOException("No last successful upload found for data '" + id + "' in DB");
             }
         } catch (DbException e) {
-            throw new IOException("Unable to retrieve last successful upload found for data '" + id + "'", e);
+            throw new IOException("Unable to retrieve last successful upload found for data '" + id + "' from DB", e);
         }
 
         deleteUpload(upload);
@@ -298,7 +298,7 @@ public class DistributedCloudStore implements CloudStore {
         try {
             uploadRepository.delete(upload.getId());
         } catch (DbException e) {
-            throw new IOException("Unable to delete upload " + upload.getId(), e);
+            throw new IOException("Unable to delete upload " + upload.getId() + " from DB", e);
         }
     }
 

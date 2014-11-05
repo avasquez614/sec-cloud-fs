@@ -1,8 +1,11 @@
 package org.avasquez.seccloudfs.cloud.impl;
 
 import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -18,6 +21,8 @@ import java.nio.file.StandardOpenOption;
  * @author avasquez
  */
 public class LocalCloudStore implements CloudStore {
+
+    private static final Logger logger = LoggerFactory.getLogger(LocalCloudStore.class);
 
     private String name;
     private Path storeDir;
@@ -35,6 +40,15 @@ public class LocalCloudStore implements CloudStore {
     @Required
     public void setStoreDir(String storeDir) {
         this.storeDir = Paths.get(storeDir);
+    }
+
+    @PostConstruct
+    public void init() throws IOException {
+        if (!Files.exists(storeDir)) {
+            logger.info("Creating local cloud store dir " + storeDir + "...");
+
+            Files.createDirectories(storeDir);
+        }
     }
 
     @Override
