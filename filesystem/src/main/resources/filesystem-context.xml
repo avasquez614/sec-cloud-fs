@@ -75,7 +75,7 @@
         <constructor-arg ref="jongo"/>
     </bean>
 
-    <bean id="erasureInfoRepo" class="org.avasquez.seccloudfs.processing.db.repos.impl.JongoErasureInfoRepository">
+    <bean id="erasureInfoRepo" class="org.avasquez.seccloudfs.processing.db.repos.impl.JongoUploadRepository">
         <constructor-arg ref="jongo"/>
     </bean>
 
@@ -96,6 +96,7 @@
         <property name="executorService" ref="threadPool"/>
         <property name="timeoutForNextUpdateSecs" value="${cloud.content.uploader.timeoutForNextUpdateSecs}"/>
         <property name="retryUploadDelaySecs" value="${cloud.content.uploader.retryDelaySecs}"/>
+        <property name="maxSize" value="${cloud.content.maxSize}"/>
     </bean>
 
     <!-- File System -->
@@ -232,7 +233,7 @@
     <bean id="distributedCloudStore" class="org.avasquez.seccloudfs.processing.impl.DistributedCloudStore">
         <property name="erasureEncoder" ref="erasureEncoder"/>
         <property name="erasureDecoder" ref="erasureDecoder"/>
-        <property name="erasureInfoRepository" ref="erasureInfoRepo"/>
+        <property name="uploadRepository" ref="erasureInfoRepo"/>
         <property name="tmpDir" value="${tmp.dir}"/>
         <property name="cloudStoreRegistry" ref="cloudStoreRegistry"/>
         <property name="taskExecutor" ref="threadPool"/>

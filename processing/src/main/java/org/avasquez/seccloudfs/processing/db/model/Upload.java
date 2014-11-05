@@ -3,22 +3,26 @@ package org.avasquez.seccloudfs.processing.db.model;
 import org.jongo.marshall.jackson.oid.Id;
 import org.jongo.marshall.jackson.oid.ObjectId;
 
+import java.util.Date;
+
 /**
- * Contains erasure encoding info for a specific data.
+ * Represents single upload operation.
  *
  * @author avasquez
  */
-public class ErasureInfo {
+public class Upload {
 
     @Id
     @ObjectId
     private String id;
     private String dataId;
     private int dataSize;
+    private Date finishDate;
+    private boolean success;
     private SliceMetadata[] dataSliceMetadata;
     private SliceMetadata[] codingSliceMetadata;
 
-    public ErasureInfo() {
+    public Upload() {
     }
 
     /**
@@ -61,6 +65,34 @@ public class ErasureInfo {
      */
     public void setDataSize(int dataSize) {
         this.dataSize = dataSize;
+    }
+
+    /**
+     * Returns the date the upload finished
+     */
+    public Date getFinishDate() {
+        return finishDate;
+    }
+
+    /**
+     * Sets the date the upload was finished.
+     */
+    public void setFinishDate(Date finishDate) {
+        this.finishDate = finishDate;
+    }
+
+    /**
+     * Returns true if the upload was a success.
+     */
+    public boolean isSuccess() {
+        return success;
+    }
+
+    /**
+     * Sets true if the upload ws a success.
+     */
+    public void setSuccess(boolean success) {
+        this.success = success;
     }
 
     /**

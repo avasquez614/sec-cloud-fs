@@ -2,7 +2,6 @@ package org.avasquez.seccloudfs.cloud.store;
 
 import org.apache.commons.cli.*;
 import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.utils.FileUtils;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.IOException;
@@ -49,8 +48,6 @@ public class CloudStoreApp {
 
         options = new Options();
         options.addOption("help", false, "Prints this message");
-        options.addOption("totalspace", false, "Total space of the cloud store");
-        options.addOption("availspace", false, "Available space in the cloud store");
         options.addOption(upload);
         options.addOption(download);
         options.addOption(delete);
@@ -77,10 +74,6 @@ public class CloudStoreApp {
                 String id = commandLine.getOptionValue("delete");
 
                 deleteFile(id, cloudStore);
-            } else if (commandLine.hasOption("totalspace")) {
-                printTotalSpace(cloudStore);
-            } else if (commandLine.hasOption("availspace")) {
-                printAvailableSpace(cloudStore);
             } else if (commandLine.hasOption("help")) {
                 printHelp();
             } else {
@@ -122,24 +115,6 @@ public class CloudStoreApp {
             cloudStore.delete(id);
         } catch (IOException e) {
             die("ERROR: Unable to delete file", e);
-        }
-    }
-
-    private void printTotalSpace(CloudStore cloudStore) {
-        try {
-            System.out.print("Total space: ");
-            System.out.println(FileUtils.byteCountToHumanReadableByteSize(cloudStore.getTotalSpace()));
-        } catch (IOException e) {
-            die("ERROR: Unable to get total space for cloud store", e);
-        }
-    }
-
-    private void printAvailableSpace(CloudStore cloudStore) {
-        try {
-            System.out.print("Available space: ");
-            System.out.println(FileUtils.byteCountToHumanReadableByteSize(cloudStore.getAvailableSpace()));
-        } catch (IOException e) {
-            die("ERROR: Unable to get available space for cloud store", e);
         }
     }
 

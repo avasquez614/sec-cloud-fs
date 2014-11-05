@@ -1,6 +1,5 @@
 package org.avasquez.seccloudfs.dropbox;
 
-import com.dropbox.core.DbxAccountInfo;
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxStreamWriter;
 import com.dropbox.core.DbxWriteMode;
@@ -41,76 +40,56 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public void upload(String filename, ReadableByteChannel src, long length) throws IOException {
-        String path = getPath(filename);
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+        String path = getPath(id);
 
-        logger.debug("Started uploading {}/{}", name, filename);
+        logger.debug("Started uploading {}/{}", name, id);
 
         try {
             InputStream content = Channels.newInputStream(src);
             DbxStreamWriter.InputStreamCopier streamWriter = new DbxStreamWriter.InputStreamCopier(content);
 
             if (length < chunkedUploadThreshold) {
-                logger.debug("Using direct upload for {}/{}", name, filename);
+                logger.debug("Using direct upload for {}/{}", name, id);
 
                 client.uploadFile(path, DbxWriteMode.force(), length, streamWriter);
             } else {
-                logger.debug("Using chunked upload for {}/{}", name, filename);
+                logger.debug("Using chunked upload for {}/{}", name, id);
 
                 client.uploadFileChunked(path, DbxWriteMode.force(), length, streamWriter);
             }
         } catch (Exception e) {
-            throw new IOException("Error uploading " + name + "/" + filename, e);
+            throw new IOException("Error uploading " + name + "/" + id, e);
         }
 
-        logger.debug("Finished uploading {}/{}", name, filename);
+        logger.debug("Finished uploading {}/{}", name, id);
     }
 
     @Override
-    public void download(String filename, WritableByteChannel target) throws IOException {
-        String path = getPath(filename);
+    public void download(String id, WritableByteChannel target) throws IOException {
+        String path = getPath(id);
 
-        logger.debug("Started downloading {}/{}", name, filename);
+        logger.debug("Started downloading {}/{}", name, id);
 
         try {
             client.getFile(path, null, Channels.newOutputStream(target));
         } catch (Exception e) {
-            throw new IOException("Error downloading " + name + "/" + filename, e);
+            throw new IOException("Error downloading " + name + "/" + id, e);
         }
 
-        logger.debug("Finished downloading {}/{}", name, filename);
+        logger.debug("Finished downloading {}/{}", name, id);
     }
 
     @Override
-    public void delete(String filename) throws IOException {
-        String path = getPath(filename);
+    public void delete(String id) throws IOException {
+        String path = getPath(id);
 
-        logger.debug("Deleting {}/{}", name, filename);
+        logger.debug("Deleting {}/{}", name, id);
 
         try {
             client.delete(path);
         } catch (Exception e) {
-            throw new IOException("Error deleting " + name + "/" + filename, e);
-        }
-    }
-
-    @Override
-    public long getTotalSpace() throws IOException {
-        return getQuota().total;
-    }
-
-    @Override
-    public long getAvailableSpace() throws IOException {
-        DbxAccountInfo.Quota quota = getQuota();
-
-        return quota.total - quota.normal - quota.shared;
-    }
-
-    private DbxAccountInfo.Quota getQuota() throws IOException {
-        try {
-            return client.getAccountInfo().quota;
-        } catch (Exception e) {
-            throw new IOException("Error retrieving Dropbox account info for store " + name, e);
+            throw new IOException("Error deleting " + name + "/" + id, e);
         }
     }
 

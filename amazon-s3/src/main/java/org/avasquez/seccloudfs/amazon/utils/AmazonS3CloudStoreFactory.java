@@ -66,7 +66,7 @@ public class AmazonS3CloudStoreFactory {
         transferManager = new TransferManager(s3);
     }
 
-    public AmazonS3CloudStore createStore(String bucketName, Region region, String maxSize) throws Exception {
+    public AmazonS3CloudStore createStore(String bucketName, Region region) throws Exception {
         String storeName = getStoreName(bucketName);
         AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(
                 storeName,
@@ -76,8 +76,6 @@ public class AmazonS3CloudStoreFactory {
                 region,
                 chunkedUploadThreshold,
                 createMetadataCache(storeName));
-
-        cloudStore.setMaxSize(maxSize);
 
         return cloudStore;
     }

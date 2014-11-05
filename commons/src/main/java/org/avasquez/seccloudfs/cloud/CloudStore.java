@@ -42,18 +42,4 @@ public interface CloudStore {
      */
     void delete(String id) throws IOException;
 
-    /**
-     * Returns the total space, in bytes, of the cloud store.
-     *
-     * @return the size of the cloud store, in bytes
-     */
-    long getTotalSpace() throws IOException;
-
-    /**
-     * Returns the amount space, in bytes, that can be used for storage.
-     *
-     * @return the number of bytes available
-     */
-    long getAvailableSpace() throws IOException;
-
 }

@@ -1,6 +1,7 @@
 package org.avasquez.seccloudfs.processing.impl;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.erasure.DecodingException;
@@ -8,9 +9,9 @@ import org.avasquez.seccloudfs.erasure.EncodingException;
 import org.avasquez.seccloudfs.erasure.ErasureDecoder;
 import org.avasquez.seccloudfs.erasure.ErasureEncoder;
 import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.processing.db.model.ErasureInfo;
 import org.avasquez.seccloudfs.processing.db.model.SliceMetadata;
-import org.avasquez.seccloudfs.processing.db.repos.ErasureInfoRepository;
+import org.avasquez.seccloudfs.processing.db.model.Upload;
+import org.avasquez.seccloudfs.processing.db.repos.UploadRepository;
 import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +24,7 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -45,7 +43,7 @@ public class DistributedCloudStore implements CloudStore {
     private static final String SLICE_FILE_SUFFIX = ".slice";
 
     private CloudStoreRegistry cloudStoreRegistry;
-    private ErasureInfoRepository erasureInfoRepository;
+    private UploadRepository uploadRepository;
     private ErasureEncoder erasureEncoder;
     private ErasureDecoder erasureDecoder;
     private Executor taskExecutor;
@@ -62,8 +60,8 @@ public class DistributedCloudStore implements CloudStore {
     }
 
     @Required
-    public void setErasureInfoRepository(ErasureInfoRepository erasureInfoRepository) {
-        this.erasureInfoRepository = erasureInfoRepository;
+    public void setUploadRepository(UploadRepository uploadRepository) {
+        this.uploadRepository = uploadRepository;
     }
 
     @Required
@@ -136,46 +134,47 @@ public class DistributedCloudStore implements CloudStore {
 
             logger.debug("Slices uploaded for data '{}': {}", id, slicesUploaded);
 
+            Upload upload = new Upload();
+            upload.setDataId(id);
+            upload.setDataSize((int) length);
+            upload.setFinishDate(new Date());
+            upload.setDataSliceMetadata(dataSliceMetadata);
+            upload.setCodingSliceMetadata(codingSliceMetadata);
+
             if (slicesUploaded == uploadTasks.size()) {
-                ErasureInfo erasureInfo;
+                Upload lastUpload;
                 try {
-                    erasureInfo = erasureInfoRepository.findByDataId(id);
+                    lastUpload = uploadRepository.findLastSuccessfulByDataId(id);
                 } catch (DbException e) {
-                    throw new IOException("Unable to retrieve erasure info for data '" + id + "'");
+                    throw new IOException("Unable to retrieve upload for data '" + id + "'");
                 }
 
-                if (erasureInfo == null) {
-                    erasureInfo = new ErasureInfo();
-                    erasureInfo.setDataId(id);
-                    erasureInfo.setDataSize((int) length);
-                    erasureInfo.setDataSliceMetadata(dataSliceMetadata);
-                    erasureInfo.setCodingSliceMetadata(codingSliceMetadata);
+                upload.setSuccess(true);
 
-                    try {
-                        erasureInfoRepository.insert(erasureInfo);
-                    } catch (DbException e) {
-                        throw new IOException("Unable to save erasure info for data '" + id + "'");
-                    }
-                } else {
-                    ErasureInfo newErasureInfo = new ErasureInfo();
-                    newErasureInfo.setId(erasureInfo.getId());
-                    newErasureInfo.setDataId(id);
-                    newErasureInfo.setDataSize((int) length);
-                    newErasureInfo.setDataSliceMetadata(dataSliceMetadata);
-                    newErasureInfo.setCodingSliceMetadata(codingSliceMetadata);
+                try {
+                    uploadRepository.insert(upload);
+                } catch (DbException e) {
+                    throw new IOException("Unable to save upload for data '" + id + "'");
+                }
 
-                    try {
-                        erasureInfoRepository.save(newErasureInfo);
-                    } catch (DbException e) {
-                        throw new IOException("Unable to save erasure info for data '" + id + "'");
-                    }
-
-                    // Delete the old slices, but just after the new erasure info has been saved, so that no
-                    // data is lost
-                    deleteSlices(erasureInfo);
+                if (lastUpload != null) {
+                    // Delete the last upload, but just after the new one has been saved, so that no data is lost
+                    deleteUpload(lastUpload);
                 }
             } else {
-                throw new IOException("Some slices for data '" + id + "' couldn't be uploaded");
+                upload.setSuccess(false);
+
+                try {
+                    uploadRepository.insert(upload);
+                } catch (DbException e) {
+                    throw new IOException("Unable to save upload for data '" + id + "'");
+                }
+
+                logger.error("Upload '{}' for data '{}' failed. Trying to rollback...", upload.getId(), id);
+
+                deleteUpload(upload);
+
+                throw new IOException("Upload '" + upload.getId() + "' for data '" + id + "' failed");
             }
         } finally {
             closeChannels(dataSlices);
@@ -185,19 +184,19 @@ public class DistributedCloudStore implements CloudStore {
 
     @Override
     public void download(String id, WritableByteChannel target) throws IOException {
-        ErasureInfo erasureInfo;
+        Upload upload;
         try {
-            erasureInfo = erasureInfoRepository.findByDataId(id);
-            if (erasureInfo == null) {
-                throw new IOException("No erasure info found for data '" + id + "'");
+            upload = uploadRepository.findLastSuccessfulByDataId(id);
+            if (upload == null) {
+                throw new IOException("No last successful upload found for data '" + id + "'");
             }
         } catch (DbException e) {
-            throw new IOException("Unable to retrieve erasure info for data '" + id + "'");
+            throw new IOException("Unable to retrieve last successful upload found for data '" + id + "'", e);
         }
 
-        Queue<DownloadTask> downloadTasks = new LinkedList<>(createDownloadTasks(erasureInfo));
+        Queue<DownloadTask> downloadTasks = new LinkedList<>(createDownloadTasks(upload));
         CompletionService<DownloadResult> downloadCompletionService = new ExecutorCompletionService<>(taskExecutor);
-        int requiredNumSlices = erasureInfo.getDataSliceMetadata().length;
+        int requiredNumSlices = erasureDecoder.getK();
 
         // Submit the main tasks (number of main tasks = required fragment number).
         for (int i = 0; i < requiredNumSlices; i++) {
@@ -206,8 +205,8 @@ public class DistributedCloudStore implements CloudStore {
 
         // Keep polling for slices until we reach the required number. If a slice couldn't be loaded, try with a
         // backup task. If there are no more backup tasks, then stop.
-        FileChannel[] dataSlices = new FileChannel[erasureInfo.getDataSliceMetadata().length];
-        FileChannel[] codingSlices = new FileChannel[erasureInfo.getCodingSliceMetadata().length];
+        FileChannel[] dataSlices = new FileChannel[upload.getDataSliceMetadata().length];
+        FileChannel[] codingSlices = new FileChannel[upload.getCodingSliceMetadata().length];
 
         try {
             int slicesDownloaded = 0;
@@ -247,7 +246,7 @@ public class DistributedCloudStore implements CloudStore {
             try {
                 logger.debug("Decoding data '{}'", id);
 
-                erasureDecoder.decode(erasureInfo.getDataSize(), dataSlices, codingSlices, target);
+                erasureDecoder.decode(upload.getDataSize(), dataSlices, codingSlices, target);
             } catch (DecodingException e) {
                 throw new IOException("Unable to decode data '" + id + "'", e);
             }
@@ -259,49 +258,21 @@ public class DistributedCloudStore implements CloudStore {
 
     @Override
     public void delete(String id) throws IOException {
-        ErasureInfo erasureInfo;
+        Upload upload;
         try {
-            erasureInfo = erasureInfoRepository.findByDataId(id);
-            if (erasureInfo == null) {
-                throw new IOException("No erasure info found for data '" + id + "'");
+            upload = uploadRepository.findLastSuccessfulByDataId(id);
+            if (upload == null) {
+                throw new IOException("No last successful upload found for data '" + id + "'");
             }
         } catch (DbException e) {
-            throw new IOException("Unable to retrieve erasure info for data '" + id + "'", e);
+            throw new IOException("Unable to retrieve last successful upload found for data '" + id + "'", e);
         }
 
-        try {
-            erasureInfoRepository.delete(erasureInfo.getId().toString());
-        } catch (DbException e) {
-            throw new IOException("Unable to delete erasure info for data '" + id + "'", e);
-        }
-
-        deleteSlices(erasureInfo);
+        deleteUpload(upload);
     }
 
-    @Override
-    public long getTotalSpace() throws IOException {
-        long totalSpace = 0;
-
-        for (CloudStore store : cloudStoreRegistry.list()) {
-            totalSpace += store.getTotalSpace();
-        }
-
-        return totalSpace;
-    }
-
-    @Override
-    public long getAvailableSpace() throws IOException {
-        long availableSpace = 0;
-
-        for (CloudStore store : cloudStoreRegistry.list()) {
-            availableSpace += store.getAvailableSpace();
-        }
-
-        return availableSpace;
-    }
-
-    private void deleteSlices(ErasureInfo erasureInfo) throws IOException {
-        List<DeleteTask> deleteTasks = createDeleteTasks(erasureInfo);
+    private void deleteUpload(Upload upload) throws IOException {
+        List<DeleteTask> deleteTasks = createDeleteTasks(upload);
         CompletionService<Boolean> deleteCompletionService = new ExecutorCompletionService<>(taskExecutor);
 
         for (DeleteTask task : deleteTasks) {
@@ -322,7 +293,13 @@ public class DistributedCloudStore implements CloudStore {
             }
         }
 
-        logger.debug("Slices deleted for data '{}': {}", erasureInfo.getDataId(), slicesDeleted);
+        logger.debug("Slices deleted for upload '{}': {}", upload.getId(), slicesDeleted);
+
+        try {
+            uploadRepository.delete(upload.getId());
+        } catch (DbException e) {
+            throw new IOException("Unable to delete upload " + upload.getId(), e);
+        }
     }
 
     private FileChannel[] createSliceFiles(int num) throws IOException {
@@ -389,46 +366,56 @@ public class DistributedCloudStore implements CloudStore {
         return tasks;
     }
 
-    private List<DownloadTask> createDownloadTasks(ErasureInfo erasureInfo) throws IOException {
+    private List<DownloadTask> createDownloadTasks(Upload upload) throws IOException {
         List<DownloadTask> tasks = new ArrayList<>();
-        SliceMetadata[] dataSliceMetadata = erasureInfo.getDataSliceMetadata();
-        SliceMetadata[] codingSliceMetadata = erasureInfo.getCodingSliceMetadata();
+        SliceMetadata[] dataSliceMetadata = upload.getDataSliceMetadata();
+        SliceMetadata[] codingSliceMetadata = upload.getCodingSliceMetadata();
 
         for (int i = 0; i < dataSliceMetadata.length; i++) {
-            CloudStore cloudStore = getCloudStoreByName(dataSliceMetadata[i].getCloudStoreName());
-            Path sliceFile = Files.createTempFile(tmpDir, dataSliceMetadata[i].getId(), SLICE_FILE_SUFFIX);
-
-            tasks.add(new DownloadTask(dataSliceMetadata[i], i, true, cloudStore, sliceFile));
+            createDownloadTask(dataSliceMetadata[i], i, true, tasks);
         }
 
         for (int i = 0; i < codingSliceMetadata.length; i++) {
-            CloudStore cloudStore = getCloudStoreByName(codingSliceMetadata[i].getCloudStoreName());
-            Path sliceFile = Files.createTempFile(tmpDir, dataSliceMetadata[i].getId(), SLICE_FILE_SUFFIX);
-
-            tasks.add(new DownloadTask(codingSliceMetadata[i], i, false, cloudStore, sliceFile));
+            createDownloadTask(codingSliceMetadata[i], i, true, tasks);
         }
 
         return tasks;
     }
 
-    private List<DeleteTask> createDeleteTasks(ErasureInfo erasureInfo) throws IOException {
+    private List<DeleteTask> createDeleteTasks(Upload upload) throws IOException {
         List<DeleteTask> tasks = new ArrayList<>();
-        SliceMetadata[] dataSliceMetadata = erasureInfo.getDataSliceMetadata();
-        SliceMetadata[] codingSliceMetadata = erasureInfo.getCodingSliceMetadata();
+        SliceMetadata[] dataSliceMetadata = upload.getDataSliceMetadata();
+        SliceMetadata[] codingSliceMetadata = upload.getCodingSliceMetadata();
 
         for (int i = 0; i < dataSliceMetadata.length; i++) {
-            CloudStore cloudStore = getCloudStoreByName(dataSliceMetadata[i].getCloudStoreName());
-
-            tasks.add(new DeleteTask(dataSliceMetadata[i], cloudStore));
+            createDeleteTask(dataSliceMetadata[i], tasks);
         }
 
         for (int i = 0; i < codingSliceMetadata.length; i++) {
-            CloudStore cloudStore = getCloudStoreByName(codingSliceMetadata[i].getCloudStoreName());
-
-            tasks.add(new DeleteTask(codingSliceMetadata[i], cloudStore));
+            createDeleteTask(codingSliceMetadata[i], tasks);
         }
 
         return tasks;
+    }
+
+    private void createDownloadTask(SliceMetadata sliceMetadata, int sliceIdx, boolean dataSlice,
+                                    List<DownloadTask> tasks) throws IOException {
+        String cloudStoreName = sliceMetadata.getCloudStoreName();
+        if (StringUtils.isNotEmpty(cloudStoreName)) {
+            CloudStore cloudStore = getCloudStoreByName(cloudStoreName);
+            Path sliceFile = Files.createTempFile(tmpDir, sliceMetadata.getId(), SLICE_FILE_SUFFIX);
+
+            tasks.add(new DownloadTask(sliceMetadata, sliceIdx, dataSlice, cloudStore, sliceFile));
+        }
+    }
+
+    private void createDeleteTask(SliceMetadata sliceMetadata, List<DeleteTask> tasks) throws IOException {
+        String cloudStoreName = sliceMetadata.getCloudStoreName();
+        if (StringUtils.isNotEmpty(cloudStoreName)) {
+            CloudStore cloudStore = getCloudStoreByName(cloudStoreName);
+
+            tasks.add(new DeleteTask(sliceMetadata, cloudStore));
+        }
     }
 
     private CloudStore getCloudStoreByName(String name) throws IOException {

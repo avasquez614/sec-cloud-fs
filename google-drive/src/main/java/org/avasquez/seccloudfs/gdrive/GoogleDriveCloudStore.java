@@ -7,7 +7,6 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
-import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.ParentReference;
 import org.apache.commons.io.IOUtils;
@@ -149,20 +148,6 @@ public class GoogleDriveCloudStore implements CloudStore {
         }
     }
 
-    @Override
-    public long getTotalSpace() throws IOException {
-        return getAbout().getQuotaBytesTotal();
-    }
-
-    @Override
-    public long getAvailableSpace() throws IOException {
-        About about = getAbout();
-        long total = about.getQuotaBytesTotal();
-        long used = about.getQuotaBytesUsed();
-
-        return total - used;
-    }
-
     private File getRootFolder() throws IOException, IllegalArgumentException {
         try {
             String query = String.format(ROOT_FOLDER_QUERY, rootFolderName);
@@ -224,14 +209,6 @@ public class GoogleDriveCloudStore implements CloudStore {
             }
         } catch (IOException e) {
             throw new IOException("Error finding file '" + filename + "' in store " + name, e);
-        }
-    }
-
-    private About getAbout() throws IOException {
-        try {
-            return drive.about().get().execute();
-        } catch (IOException e) {
-            throw new IOException("Error retrieving Google Drive account info for store " + name, e);
         }
     }
 

@@ -1,5 +1,12 @@
 package org.avasquez.seccloudfs.processing.utils.zip;
 
+import org.apache.commons.io.IOUtils;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -12,13 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-
-import org.apache.commons.io.IOUtils;
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.utils.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Required;
 
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} decorator that zips the data before upload and unzips it
@@ -90,17 +90,7 @@ public class GZipCloudStore implements CloudStore {
 
     @Override
     public void delete(String id) throws IOException {
-
-    }
-
-    @Override
-    public long getTotalSpace() throws IOException {
-        return underlyingStore.getTotalSpace();
-    }
-
-    @Override
-    public long getAvailableSpace() throws IOException {
-        return underlyingStore.getAvailableSpace();
+        underlyingStore.delete(id);
     }
 
 }

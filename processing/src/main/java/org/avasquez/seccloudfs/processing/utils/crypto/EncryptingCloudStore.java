@@ -1,19 +1,5 @@
 package org.avasquez.seccloudfs.processing.utils.crypto;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-
 import org.apache.commons.io.IOUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.exception.DbException;
@@ -26,6 +12,16 @@ import org.bouncycastle.crypto.modes.AEADBlockCipher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
+
+import java.io.*;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} decorator that encrypts the data before upload and decrypts it
@@ -116,16 +112,6 @@ public class EncryptingCloudStore implements CloudStore {
         deleteEncryptionKey(id);
 
         underlyingStore.delete(id);
-    }
-
-    @Override
-    public long getTotalSpace() throws IOException {
-        return underlyingStore.getTotalSpace();
-    }
-
-    @Override
-    public long getAvailableSpace() throws IOException {
-        return underlyingStore.getAvailableSpace();
     }
 
     private void encrypt(String dataId, InputStream in, OutputStream out, byte[] key, byte[] iv) throws IOException {

@@ -1,5 +1,8 @@
 package org.avasquez.seccloudfs.cloud.impl;
 
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.springframework.beans.factory.annotation.Required;
+
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -9,15 +12,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-import org.avasquez.seccloudfs.utils.FileUtils;
-import org.springframework.beans.factory.annotation.Required;
-
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} that uses the local filesystem to store the files.
  *
  * @author avasquez
  */
-public class LocalCloudStore extends MaxSizeAwareCloudStore {
+public class LocalCloudStore implements CloudStore {
 
     private String name;
     private Path storeDir;
@@ -38,23 +38,18 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected Object getMetadata(String filename) throws IOException {
-        return storeDir.resolve(filename);
-    }
-
-    @Override
-    protected void doUpload(String filename, Object metadata, ReadableByteChannel src, long length) throws IOException {
-        Path path = (Path)metadata;
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+        Path path = getPath(id);
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
-            StandardOpenOption.TRUNCATE_EXISTING)) {
+                StandardOpenOption.TRUNCATE_EXISTING)) {
             fileChannel.transferFrom(src, 0, length);
         }
     }
 
     @Override
-    protected void doDownload(String filename, Object metadata, WritableByteChannel target) throws IOException {
-        Path path = (Path)metadata;
+    public void download(String id, WritableByteChannel target) throws IOException {
+        Path path = getPath(id);
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {
             fileChannel.transferTo(0, fileChannel.size(), target);
@@ -62,23 +57,12 @@ public class LocalCloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected void doDelete(String filename, Object metadata) throws IOException {
-        Files.delete((Path)metadata);
+    public void delete(String id) throws IOException {
+        Files.delete(getPath(id));
     }
 
-    @Override
-    protected long getDataSize(Object metadata) throws IOException {
-        Path path = (Path)metadata;
-        if (Files.exists(path)) {
-            return Files.size(path);
-        } else {
-            return 0;
-        }
-    }
-
-    @Override
-    protected long calculateCurrentSize() throws IOException {
-        return FileUtils.sizeOfDirectory(storeDir);
+    private Path getPath(String filename) throws IOException {
+        return storeDir.resolve(filename);
     }
 
 }

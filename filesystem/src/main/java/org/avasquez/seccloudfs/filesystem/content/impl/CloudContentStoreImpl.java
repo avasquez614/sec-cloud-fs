@@ -6,6 +6,7 @@ import org.avasquez.seccloudfs.filesystem.content.CloudContent;
 import org.avasquez.seccloudfs.filesystem.content.Content;
 import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
 import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
@@ -35,6 +36,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     private ScheduledExecutorService executorService;
     private long timeoutForNextUpdateSecs;
     private long retryUploadDelaySecs;
+    private long maxSize;
 
     @Required
     public void setMetadataRepo(ContentMetadataRepository metadataRepo) {
@@ -71,19 +73,41 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         this.retryUploadDelaySecs = retryUploadDelaySecs;
     }
 
-    @Override
-    public long getTotalSpace() throws IOException {
-        return cloudStore.getTotalSpace();
-    }
-
-    @Override
-    public long getAvailableSpace() throws IOException {
-        return cloudStore.getAvailableSpace();
+    @Required
+    public void setMaxSize(String maxSize) {
+        this.maxSize = FileUtils.humanReadableByteSizeToByteCount(maxSize);
     }
 
     @PostConstruct
     public void init() throws IOException {
         resumeUploads();
+    }
+
+    @Override
+    public long getTotalSpace() throws IOException {
+        return maxSize;
+    }
+
+    @Override
+    public long getAvailableSpace() throws IOException {
+        Iterable<ContentMetadata> allMetadata;
+        try {
+            allMetadata = metadataRepo.findAll();
+        } catch (DbException e) {
+            throw new IOException("Unable to retrieve all metadata from DB", e);
+        }
+
+        long total = 0;
+
+        try {
+            for (ContentMetadata metadata : allMetadata) {
+                total += getContentSize(metadata);
+            }
+        } catch (IOException e) {
+            throw new IOException("Unable to calculate used space" , e);
+        }
+
+        return maxSize - total;
     }
 
     @Override
@@ -117,8 +141,21 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         ((CloudContentImpl) content).delete();
     }
 
+    private Path getDownloadPath(String contentId) {
+        return downloadsDir.resolve(contentId);
+    }
+
+    private long getContentSize(ContentMetadata metadata) throws IOException {
+        Path downloadPath = getDownloadPath(metadata.getId());
+        if (Files.exists(downloadPath)) {
+            return Files.size(downloadPath);
+        } else {
+            return metadata.getUploadedSize();
+        }
+    }
+
     private CloudContent createContentObject(ContentMetadata metadata) throws IOException {
-        Path downloadPath = downloadsDir.resolve(metadata.getId());
+        Path downloadPath = getDownloadPath(metadata.getId());
         Lock accessLock = new ReentrantLock();
         Uploader uploader = new Uploader(metadata, metadataRepo, cloudStore, downloadPath, accessLock,
                 snapshotDir, executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);

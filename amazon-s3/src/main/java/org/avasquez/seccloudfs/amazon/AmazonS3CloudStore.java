@@ -2,10 +2,12 @@ package org.avasquez.seccloudfs.amazon;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.*;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.Region;
+import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import org.apache.commons.io.IOUtils;
-import org.avasquez.seccloudfs.cloud.impl.MaxSizeAwareCloudStore;
+import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.infinispan.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +26,7 @@ import java.nio.channels.WritableByteChannel;
  *
  * @author avasquez
  */
-public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
+public class AmazonS3CloudStore implements CloudStore {
 
     private static final Logger logger = LoggerFactory.getLogger(AmazonS3CloudStore.class);
 
@@ -49,12 +51,6 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
         this.metadataCache = metadataCache;
     }
 
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
     @PostConstruct
     public void init() throws IOException {
         // Check if bucket exists, if not create it
@@ -74,8 +70,6 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
                 throw new IOException("Error creating bucket '" + name + "' of store " + name, e);
             }
         }
-
-        super.init();
     }
 
     @PreDestroy
@@ -84,7 +78,80 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
     }
 
     @Override
-    protected Object getMetadata(String filename) throws IOException {
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+        logger.debug("Started uploading {}/{}", name, id);
+
+        ObjectMetadata metadata = getMetadata(id);
+        if (metadata == null) {
+            metadata = new ObjectMetadata();
+        }
+
+        metadata.setContentType(BINARY_MIME_TYPE);
+        metadata.setContentLength(length);
+
+        try {
+            InputStream content = Channels.newInputStream(src);
+
+            if (length < chunkedUploadThreshold) {
+                logger.debug("Using direct upload for {}/{}", name, id);
+
+                s3.putObject(bucketName, id, content, metadata);
+            } else {
+                logger.debug("Using chunked upload for {}/{}", name, id);
+
+                transferManager.upload(bucketName, id, content, metadata).waitForCompletion();
+            }
+        } catch (Exception e) {
+            throw new IOException("Error uploading " + name + "/" + id, e);
+        }
+
+        metadataCache.put(id, metadata);
+
+        logger.debug("Finished uploading {}/{}", name, id);
+    }
+
+    @Override
+    public void download(String id, WritableByteChannel target) throws IOException {
+        ObjectMetadata metadata = getMetadata(id);
+        if (metadata == null) {
+            throw new FileNotFoundException("No file " + name + "/" + id + " found");
+        }
+
+        logger.debug("Started downloading {}/{}", name, id);
+
+        try {
+            S3Object s3Object = s3.getObject(bucketName, id);
+
+            try (InputStream in = s3Object.getObjectContent()) {
+                IOUtils.copy(in, Channels.newOutputStream(target));
+            }
+        } catch (Exception e) {
+            throw new IOException("Error downloading " + name + "/" + id, e);
+        }
+
+        logger.debug("Finished downloading {}/{}", name, id);
+    }
+
+    @Override
+    public void delete(String id) throws IOException {
+        ObjectMetadata metadata = getMetadata(id);
+        if (metadata != null) {
+            logger.debug("Deleting {}/{}", name, id);
+
+            try {
+                s3.deleteObject(bucketName, id);
+            } catch (Exception e) {
+                throw new IOException("Error deleting " + name + "/" + id, e);
+            }
+        }
+    }
+
+    private ObjectMetadata getMetadata(String filename) throws IOException {
         logger.debug("Retrieving metadata for {}/{}", name, filename);
 
         ObjectMetadata metadata = metadataCache.get(filename);
@@ -103,111 +170,6 @@ public class AmazonS3CloudStore extends MaxSizeAwareCloudStore {
         }
 
         return metadata;
-    }
-
-    @Override
-    protected void doUpload(String filename, Object metadata, ReadableByteChannel src, long length) throws IOException {
-        logger.debug("Started uploading {}/{}", name, filename);
-
-        ObjectMetadata objectMetadata;
-        if (metadata != null) {
-            objectMetadata = (ObjectMetadata)metadata;
-        } else {
-            objectMetadata = new ObjectMetadata();
-        }
-
-        objectMetadata.setContentType(BINARY_MIME_TYPE);
-        objectMetadata.setContentLength(length);
-
-        try {
-            InputStream content = Channels.newInputStream(src);
-
-            if (length < chunkedUploadThreshold) {
-                logger.debug("Using direct upload for {}/{}", name, filename);
-
-                s3.putObject(bucketName, filename, content, objectMetadata);
-            } else {
-                logger.debug("Using chunked upload for {}/{}", name, filename);
-
-                transferManager.upload(bucketName, filename, content, objectMetadata).waitForCompletion();
-            }
-        } catch (Exception e) {
-            throw new IOException("Error uploading " + name + "/" + filename, e);
-        }
-
-        metadataCache.put(filename, objectMetadata);
-
-        logger.debug("Finished uploading {}/{}", name, filename);
-    }
-
-    @Override
-    protected void doDownload(String filename, Object metadata, WritableByteChannel target) throws IOException {
-        if (metadata == null) {
-            throw new FileNotFoundException("No file " + name + "/" + filename + " found");
-        }
-
-        logger.debug("Started downloading {}/{}", name, filename);
-
-        try {
-            S3Object s3Object = s3.getObject(bucketName, filename);
-
-            try (InputStream in = s3Object.getObjectContent()) {
-                IOUtils.copy(in, Channels.newOutputStream(target));
-            }
-        } catch (Exception e) {
-            throw new IOException("Error downloading " + name + "/" + filename, e);
-        }
-
-        logger.debug("Finished downloading {}/{}", name, filename);
-    }
-
-    @Override
-    protected void doDelete(String filename, Object metadata) throws IOException {
-        if (metadata != null) {
-            logger.debug("Deleting {}/{}", name, filename);
-
-            try {
-                s3.deleteObject(bucketName, filename);
-            } catch (Exception e) {
-                throw new IOException("Error deleting " + name + "/" + filename, e);
-            }
-        }
-    }
-
-    @Override
-    protected long getDataSize(Object metadata) throws IOException {
-        if (metadata != null) {
-            return ((ObjectMetadata)metadata).getContentLength();
-        } else {
-            return 0;
-        }
-    }
-
-    @Override
-    protected long calculateCurrentSize() throws IOException {
-        try {
-            ObjectListing objectListing = s3.listObjects(new ListObjectsRequest().withBucketName(bucketName));
-            long total = getTotalSizeOfObjects(objectListing);
-
-            while (objectListing.isTruncated()) {
-                objectListing = s3.listNextBatchOfObjects(objectListing);
-                total += getTotalSizeOfObjects(objectListing);
-            }
-
-            return total;
-        } catch (Exception e) {
-            throw new IOException("Unable to calculate size of bucket '" + bucketName + "' of store " + name, e);
-        }
-    }
-
-    private long getTotalSizeOfObjects(ObjectListing objectListing) {
-        long total = 0;
-
-        for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-            total += objectSummary.getSize();
-        }
-
-        return total;
     }
 
 }
