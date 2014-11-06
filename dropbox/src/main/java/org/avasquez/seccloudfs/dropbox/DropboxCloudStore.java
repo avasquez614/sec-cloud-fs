@@ -3,9 +3,6 @@ package org.avasquez.seccloudfs.dropbox;
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxStreamWriter;
 import com.dropbox.core.DbxWriteMode;
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,8 +10,13 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
- * Dropbox implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}.
+ * Dropbox implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}. This cloud store is synchronized
+ * because Dropbox doesn't seem to like when a directories contents are being modified concurrently.
  *
  * @author avasquez
  */
