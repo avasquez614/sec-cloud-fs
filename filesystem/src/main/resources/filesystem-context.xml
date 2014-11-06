@@ -119,7 +119,7 @@
     </bean>
 
     <bean id="fuseFileSystem" class="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS">
-        <property name="options" value="${fuse.options}"/>
+        <property name="options" value="${fuse.mount.options}"/>
         <property name="fileHandleRegistry" ref="fileHandleRegistry"/>
         <property name="fileSystem" ref="fileSystem"/>
         <property name="rootUid" value="${users.root.uid}"/>

@@ -1,11 +1,22 @@
 package org.avasquez.seccloudfs.filesystem.fuse;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+
 import net.fusejna.DirectoryFiller;
 import net.fusejna.util.FuseFilesystemAdapterFull;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.avasquez.seccloudfs.filesystem.exception.*;
+import org.avasquez.seccloudfs.filesystem.exception.FileExistsException;
+import org.avasquez.seccloudfs.filesystem.exception.FileNotFoundException;
+import org.avasquez.seccloudfs.filesystem.exception.InvalidFileHandleException;
+import org.avasquez.seccloudfs.filesystem.exception.IsDirectoryException;
+import org.avasquez.seccloudfs.filesystem.exception.NotDirectoryException;
+import org.avasquez.seccloudfs.filesystem.exception.PermissionDeniedException;
 import org.avasquez.seccloudfs.filesystem.files.File;
 import org.avasquez.seccloudfs.filesystem.files.FileSystem;
 import org.avasquez.seccloudfs.filesystem.files.User;
@@ -15,14 +26,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
-import static net.fusejna.ErrorCodes.*;
+import static net.fusejna.ErrorCodes.EACCES;
+import static net.fusejna.ErrorCodes.EBADF;
+import static net.fusejna.ErrorCodes.EEXIST;
+import static net.fusejna.ErrorCodes.EIO;
+import static net.fusejna.ErrorCodes.EISDIR;
+import static net.fusejna.ErrorCodes.ENOENT;
+import static net.fusejna.ErrorCodes.ENOTDIR;
 import static net.fusejna.StructFuseFileInfo.FileInfoWrapper;
 import static net.fusejna.StructStat.StatWrapper;
 import static net.fusejna.StructStatvfs.StatvfsWrapper;
@@ -64,9 +74,9 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     }
 
     @Required
-    public void setOptions(String[] options) {
-        if (ArrayUtils.isNotEmpty(options)) {
-            this.options = options;
+    public void setOptions(String options) {
+        if (StringUtils.isNotEmpty(options)) {
+            this.options = new String[] { "-o", options };
         }
     }
 
