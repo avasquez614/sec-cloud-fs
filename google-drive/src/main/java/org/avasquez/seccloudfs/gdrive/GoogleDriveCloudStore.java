@@ -26,7 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Google Drive implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}.
+ * Google Drive implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}. This cloud store is synchronized
+ * because Google Drive doesn't seem to like when a directory's contents are being modified concurrently.
  *
  * @author avasquez
  */
@@ -74,7 +75,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     }
 
     @Override
-    public void upload(String filename, ReadableByteChannel src, long length) throws IOException {
+    public synchronized void upload(String filename, ReadableByteChannel src, long length) throws IOException {
         InputStreamContent content = new InputStreamContent(BINARY_MIME_TYPE, Channels.newInputStream(src));
         content.setLength(length);
 
@@ -108,7 +109,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     }
 
     @Override
-    public void download(String filename, WritableByteChannel target) throws IOException {
+    public synchronized void download(String filename, WritableByteChannel target) throws IOException {
         File file = getCachedFile(filename);
 
         if (file != null) {
@@ -132,7 +133,7 @@ public class GoogleDriveCloudStore implements CloudStore {
     }
 
     @Override
-    public void delete(String filename) throws IOException {
+    public synchronized void delete(String filename) throws IOException {
         File file = getCachedFile(filename);
 
         if (file != null) {
