@@ -40,7 +40,7 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+    public synchronized void upload(String id, ReadableByteChannel src, long length) throws IOException {
         String path = getPath(id);
 
         logger.debug("Started uploading {}/{}", name, id);
@@ -66,7 +66,7 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public void download(String id, WritableByteChannel target) throws IOException {
+    public synchronized void download(String id, WritableByteChannel target) throws IOException {
         String path = getPath(id);
 
         logger.debug("Started downloading {}/{}", name, id);
@@ -81,7 +81,7 @@ public class DropboxCloudStore implements CloudStore {
     }
 
     @Override
-    public void delete(String id) throws IOException {
+    public synchronized void delete(String id) throws IOException {
         String path = getPath(id);
 
         logger.debug("Deleting {}/{}", name, id);
