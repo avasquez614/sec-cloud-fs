@@ -8,6 +8,7 @@ dependencies {
     compile project(':google-drive')
     compile project(':dropbox')
     compile project(':amazon-s3')
+    compile project(':apache-vfs')
     compile fileTree(dir: 'libs', include: '*.jar')
     compile 'net.java.dev.jna:jna:3.5.2'
 }

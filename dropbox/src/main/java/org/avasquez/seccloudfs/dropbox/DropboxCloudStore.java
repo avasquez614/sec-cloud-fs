@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Dropbox implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}. This cloud store is synchronized
- * because Dropbox doesn't seem to like when a directories contents are being modified concurrently.
+ * because Dropbox doesn't seem to like when a directory's contents are being modified concurrently.
  *
  * @author avasquez
  */

@@ -1,2 +1,3 @@
-include 'commons', 'filesystem', 'erasure', 'processing', 'google-drive', 'dropbox', 'amazon-s3', 'cloud-store-app'
+include 'commons', 'filesystem', 'erasure', 'processing', 'google-drive', 'dropbox', 'amazon-s3', 'cloud-store-app',
+        'apache-vfs'
 

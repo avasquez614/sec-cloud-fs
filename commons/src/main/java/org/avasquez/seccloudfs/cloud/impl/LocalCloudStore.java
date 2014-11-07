@@ -1,11 +1,5 @@
 package org.avasquez.seccloudfs.cloud.impl;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Required;
-
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -14,6 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import javax.annotation.PostConstruct;
+
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Required;
 
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} that uses the local filesystem to store the files.
@@ -22,19 +22,15 @@ import java.nio.file.StandardOpenOption;
  */
 public class LocalCloudStore implements CloudStore {
 
+    private static final String STORE_NAME_PREFIX = "file://";
+
     private static final Logger logger = LoggerFactory.getLogger(LocalCloudStore.class);
 
-    private String name;
     private Path storeDir;
 
     @Override
     public String getName() {
-        return name;
-    }
-
-    @Required
-    public void setName(String name) {
-        this.name = name;
+        return STORE_NAME_PREFIX + storeDir;
     }
 
     @Required

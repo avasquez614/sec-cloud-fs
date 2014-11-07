@@ -1,0 +1,5 @@
+dependencies {
+    compile project(':commons')
+    compile 'org.apache.commons:commons-vfs2:2.0'
+    compile 'com.jcraft:jsch:0.1.51'
+}

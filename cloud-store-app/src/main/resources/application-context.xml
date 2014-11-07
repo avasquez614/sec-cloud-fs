@@ -81,6 +81,18 @@
         <property name="maxCacheEntries" value="${google.drive.cache.maxEntries}"/>
     </bean>
 
+    <!-- Apache VFS -->
+
+    <bean id="fileSystemManager" class="org.avasquez.seccloudfs.apache.vfs.utils.DefaultFileSystemManagerFactoryBean">
+        <property name="providers">
+            <map>
+                <entry key="sftp">
+                    <bean class="org.apache.commons.vfs2.provider.sftp.SftpFileProvider"/>
+                </entry>
+            </map>
+        </property>
+    </bean>
+
     <import resource="classpath*:custom-application-context.xml"/>
 
 </beans>
