@@ -28,6 +28,7 @@
     <!--<logger name="org.avasquez.seccloudfs.dropbox" level="DEBUG"/>-->
     <!--<logger name="org.avasquez.seccloudfs.gdrive" level="DEBUG"/>-->
     <!--<logger name="org.avasquez.seccloudfs.amazon" level="DEBUG"/>-->
+    <logger name="com.amazonaws.http.AmazonHttpClient" level="ERROR"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
