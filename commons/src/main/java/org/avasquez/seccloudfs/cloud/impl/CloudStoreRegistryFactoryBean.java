@@ -1,11 +1,12 @@
 package org.avasquez.seccloudfs.cloud.impl;
 
+import java.util.List;
+
 import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.cloud.CloudStoreRegistrar;
 import org.avasquez.seccloudfs.cloud.CloudStoreRegistry;
 import org.avasquez.seccloudfs.utils.DecoratorFactory;
 import org.springframework.beans.factory.FactoryBean;
-
-import java.util.List;
 
 /**
  * {@link org.springframework.beans.factory.FactoryBean} for creating a {@link org.avasquez.seccloudfs.cloud
@@ -15,11 +16,16 @@ import java.util.List;
  */
 public class CloudStoreRegistryFactoryBean implements FactoryBean<CloudStoreRegistry> {
 
-    private List<CloudStore> cloudStores;
+    private List<CloudStoreRegistrar> registrars;
+    private List<CloudStore> stores;
     private List<DecoratorFactory<CloudStore>> decoratorFactories;
 
-    public void setCloudStores(List<CloudStore> cloudStores) {
-        this.cloudStores = cloudStores;
+    public void setRegistrars(List<CloudStoreRegistrar> registrars) {
+        this.registrars = registrars;
+    }
+
+    public void setStores(List<CloudStore> stores) {
+        this.stores = stores;
     }
 
     public void setDecoratorFactories(List<DecoratorFactory<CloudStore>> decoratorFactories) {
@@ -30,8 +36,14 @@ public class CloudStoreRegistryFactoryBean implements FactoryBean<CloudStoreRegi
     public CloudStoreRegistry getObject() throws Exception {
         CloudStoreRegistry registry = createCloudStoreRegistry();
 
-        if (cloudStores != null) {
-            for (CloudStore cloudStore : cloudStores) {
+        if (registrars != null) {
+            for (CloudStoreRegistrar registrar : registrars) {
+                registrar.registerStores(registry);
+            }
+        }
+
+        if (stores != null) {
+            for (CloudStore cloudStore : stores) {
                 registry.register(cloudStore);
             }
         }

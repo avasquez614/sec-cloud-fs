@@ -3,23 +3,23 @@ package org.avasquez.seccloudfs.amazon;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.Region;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.transfer.TransferManager;
-import org.apache.commons.io.IOUtils;
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.infinispan.Cache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
+import org.apache.commons.io.IOUtils;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.infinispan.Cache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Amazon S3 implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}.
@@ -36,17 +36,15 @@ public class AmazonS3CloudStore implements CloudStore {
     private AmazonS3 s3;
     private TransferManager transferManager;
     private String bucketName;
-    private Region region;
     private long chunkedUploadThreshold;
     private Cache<String, ObjectMetadata> metadataCache;
 
     public AmazonS3CloudStore(String name, AmazonS3 s3, TransferManager transferManager, String bucketName,
-                              Region region, long chunkedUploadThreshold, Cache<String, ObjectMetadata> metadataCache) {
+                              long chunkedUploadThreshold, Cache<String, ObjectMetadata> metadataCache) {
         this.name = name;
         this.s3 = s3;
         this.transferManager = transferManager;
         this.bucketName = bucketName;
-        this.region = region;
         this.chunkedUploadThreshold = chunkedUploadThreshold;
         this.metadataCache = metadataCache;
     }
@@ -65,7 +63,7 @@ public class AmazonS3CloudStore implements CloudStore {
             logger.info("Bucket '" + bucketName + "' of store " + name + " does not exist. Creating it...");
 
             try {
-                s3.createBucket(bucketName, region);
+                s3.createBucket(bucketName);
             } catch (Exception e) {
                 throw new IOException("Error creating bucket '" + name + "' of store " + name, e);
             }

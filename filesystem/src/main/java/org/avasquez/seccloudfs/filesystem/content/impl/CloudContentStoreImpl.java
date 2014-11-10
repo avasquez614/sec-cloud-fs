@@ -1,5 +1,16 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import javax.annotation.PostConstruct;
+
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.avasquez.seccloudfs.exception.DbException;
 import org.avasquez.seccloudfs.filesystem.content.CloudContent;
@@ -11,19 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.FileTime;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
 /**
- * Created by alfonsovasquez on 12/01/14.
+ * Default implementation of {@link org.avasquez.seccloudfs.filesystem.content.ContentStore}.
+ *
+ * @author avasquez
  */
 public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
@@ -34,6 +36,8 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     private Path downloadsDir;
     private Path snapshotDir;
     private ScheduledExecutorService executorService;
+    private long retryDownloadDelaySecs;
+    private int maxDownloadRetries;
     private long timeoutForNextUpdateSecs;
     private long retryUploadDelaySecs;
     private long maxSize;
@@ -61,6 +65,16 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     @Required
     public void setExecutorService(ScheduledExecutorService executorService) {
         this.executorService = executorService;
+    }
+
+    @Required
+    public void setRetryDownloadDelaySecs(final long retryDownloadDelaySecs) {
+        this.retryDownloadDelaySecs = retryDownloadDelaySecs;
+    }
+
+    @Required
+    public void setMaxDownloadRetries(final int maxDownloadRetries) {
+        this.maxDownloadRetries = maxDownloadRetries;
     }
 
     @Required
@@ -160,7 +174,8 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         Uploader uploader = new Uploader(metadata, metadataRepo, cloudStore, downloadPath, accessLock,
                 snapshotDir, executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
 
-        return new CloudContentImpl(metadata, metadataRepo, downloadPath, accessLock, cloudStore, uploader);
+        return new CloudContentImpl(metadata, metadataRepo, downloadPath, accessLock, cloudStore, uploader,
+            retryDownloadDelaySecs, maxDownloadRetries);
     }
 
     private ContentMetadata findMetadata(String id) throws IOException {

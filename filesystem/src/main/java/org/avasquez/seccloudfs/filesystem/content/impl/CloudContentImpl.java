@@ -1,14 +1,5 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.content.CloudContent;
-import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -18,10 +9,24 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.content.CloudContent;
+import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
- * Created by alfonsovasquez on 11/01/14.
+ * Default implementation of {@link org.avasquez.seccloudfs.filesystem.content.CloudContent}, which downloads
+ * directly the content when not cached, and starts a new {@link org.avasquez.seccloudfs.filesystem.content.impl
+ * .Uploader} when the content has been modified.
+ *
+ * @author avasquez
  */
 public class CloudContentImpl implements CloudContent {
 
@@ -36,17 +41,24 @@ public class CloudContentImpl implements CloudContent {
     private CloudStore cloudStore;
     private Uploader uploader;
     private Lock accessLock;
+    private long retryDownloadDelaySecs;
+    private int maxDownloadRetries;
 
     private volatile int openChannels;
+    private int currentDownloadRetries;
 
     public CloudContentImpl(ContentMetadata metadata, ContentMetadataRepository metadataRepo, Path downloadPath,
-                            Lock accessLock, CloudStore cloudStore, Uploader uploader) throws IOException {
+                            Lock accessLock, CloudStore cloudStore, Uploader uploader, long retryDownloadDelaySecs,
+                            int maxDownloadRetries)
+        throws IOException {
         this.metadata = metadata;
         this.metadataRepo = metadataRepo;
         this.downloadPath = downloadPath;
         this.accessLock = accessLock;
         this.cloudStore = cloudStore;
         this.uploader = uploader;
+        this.retryDownloadDelaySecs = retryDownloadDelaySecs;
+        this.maxDownloadRetries = maxDownloadRetries;
     }
 
     @Override
@@ -178,7 +190,7 @@ public class CloudContentImpl implements CloudContent {
                 accessLock.lock();
                 try {
                     if (!metadata.isMarkedAsDeleted() && !Files.exists(downloadPath)) {
-                        download();
+                        downloadAndRetry();
                     }
                 } finally {
                     accessLock.unlock();
@@ -190,20 +202,44 @@ public class CloudContentImpl implements CloudContent {
         }
     }
 
+    private void downloadAndRetry() throws IOException {
+        currentDownloadRetries = 0;
+
+        while (currentDownloadRetries <= maxDownloadRetries) {
+            try {
+                download();
+            } catch (IOException e) {
+                logger.error("Error while trying to download content '" + getId() + "' from cloud", e);
+
+                currentDownloadRetries++;
+
+                if (currentDownloadRetries <= maxDownloadRetries) {
+                    try {
+                        Thread.sleep(TimeUnit.SECONDS.toMillis(retryDownloadDelaySecs));
+                    } catch (InterruptedException ie) {
+                        logger.debug("Thread interrupted while waiting for download delay", ie);
+                    }
+
+                    logger.info("Retry #{} of content '{}' download", currentDownloadRetries, getId());
+                }
+            }
+        }
+
+        if (currentDownloadRetries > maxDownloadRetries) {
+            throw new IOException("Max retries for download of content '" + getId() + "' reached");
+        }
+    }
+
     private void download() throws IOException {
         Path tmpPath = Files.createTempFile(TMP_FILE_PREFIX, TMP_FILE_SUFFIX);
 
-        try {
-            try (FileChannel tmpFile = FileChannel.open(tmpPath, StandardOpenOption.WRITE)) {
-                cloudStore.download(metadata.getId(), tmpFile);
-            }
-
-            Files.move(tmpPath, downloadPath, StandardCopyOption.ATOMIC_MOVE);
-
-            logger.info("Content '{}' downloaded", getId());
-        } catch (IOException e) {
-            throw new IOException("Error while trying to download " + this + " from cloud", e);
+        try (FileChannel tmpFile = FileChannel.open(tmpPath, StandardOpenOption.WRITE)) {
+            cloudStore.download(metadata.getId(), tmpFile);
         }
+
+        Files.move(tmpPath, downloadPath, StandardCopyOption.ATOMIC_MOVE);
+
+        logger.info("Content '{}' downloaded", getId());
     }
 
     private class ContentByteChannel implements FlushableByteChannel {
