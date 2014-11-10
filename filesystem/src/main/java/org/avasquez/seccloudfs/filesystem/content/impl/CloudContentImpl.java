@@ -205,9 +205,13 @@ public class CloudContentImpl implements CloudContent {
     private void downloadAndRetry() throws IOException {
         currentDownloadRetries = 0;
 
-        while (currentDownloadRetries <= maxDownloadRetries) {
+        boolean downloaded = false;
+
+        while (!downloaded && currentDownloadRetries <= maxDownloadRetries) {
             try {
                 download();
+
+                downloaded = true;
             } catch (IOException e) {
                 logger.error("Error while trying to download content '" + getId() + "' from cloud", e);
 

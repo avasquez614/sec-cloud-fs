@@ -3,7 +3,9 @@ package org.avasquez.seccloudfs.filesystem.content;
 import java.io.IOException;
 
 /**
- * Created by alfonsovasquez on 03/02/14.
+ * Represents content stored in the cloud.
+ *
+ * @author avasquez
  */
 public interface CloudContent extends Content {
 
