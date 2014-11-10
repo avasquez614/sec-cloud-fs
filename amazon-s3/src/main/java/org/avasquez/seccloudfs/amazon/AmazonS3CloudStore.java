@@ -22,7 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Amazon S3 implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}.
+ * Amazon S3 implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}. The implementation is synchronized
+ * to avoid to many open connections (while testing, a lot of HTTP connections failed in the server side).
  *
  * @author avasquez
  */
@@ -81,7 +82,7 @@ public class AmazonS3CloudStore implements CloudStore {
     }
 
     @Override
-    public void upload(String id, ReadableByteChannel src, long length) throws IOException {
+    public synchronized void upload(String id, ReadableByteChannel src, long length) throws IOException {
         logger.debug("Started uploading {}/{}", name, id);
 
         ObjectMetadata metadata = getMetadata(id);
@@ -114,7 +115,7 @@ public class AmazonS3CloudStore implements CloudStore {
     }
 
     @Override
-    public void download(String id, WritableByteChannel target) throws IOException {
+    public synchronized void download(String id, WritableByteChannel target) throws IOException {
         ObjectMetadata metadata = getMetadata(id);
         if (metadata == null) {
             throw new FileNotFoundException("No file " + name + "/" + id + " found");
@@ -136,7 +137,7 @@ public class AmazonS3CloudStore implements CloudStore {
     }
 
     @Override
-    public void delete(String id) throws IOException {
+    public synchronized void delete(String id) throws IOException {
         ObjectMetadata metadata = getMetadata(id);
         if (metadata != null) {
             logger.debug("Deleting {}/{}", name, id);
