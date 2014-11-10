@@ -56,7 +56,7 @@ if [ ! -d "$MOUNT_POINT" ]; then
     fi
 fi
 
-#export JAVA_OPTS="-server -Xms256m -Xmx1024m -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
-export JAVA_OPTS="-server -Xms256m -Xmx1024m"
+#export JAVA_OPTS="-server -Xms1024m -Xmx4096m -XX:MaxPermSize=256m -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
+export JAVA_OPTS="-server -Xms1024m -Xmx4096m -XX:MaxPermSize=256m"
 
 ./bin/seccloudfs "$@"

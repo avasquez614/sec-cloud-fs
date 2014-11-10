@@ -13,8 +13,8 @@ import org.jongo.Jongo;
  */
 public class JongoDirectoryEntryRepository extends JongoRepository<DirectoryEntry> implements DirectoryEntryRepository {
 
-    public static final String DIRECTORY_ENTRIES_COLLECTION_NAME =  "directoryEntries";
-    public static final String FIND_BY_DIRECTORY_ID_QUERY =         "{directoryId: #}";
+    public static final String DIRECTORY_ENTRIES_COLLECTION_NAME = "directoryEntries";
+    public static final String FIND_BY_DIRECTORY_ID_QUERY = "{directoryId: #}";
 
     public JongoDirectoryEntryRepository(Jongo jongo) {
         super(DIRECTORY_ENTRIES_COLLECTION_NAME, jongo);

@@ -13,8 +13,8 @@ import org.jongo.Jongo;
  */
 public class JongoFileMetadataRepository extends JongoRepository<FileMetadata> implements FileMetadataRepository {
 
-    public static final String FILE_METADATA_COLLECTION_NAME =  "fileMetadata";
-    public static final String LAST_ACCESS_TIME_DESC_SORT =     "{lastAccessTime: -1}";
+    public static final String FILE_METADATA_COLLECTION_NAME = "fileMetadata";
+    public static final String LAST_ACCESS_TIME_DESC_SORT = "{lastAccessTime: -1}";
 
     public JongoFileMetadataRepository(Jongo jongo) {
         super(FILE_METADATA_COLLECTION_NAME, jongo);

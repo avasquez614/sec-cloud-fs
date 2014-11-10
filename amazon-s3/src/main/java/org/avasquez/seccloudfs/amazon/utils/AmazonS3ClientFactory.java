@@ -1,6 +1,5 @@
 package org.avasquez.seccloudfs.amazon.utils;
 
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.services.s3.transfer.TransferManager;
 
 import org.avasquez.seccloudfs.utils.adapters.ClientFactory;
@@ -11,11 +10,11 @@ import org.avasquez.seccloudfs.utils.adapters.ClientFactory;
  *
  * @author avasquez
  */
-public class AmazonS3ClientFactory implements ClientFactory<TransferManager, AWSCredentials> {
+public class AmazonS3ClientFactory implements ClientFactory<TransferManager, AmazonCredentials> {
 
     @Override
-    public TransferManager createClient(AWSCredentials credentials) {
-        return new TransferManager(credentials);
+    public TransferManager createClient(AmazonCredentials credentials) {
+        return new TransferManager(credentials.getCredentials());
     }
 
 }
