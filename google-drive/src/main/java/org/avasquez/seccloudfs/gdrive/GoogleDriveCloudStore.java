@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Google Drive implementation of {@link org.avasquez.seccloudfs.cloud.CloudStore}. The implementation is synchronized
- * to avoid to many open connections (while testing, a lot of HTTP connections failed in the server side).
+ * to avoid too many open connections (while testing, a lot of HTTP connections failed in the server side).
  *
  * @author avasquez
  */
