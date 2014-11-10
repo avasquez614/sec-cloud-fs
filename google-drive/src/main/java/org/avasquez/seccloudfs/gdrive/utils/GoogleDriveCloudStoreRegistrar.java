@@ -50,7 +50,16 @@ public class GoogleDriveCloudStoreRegistrar extends AbstractRootFolderBasedCloud
         String storeName = String.format(STORE_NAME_FORMAT, credentials.getAccountId(), rootFolderName);
         Cache<String, File> cache = createFileCache(storeName);
 
-        return new GoogleDriveCloudStore(storeName, client, rootFolderName, chunkedUploadThreshold, cache);
+        GoogleDriveCloudStore cloudStore = new GoogleDriveCloudStore(
+            storeName,
+            client,
+            rootFolderName,
+            chunkedUploadThreshold,
+            cache);
+
+        cloudStore.init();
+
+        return cloudStore;
     }
 
     private Cache<String, File> createFileCache(String storeName) {

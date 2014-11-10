@@ -46,13 +46,17 @@ public class AmazonS3CloudStoreRegistrar extends AbstractRootFolderBasedCloudSto
                                      String bucketName) throws IOException {
         String storeName = String.format(STORE_NAME_FORMAT, credentials.getAccountId(), bucketName);
 
-        return new AmazonS3CloudStore(
+        AmazonS3CloudStore cloudStore = new AmazonS3CloudStore(
             storeName,
             transferManager.getAmazonS3Client(),
             transferManager,
             bucketName,
             chunkedUploadThreshold,
             createMetadataCache(storeName));
+
+        cloudStore.init();
+
+        return cloudStore;
     }
 
     private Cache<String, ObjectMetadata> createMetadataCache(String storeName) {
