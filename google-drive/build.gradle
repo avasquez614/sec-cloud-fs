@@ -4,7 +4,7 @@ mainClassName = 'org.avasquez.seccloudfs.gdrive.GoogleDriveAuthorizerApp'
 
 dependencies {
     compile project(':commons')
-    compile 'com.google.apis:google-api-services-drive:v2-rev137-1.19.0'
+    compile 'com.google.apis:google-api-services-drive:v2-rev151-1.19.0'
 }
 
 // Install to another dir
