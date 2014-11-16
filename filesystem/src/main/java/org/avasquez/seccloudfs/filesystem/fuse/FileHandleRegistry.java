@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.avasquez.seccloudfs.filesystem.util.FlushableByteChannel;
 import org.infinispan.Cache;
 import org.infinispan.manager.CacheContainer;
 import org.infinispan.notifications.Listener;
@@ -25,7 +24,7 @@ public class FileHandleRegistry {
 
     private static final String FILE_HANDLE_CACHE_NAME = "fileHandles";
 
-    private Cache<Long, FlushableByteChannel> cache;
+    private Cache<Long, FileHandle> cache;
 
     private AtomicLong handleIdGenerator;
 
@@ -43,11 +42,11 @@ public class FileHandleRegistry {
         cache.addListener(new CacheListener());
     }
 
-    public FlushableByteChannel get(long id) {
+    public FileHandle get(long id) {
         return cache.get(id);
     }
 
-    public long register(FlushableByteChannel handle) {
+    public long register(FileHandle handle) {
         long id = handleIdGenerator.getAndIncrement();
 
         cache.put(id, handle);
@@ -57,7 +56,7 @@ public class FileHandleRegistry {
         return id;
     }
 
-    public FlushableByteChannel destroy(long id) {
+    public FileHandle destroy(long id) {
         return cache.remove(id);
     }
 
@@ -69,27 +68,26 @@ public class FileHandleRegistry {
     public static class CacheListener {
 
         @CacheEntryRemoved
-        public void onCacheRemove(CacheEntryRemovedEvent<Long, FlushableByteChannel> event) {
+        public void onCacheRemove(CacheEntryRemovedEvent<Long, FileHandle> event) {
             destroyHandle(event.getKey(), event.getValue());
         }
 
         @CacheEntriesEvicted
-        public void onCacheEviction(CacheEntriesEvictedEvent<Long, FlushableByteChannel> event) {
-            for (Map.Entry<Long, FlushableByteChannel> entry : event.getEntries().entrySet()) {
+        public void onCacheEviction(CacheEntriesEvictedEvent<Long, FileHandle> event) {
+            for (Map.Entry<Long, FileHandle> entry : event.getEntries().entrySet()) {
                 logger.debug("Evicting handle {} from cache", entry.getKey());
 
                 destroyHandle(entry.getKey(), entry.getValue());
             }
         }
 
-        private void destroyHandle(Long id, FlushableByteChannel handle) {
+        private void destroyHandle(Long id, FileHandle handle) {
             if (handle != null) {
                 try {
-                    if (handle.isOpen()) {
-                        handle.close();
+                    handle.getFile().syncMetadata();
+                    handle.getChannel().close();
 
-                        logger.debug("Handle {} destroyed", id);
-                    }
+                    logger.debug("Handle {} destroyed", id);
                 } catch (IOException e) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Unable to destroy handle " + id + " correctly", e);

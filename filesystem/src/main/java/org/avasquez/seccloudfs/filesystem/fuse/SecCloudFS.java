@@ -201,7 +201,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 checkDirectory(dir);
 
-                updateLastAccessTime(dir, false);
+                updateLastAccessTime(dir, true);
 
                 return 0;
             }
@@ -275,6 +275,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 checkWritePermission(parent);
 
                 parent.delete(name);
+
                 updateLastModifiedTime(parent, true);
 
                 if (logger.isDebugEnabled()) {
@@ -330,6 +331,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 long permissions = getPermissionsBits(mode.mode());
 
                 file.setPermissions(permissions);
+
                 updateLastChangeTime(file, true);
 
                 if (logger.isDebugEnabled()) {
@@ -358,6 +360,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 User user = new User(uid, gid);
 
                 file.setOwner(user);
+
                 updateLastChangeTime(file, true);
 
                 if (logger.isDebugEnabled()) {
@@ -404,8 +407,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                     file = parent.getChild(name);
                 }
 
-                FlushableByteChannel handle = file.getByteChannel();
-                long handleId = fileHandleRegistry.register(handle);
+                FlushableByteChannel channel = file.getByteChannel();
+                long handleId = fileHandleRegistry.register(new FileHandle(file, channel));
 
                 info.fh(handleId);
 
@@ -433,6 +436,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 checkWritePermission(parent);
 
                 parent.delete(name);
+
                 updateLastModifiedTime(parent, true);
 
                 if (logger.isDebugEnabled()) {
@@ -510,8 +514,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
                 checkNotDirectory(file);
 
-                FlushableByteChannel handle = file.getByteChannel();
-                long handleId = fileHandleRegistry.register(handle);
+                FlushableByteChannel channel = file.getByteChannel();
+                long handleId = fileHandleRegistry.register(new FileHandle(file, channel));
 
                 info.fh(handleId);
 
@@ -534,16 +538,14 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
             @Override
             public Integer call() throws Exception {
-                File file = resolveFile(path);
-
-                checkReadPermission(file);
-
                 buffer.limit(buffer.position() + (int) size);
 
-                FlushableByteChannel handle = getFileHandle(info.fh());
-                handle.position(offset);
+                FileHandle handle = getFileHandle(info.fh());
+                FlushableByteChannel channel = handle.getChannel();
 
-                int readBytes = handle.read(buffer);
+                channel.position(offset);
+
+                int readBytes = channel.read(buffer);
 
                 if (logger.isDebugEnabled()) {
                     logger.debug("{} read {} bytes from file at {}", getCurrentUser(), readBytes, path);
@@ -566,16 +568,15 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
             @Override
             public Integer call() throws Exception {
-                File file = resolveFile(path);
-
-                checkWritePermission(file);
-
                 buffer.limit(buffer.position() + (int) size);
 
-                FlushableByteChannel handle = getFileHandle(info.fh());
-                handle.position(offset);
+                FileHandle handle = getFileHandle(info.fh());
+                File file = handle.getFile();
+                FlushableByteChannel channel = handle.getChannel();
 
-                int writtenBytes = handle.write(buffer);
+                channel.position(offset);
+
+                int writtenBytes = channel.write(buffer);
 
                 updateLastModifiedTime(file, false);
 
@@ -595,9 +596,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
 
             @Override
             public Integer call() throws Exception {
-                File file = resolveFile(path);
-                file.syncMetadata();
-
+                // On cache remove the file metadata will be sync and the channel closed
                 fileHandleRegistry.destroy(info.fh());
 
                 if (logger.isDebugEnabled()) {
@@ -611,28 +610,14 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     }
 
     @Override
-    public int releasedir(final String path, final FileInfoWrapper info) {
-        return doWithErrorHandling(new Callable<Integer>() {
-
-            @Override
-            public Integer call() throws Exception {
-                File dir = resolveFile(path);
-                dir.syncMetadata();
-
-                return 0;
-            }
-
-        }, "releasedir");
-    }
-
-    @Override
     public int fsync(final String path, final int datasync, final FileInfoWrapper info) {
         return doWithErrorHandling(new Callable<Integer>() {
 
             @Override
             public Integer call() throws Exception {
-                File file = resolveFile(path);
-                FlushableByteChannel handle = getFileHandle(info.fh());
+                FileHandle handle = getFileHandle(info.fh());
+                File file = handle.getFile();
+                FlushableByteChannel channel = handle.getChannel();
 
                 if (datasync == 0) {
                     file.syncMetadata();
@@ -642,7 +627,7 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                     }
                 }
 
-                handle.flush();
+                channel.flush();
 
                 if (logger.isDebugEnabled()) {
                     logger.debug("{} flushed data of file at {} to storage", getCurrentUser(), path);
@@ -835,8 +820,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
         }
     }
     
-    private FlushableByteChannel getFileHandle(long handleId) throws InvalidFileHandleException {
-        FlushableByteChannel handle = fileHandleRegistry.get(handleId);
+    private FileHandle getFileHandle(long handleId) throws InvalidFileHandleException {
+        FileHandle handle = fileHandleRegistry.get(handleId);
         if (handle == null) {
             throw new InvalidFileHandleException("Non-existing file handle " + handleId);
         }

@@ -14,6 +14,6 @@ public interface FileMetadataRepository extends Repository<FileMetadata> {
      *
      * @return the sorted file metadata list
      */
-    Iterable<FileMetadata> findAllSortedByDescLastAccessTime() throws DbException;
+    Iterable<FileMetadata> findFilesSortedByLastAccessTime() throws DbException;
 
 }

@@ -17,7 +17,10 @@ import org.springframework.beans.factory.annotation.Required;
 import org.springframework.scheduling.annotation.Scheduled;
 
 /**
- * Created by alfonsovasquez on 09/02/14.
+ * Handles the space used by the downloads directory. The downloads dir has a max size. When the max size has been
+ * reached, the LRU content is deleted until the dir size is again less than the max size.
+ *
+ * @author avasquez
  */
 public class DownloadsSpaceManager {
 
@@ -60,11 +63,14 @@ public class DownloadsSpaceManager {
         }
 
         if (dirSize > maxDirSize) {
-            logger.info("Downloads dir {} max size {} reached (current size {})", downloadsDir, maxDirSize, dirSize);
+            String hrDirSize = FileUtils.byteCountToHumanReadableByteSize(dirSize);
+            String hrMaxDirSize = FileUtils.byteCountToHumanReadableByteSize(maxDirSize);
+
+            logger.info("Downloads dir {} max size {} reached (current size {})", downloadsDir, hrMaxDirSize, hrDirSize);
 
             Iterable<FileMetadata> lruMetadata;
             try {
-                lruMetadata = fileMetadataRepo.findAllSortedByDescLastAccessTime();
+                lruMetadata = fileMetadataRepo.findFilesSortedByLastAccessTime();
             } catch (DbException e) {
                 logger.error("Error while retrieving file metadata sorted by desc last access time", e);
 
@@ -75,6 +81,8 @@ public class DownloadsSpaceManager {
             while (dirSize > maxDirSize && lruIter.hasNext()){
                 FileMetadata fileMetadata = lruIter.next();
                 String contentId = fileMetadata.getContentId();
+
+                logger.debug("Trying to delete content '{}' (if it has been downloaded)", contentId);
 
                 try {
                     CloudContent content = (CloudContent) contentStore.find(contentId);
@@ -89,11 +97,13 @@ public class DownloadsSpaceManager {
                 }
             }
 
+            hrDirSize = FileUtils.byteCountToHumanReadableByteSize(dirSize);
+
             if (dirSize <= maxDirSize) {
-                logger.info("Downloads dir {} was shrunk successfully to size {}", downloadsDir, dirSize);
+                logger.info("Downloads dir {} was shrunk successfully to size {}", downloadsDir, hrDirSize);
             } else {
                 logger.warn("Downloads dir {} couldn't be shrunk successfully to less than max size {}. " +
-                        "Current size is {}", downloadsDir, maxDirSize, dirSize);
+                        "Current size is {}", downloadsDir, hrMaxDirSize, hrDirSize);
             }
         }
     }

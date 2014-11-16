@@ -14,7 +14,8 @@ import org.jongo.Jongo;
 public class JongoFileMetadataRepository extends JongoRepository<FileMetadata> implements FileMetadataRepository {
 
     public static final String FILE_METADATA_COLLECTION_NAME = "fileMetadata";
-    public static final String LAST_ACCESS_TIME_DESC_SORT = "{lastAccessTime: -1}";
+    public static final String FILES_QUERY = "{directory: false}";
+    public static final String LAST_ACCESS_TIME_ASC_SORT = "{lastAccessTime: 1}";
 
     public JongoFileMetadataRepository(Jongo jongo) {
         super(FILE_METADATA_COLLECTION_NAME, jongo);
@@ -26,12 +27,11 @@ public class JongoFileMetadataRepository extends JongoRepository<FileMetadata> i
     }
 
     @Override
-    public Iterable<FileMetadata> findAllSortedByDescLastAccessTime() throws DbException {
+    public Iterable<FileMetadata> findFilesSortedByLastAccessTime() throws DbException {
         try {
-            return collection.find().sort(LAST_ACCESS_TIME_DESC_SORT).as(FileMetadata.class);
+            return collection.find(FILES_QUERY).sort(LAST_ACCESS_TIME_ASC_SORT).as(FileMetadata.class);
         } catch (MongoException e) {
-            throw new DbException("[" + collection.getName() + "] Find all sorted by descending last access " +
-                    "time failed", e);
+            throw new DbException("[" + collection.getName() + "] Find files sorted by last access time failed", e);
         }
     }
 
