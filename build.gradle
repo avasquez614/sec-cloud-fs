@@ -1,4 +1,4 @@
-import org.apache.tools.ant.filters.*
+import org.apache.tools.ant.filters.ReplaceTokens
 
 subprojects {
     apply plugin: 'java'
@@ -32,5 +32,9 @@ subprojects {
     processResources {
         filter(ReplaceTokens, tokens: [ installDirRoot: installDirRoot ])
     }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.2'
 }
 
