@@ -1,14 +1,26 @@
 package org.avasquez.seccloudfs.cloud.store;
 
-import org.apache.commons.cli.*;
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
-
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
+
+import org.apache.commons.cli.BasicParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FileUtils;
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 /**
  * Command line application for uploading, downloading and deleting files directly through a {@link org.avasquez
@@ -17,6 +29,8 @@ import java.nio.file.StandardOpenOption;
  * @author avasquez
  */
 public class CloudStoreApp {
+
+    private static final Logger logger = LoggerFactory.getLogger(CloudStoreApp.class);
 
     private static final String CONTEXT_PATH = "application-context.xml";
 
@@ -29,28 +43,36 @@ public class CloudStoreApp {
         this.cloudStore = cloudStore;
 
         Option upload = OptionBuilder
-            .withArgName("id> <file")
-            .hasArgs(2)
-            .withDescription("Upload the given <file> with the specified <id> to the cloud store")
+            .withDescription("Upload the files to the cloud store")
             .create("upload");
 
         Option download = OptionBuilder
-            .withArgName("id> <file")
-            .hasArgs(2)
-            .withDescription("Download the file with the specified <id> from the cloud store to <file> path")
+            .withDescription("Download the files from the cloud store")
             .create("download");
 
         Option delete = OptionBuilder
-            .withArgName("id")
-            .hasArgs(1)
-            .withDescription("Delete the file with the specified <id> from the cloud store")
+            .withDescription("Delete the files from the cloud store")
             .create("delete");
+
+        Option basePath = OptionBuilder
+            .withArgName("basepath")
+            .hasArg(true)
+            .withDescription("The base path for the files in the list (required for upload and download)")
+            .create("basepath");
+
+        Option fileList = OptionBuilder
+            .withArgName("filelist")
+            .hasArg(true)
+            .withDescription("The list of the files to upload, download or delete")
+            .create("filelist");
 
         options = new Options();
         options.addOption("help", false, "Prints this message");
         options.addOption(upload);
         options.addOption(download);
         options.addOption(delete);
+        options.addOption(basePath);
+        options.addOption(fileList);
 
         commandLineParser = new BasicParser();
     }
@@ -59,21 +81,19 @@ public class CloudStoreApp {
         try {
             CommandLine commandLine = commandLineParser.parse(options, args);
             if (commandLine.hasOption("upload")) {
-                String[] values = commandLine.getOptionValues("upload");
-                String id = values[0];
-                String file = values[1];
+                String basePath = getBasePath(commandLine);
+                List<String> files = getFileList(commandLine);
 
-                uploadFile(id, file, cloudStore);
+                uploadFiles(basePath, files, cloudStore);
             } else if (commandLine.hasOption("download")) {
-                String[] values = commandLine.getOptionValues("download");
-                String id = values[0];
-                String file = values[1];
+                String basePath = getBasePath(commandLine);
+                List<String> files = getFileList(commandLine);
 
-                downloadFile(id, file, cloudStore);
+                downloadFiles(basePath, files, cloudStore);
             } else if (commandLine.hasOption("delete")) {
-                String id = commandLine.getOptionValue("delete");
+                List<String> files = getFileList(commandLine);
 
-                deleteFile(id, cloudStore);
+                deleteFiles(files, cloudStore);
             } else if (commandLine.hasOption("help")) {
                 printHelp();
             } else {
@@ -84,13 +104,51 @@ public class CloudStoreApp {
         }
     }
 
+    private String getBasePath(CommandLine commandLine) {
+        if (commandLine.hasOption("basepath")) {
+            return commandLine.getOptionValue("basepath");
+        } else {
+            dieWithHelpInfo("ERROR: basepath command line option is required");
+        }
+
+        // Will never happen
+        return null;
+    }
+
+    private List<String> getFileList(CommandLine commandLine) {
+        if (commandLine.hasOption("filelist")) {
+            String fileListFile = commandLine.getOptionValue("filelist");
+
+            try {
+                return FileUtils.readLines(new File(fileListFile), "UTF-8");
+            } catch (IOException e) {
+                die("ERROR: Unable to read file list file " + fileListFile, e);
+            }
+        } else {
+            dieWithHelpInfo("ERROR: filelist command line option is required");
+        }
+
+        // Will never happen
+        return null;
+    }
+
     private void printHelp() {
         HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("./cloud-store-app", options);
     }
 
-    private void uploadFile(String id, String file, CloudStore cloudStore) {
-        Path path = Paths.get(file);
+    private void uploadFiles(String basePath, List<String> files, CloudStore cloudStore) {
+        logger.info("Started bulk upload");
+
+        for (String file : files) {
+            uploadFile(basePath, file, cloudStore);
+        }
+
+        logger.info("Finished bulk upload");
+    }
+
+    private void uploadFile(String basePath, String id, CloudStore cloudStore) {
+        Path path = Paths.get(basePath, id);
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {
             cloudStore.upload(id, fileChannel, fileChannel.size());
@@ -99,8 +157,18 @@ public class CloudStoreApp {
         }
     }
 
-    private void downloadFile(String id, String file, CloudStore cloudStore) {
-        Path path = Paths.get(file);
+    private void downloadFiles(String basePath, List<String> files, CloudStore cloudStore) {
+        logger.info("Started bulk download");
+
+        for (String file : files) {
+            downloadFile(basePath, file, cloudStore);
+        }
+
+        logger.info("Finished bulk download");
+    }
+
+    private void downloadFile(String basePath, String id, CloudStore cloudStore) {
+        Path path = Paths.get(basePath, id);
 
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE,
              StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -108,6 +176,16 @@ public class CloudStoreApp {
         } catch (IOException e) {
             die("ERROR: Unable to download file", e);
         }
+    }
+
+    private void deleteFiles(List<String> files, CloudStore cloudStore) {
+        logger.info("Started bulk delete");
+
+        for (String file : files) {
+            deleteFile(file, cloudStore);
+        }
+
+        logger.info("Finished bulk delete");
     }
 
     private void deleteFile(String id, CloudStore cloudStore) {
