@@ -152,7 +152,7 @@ public class GoogleDriveCloudStore implements CloudStore {
 
     private File getRootFolder() throws IOException, IllegalArgumentException {
         try {
-            String query = String.format(ROOT_FOLDER_QUERY, rootFolderName);
+            String query = String.format(ROOT_FOLDER_QUERY, rootFolderName.replace("'", "\\'"));
             Drive.Files.List request = drive.files().list().setQ(query);
 
             List<File> files = request.execute().getItems();
@@ -198,7 +198,7 @@ public class GoogleDriveCloudStore implements CloudStore {
 
     private File findFile(String filename) throws IOException, IllegalArgumentException {
         try {
-            String query = String.format(FIND_FILE_QUERY, rootFolder.getId(), filename);
+            String query = String.format(FIND_FILE_QUERY, rootFolder.getId(), filename.replace("'", "\\'"));
             Drive.Files.List request = drive.files().list().setQ(query);
 
             List<File> files = request.execute().getItems();
