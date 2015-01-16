@@ -3,7 +3,6 @@ package org.avasquez.seccloudfs.cloud.store;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
@@ -17,6 +16,8 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,16 +55,22 @@ public class CloudStoreApp {
             .withDescription("Delete the files from the cloud store")
             .create("delete");
 
-        Option basePath = OptionBuilder
-            .withArgName("basepath")
+        Option path = OptionBuilder
+            .withArgName("path")
             .hasArg(true)
-            .withDescription("The base path for the files in the list (required for upload and download)")
-            .create("basepath");
+            .withDescription("The path for the <file> or files in <filelist> (required for upload and download)")
+            .create("path");
+
+        Option id = OptionBuilder
+            .withArgName("id")
+            .hasArg(true)
+            .withDescription("The ID of the single file to upload, download or delete")
+            .create("id");
 
         Option fileList = OptionBuilder
             .withArgName("filelist")
             .hasArg(true)
-            .withDescription("The list of the files to upload, download or delete")
+            .withDescription("The list of IDs of the files to upload, download or delete")
             .create("filelist");
 
         options = new Options();
@@ -71,7 +78,8 @@ public class CloudStoreApp {
         options.addOption(upload);
         options.addOption(download);
         options.addOption(delete);
-        options.addOption(basePath);
+        options.addOption(path);
+        options.addOption(id);
         options.addOption(fileList);
 
         commandLineParser = new BasicParser();
@@ -81,19 +89,23 @@ public class CloudStoreApp {
         try {
             CommandLine commandLine = commandLineParser.parse(options, args);
             if (commandLine.hasOption("upload")) {
-                String basePath = getBasePath(commandLine);
-                List<String> files = getFileList(commandLine);
-
-                uploadFiles(basePath, files, cloudStore);
+                if (commandLine.hasOption("id")) {
+                    uploadFile(getPath(commandLine), getId(commandLine), cloudStore);
+                } else {
+                    uploadFiles(getPath(commandLine), getFileList(commandLine), cloudStore);
+                }
             } else if (commandLine.hasOption("download")) {
-                String basePath = getBasePath(commandLine);
-                List<String> files = getFileList(commandLine);
-
-                downloadFiles(basePath, files, cloudStore);
+                if (commandLine.hasOption("id")) {
+                    downloadFile(getPath(commandLine), getId(commandLine), cloudStore);
+                } else {
+                    downloadFiles(getPath(commandLine), getFileList(commandLine), cloudStore);
+                }
             } else if (commandLine.hasOption("delete")) {
-                List<String> files = getFileList(commandLine);
-
-                deleteFiles(files, cloudStore);
+                if (commandLine.hasOption("id")) {
+                    deleteFile(getId(commandLine), cloudStore);
+                } else {
+                    deleteFiles(getFileList(commandLine), cloudStore);
+                }
             } else if (commandLine.hasOption("help")) {
                 printHelp();
             } else {
@@ -104,32 +116,41 @@ public class CloudStoreApp {
         }
     }
 
-    private String getBasePath(CommandLine commandLine) {
-        if (commandLine.hasOption("basepath")) {
-            return commandLine.getOptionValue("basepath");
+    private String getPath(CommandLine commandLine) {
+        String path = commandLine.getOptionValue("path");
+        if (StringUtils.isNotEmpty(path)) {
+            path = StringUtils.stripEnd(path, SystemUtils.LINE_SEPARATOR);
         } else {
-            dieWithHelpInfo("ERROR: basepath command line option is required");
+            dieWithHelpInfo("ERROR: path command line option is required");
         }
 
-        // Will never happen
-        return null;
+        return path;
+    }
+
+    private String getId(CommandLine commandLine) {
+        String id = commandLine.getOptionValue("id");
+        if (StringUtils.isEmpty(id)) {
+            dieWithHelpInfo("ERROR: id command line option is required");
+        }
+
+        return id;
     }
 
     private List<String> getFileList(CommandLine commandLine) {
-        if (commandLine.hasOption("filelist")) {
-            String fileListFile = commandLine.getOptionValue("filelist");
+        List<String> fileList = null;
+        String fileListFile = commandLine.getOptionValue("fileListFile");
 
+        if (StringUtils.isNotEmpty(fileListFile)) {
             try {
-                return FileUtils.readLines(new File(fileListFile), "UTF-8");
+                fileList = FileUtils.readLines(new File(fileListFile), "UTF-8");
             } catch (IOException e) {
                 die("ERROR: Unable to read file list file " + fileListFile, e);
             }
         } else {
-            dieWithHelpInfo("ERROR: filelist command line option is required");
+            dieWithHelpInfo("ERROR: path command line option is required");
         }
 
-        // Will never happen
-        return null;
+        return fileList;
     }
 
     private void printHelp() {
@@ -137,41 +158,37 @@ public class CloudStoreApp {
         formatter.printHelp("./cloud-store-app", options);
     }
 
-    private void uploadFiles(String basePath, List<String> files, CloudStore cloudStore) {
+    private void uploadFiles(String path, List<String> files, CloudStore cloudStore) {
         logger.info("Started bulk upload");
 
         for (String file : files) {
-            uploadFile(basePath, file, cloudStore);
+            uploadFile(path + SystemUtils.LINE_SEPARATOR + file, file, cloudStore);
         }
 
         logger.info("Finished bulk upload");
     }
 
-    private void uploadFile(String basePath, String id, CloudStore cloudStore) {
-        Path path = Paths.get(basePath, id);
-
-        try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ)) {
+    private void uploadFile(String path, String id, CloudStore cloudStore) {
+        try (FileChannel fileChannel = FileChannel.open(Paths.get(path), StandardOpenOption.READ)) {
             cloudStore.upload(id, fileChannel, fileChannel.size());
         } catch (IOException e) {
             die("ERROR: Unable to upload file", e);
         }
     }
 
-    private void downloadFiles(String basePath, List<String> files, CloudStore cloudStore) {
+    private void downloadFiles(String path, List<String> files, CloudStore cloudStore) {
         logger.info("Started bulk download");
 
         for (String file : files) {
-            downloadFile(basePath, file, cloudStore);
+            downloadFile(path + SystemUtils.LINE_SEPARATOR + file, file, cloudStore);
         }
 
         logger.info("Finished bulk download");
     }
 
-    private void downloadFile(String basePath, String id, CloudStore cloudStore) {
-        Path path = Paths.get(basePath, id);
-
-        try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE,
-             StandardOpenOption.TRUNCATE_EXISTING)) {
+    private void downloadFile(String path, String id, CloudStore cloudStore) {
+        try (FileChannel fileChannel = FileChannel.open(Paths.get(path), StandardOpenOption.WRITE,
+             StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             cloudStore.download(id, fileChannel);
         } catch (IOException e) {
             die("ERROR: Unable to download file", e);
