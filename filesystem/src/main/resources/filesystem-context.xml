@@ -125,6 +125,8 @@
         <property name="options" value="${fuse.mount.options}"/>
         <property name="fileHandleRegistry" ref="fileHandleRegistry"/>
         <property name="fileSystem" ref="fileSystem"/>
+        <property name="defaultDirPermissions" value="${filesystem.dir.permissions.default}"/>
+        <property name="defaultFilePermissions" value="${filesystem.file.permissions.default}"/>
         <property name="rootUid" value="${users.root.uid}"/>
         <property name="rootPermissions" value="${filesystem.root.permissions}"/>
         <property name="blockSize" value="${fuse.filesystem.blockSize}"/>

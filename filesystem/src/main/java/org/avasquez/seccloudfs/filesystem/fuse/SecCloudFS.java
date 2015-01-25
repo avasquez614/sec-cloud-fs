@@ -52,6 +52,8 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     private String[] options;
     private FileSystem fileSystem;
     private FileHandleRegistry fileHandleRegistry;
+    private long defaultDirPermissions;
+    private long defaultFilePermissions;
     private long rootPermissions;
     private int rootUid;
     private long blockSize;
@@ -91,8 +93,18 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
     }
 
     @Required
-    public void setRootPermissions(String octalPermissions) {
-        this.rootPermissions = Long.valueOf(octalPermissions, 8);
+    public void setDefaultDirPermissions(String defaultDirPermissions) {
+        this.defaultDirPermissions = Long.valueOf(defaultDirPermissions, 8);
+    }
+
+    @Required
+    public void setDefaultFilePermissions(String defaultFilePermissions) {
+        this.defaultFilePermissions = Long.valueOf(defaultFilePermissions, 8);
+    }
+
+    @Required
+    public void setRootPermissions(String rootPermissions) {
+        this.rootPermissions = Long.valueOf(rootPermissions, 8);
     }
 
     @Required
@@ -248,6 +260,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                 User owner = new User(getCurrentUid(), getCurrentGid());
                 long permissions = getPermissionsBits(mode.mode());
 
+                if(permissions == 0) {
+                    permissions = defaultDirPermissions;
+                }
+
                 parent.createFile(getFilename(path), true, owner, permissions);
                 updateLastModifiedTime(parent, true);
 
@@ -392,6 +408,10 @@ public class SecCloudFS extends FuseFilesystemAdapterFull {
                         if (!parent.hasChild(name)) {
                             User owner = new User(getCurrentUid(), getCurrentGid());
                             long permissions = getPermissionsBits(mode.mode());
+
+                            if (permissions == 0) {
+                                permissions = defaultFilePermissions;
+                            }
 
                             file = parent.createFile(name, false, owner, permissions);
                             updateLastModifiedTime(parent, true);
