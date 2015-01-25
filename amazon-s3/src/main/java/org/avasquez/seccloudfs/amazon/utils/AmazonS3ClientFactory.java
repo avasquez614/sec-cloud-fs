@@ -14,7 +14,18 @@ public class AmazonS3ClientFactory implements ClientFactory<TransferManager, Ama
 
     @Override
     public TransferManager createClient(AmazonCredentials credentials) {
-        return new TransferManager(credentials.getCredentials());
+        final TransferManager tm = new TransferManager(credentials.getCredentials());
+
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+
+            @Override
+            public void run() {
+                tm.shutdownNow();
+            }
+
+        });
+
+        return tm;
     }
 
 }

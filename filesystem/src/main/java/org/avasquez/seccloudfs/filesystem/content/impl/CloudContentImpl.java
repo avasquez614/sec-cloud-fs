@@ -37,6 +37,7 @@ public class CloudContentImpl implements CloudContent {
 
     private ContentMetadata metadata;
     private ContentMetadataRepository metadataRepo;
+    private Path tmpDir;
     private Path downloadPath;
     private CloudStore cloudStore;
     private Uploader uploader;
@@ -47,12 +48,13 @@ public class CloudContentImpl implements CloudContent {
     private volatile int openChannels;
     private int currentDownloadRetries;
 
-    public CloudContentImpl(ContentMetadata metadata, ContentMetadataRepository metadataRepo, Path downloadPath,
-                            Lock accessLock, CloudStore cloudStore, Uploader uploader, long retryDownloadDelaySecs,
-                            int maxDownloadRetries)
+    public CloudContentImpl(ContentMetadata metadata, ContentMetadataRepository metadataRepo, Path tmpDir,
+                            Path downloadPath, Lock accessLock, CloudStore cloudStore, Uploader uploader,
+                            long retryDownloadDelaySecs, int maxDownloadRetries)
         throws IOException {
         this.metadata = metadata;
         this.metadataRepo = metadataRepo;
+        this.tmpDir = tmpDir;
         this.downloadPath = downloadPath;
         this.accessLock = accessLock;
         this.cloudStore = cloudStore;
@@ -235,7 +237,7 @@ public class CloudContentImpl implements CloudContent {
     }
 
     private void download() throws IOException {
-        Path tmpPath = Files.createTempFile(TMP_FILE_PREFIX, TMP_FILE_SUFFIX);
+        Path tmpPath = Files.createTempFile(tmpDir, TMP_FILE_PREFIX, TMP_FILE_SUFFIX);
 
         try (FileChannel tmpFile = FileChannel.open(tmpPath, StandardOpenOption.WRITE)) {
             cloudStore.download(metadata.getId(), tmpFile);

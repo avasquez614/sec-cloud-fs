@@ -33,6 +33,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
 
     private ContentMetadataRepository metadataRepo;
     private CloudStore cloudStore;
+    private Path tmpDir;
     private Path downloadsDir;
     private Path snapshotDir;
     private ScheduledExecutorService executorService;
@@ -50,6 +51,11 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     @Required
     public void setCloudStore(CloudStore cloudStore) {
         this.cloudStore = cloudStore;
+    }
+
+    @Required
+    public void setTmpDir(Path tmpDir) {
+        this.tmpDir = tmpDir;
     }
 
     @Required
@@ -174,8 +180,8 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         Uploader uploader = new Uploader(metadata, metadataRepo, cloudStore, downloadPath, accessLock,
                 snapshotDir, executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
 
-        return new CloudContentImpl(metadata, metadataRepo, downloadPath, accessLock, cloudStore, uploader,
-            retryDownloadDelaySecs, maxDownloadRetries);
+        return new CloudContentImpl(metadata, metadataRepo, tmpDir, downloadPath, accessLock, cloudStore, uploader,
+                                    retryDownloadDelaySecs, maxDownloadRetries);
     }
 
     private ContentMetadata findMetadata(String id) throws IOException {

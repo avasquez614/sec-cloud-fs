@@ -91,6 +91,7 @@
         <property name="cacheContainer" ref="cacheManager"/>
         <property name="metadataRepo" ref="contentMetadataRepo"/>
         <property name="cloudStore" ref="distributedCloudStore"/>
+        <property name="tmpDir" ref="${tmp.dir}"/>
         <property name="downloadsDir" value="${cloud.content.downloads.dir}"/>
         <property name="snapshotDir" value="${cloud.content.snapshots.dir}"/>
         <property name="executorService" ref="threadPool"/>
