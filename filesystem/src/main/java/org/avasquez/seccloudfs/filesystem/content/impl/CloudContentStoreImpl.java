@@ -54,8 +54,8 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
     }
 
     @Required
-    public void setTmpDir(Path tmpDir) {
-        this.tmpDir = tmpDir;
+    public void setTmpDir(String tmpDir) {
+        this.tmpDir = Paths.get(tmpDir);
     }
 
     @Required
