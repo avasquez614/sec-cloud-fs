@@ -318,14 +318,20 @@ public class CloudContentImpl implements CloudContent {
 
         @Override
         public int read(ByteBuffer dst) throws IOException {
+            int bytesRead;
+
             initFileChannel();
 
             accessLock.lock();
             try {
-                return fileChannel.read(dst);
+                bytesRead = fileChannel.read(dst);
             } finally {
                 accessLock.unlock();
             }
+
+            logger.trace("{} bytes read from content '{}'", bytesRead, metadata.getId());
+
+            return bytesRead;
         }
 
         @Override
@@ -340,6 +346,8 @@ public class CloudContentImpl implements CloudContent {
             } finally {
                 accessLock.unlock();
             }
+
+            logger.trace("{} bytes written to content '{}'", bytesWritten, metadata.getId());
 
             uploader.notifyUpdate();
 
@@ -356,6 +364,9 @@ public class CloudContentImpl implements CloudContent {
             } finally {
                 accessLock.unlock();
             }
+
+
+            logger.trace("Content '{}' truncated to size {}", metadata.getId(), size);
 
             uploader.notifyUpdate();
 
