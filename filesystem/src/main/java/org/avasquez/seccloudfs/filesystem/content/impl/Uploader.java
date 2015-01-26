@@ -1,12 +1,5 @@
 package org.avasquez.seccloudfs.filesystem.content.impl;
 
-import org.avasquez.seccloudfs.cloud.CloudStore;
-import org.avasquez.seccloudfs.exception.DbException;
-import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
-import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -16,6 +9,13 @@ import java.util.Date;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+
+import org.avasquez.seccloudfs.cloud.CloudStore;
+import org.avasquez.seccloudfs.exception.DbException;
+import org.avasquez.seccloudfs.filesystem.db.model.ContentMetadata;
+import org.avasquez.seccloudfs.filesystem.db.repos.ContentMetadataRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by alfonsovasquez on 11/01/14.
@@ -78,13 +78,13 @@ public class Uploader {
     }
 
     private void uploadUntilNoUpdatesReceived() {
-        synchronized (this) {
+        synchronized (Uploader.this) {
             try {
                 while (!metadata.isMarkedAsDeleted() && !hasTimeoutOccurred()) {
                     logger.trace("Update received for content '{}'. Waiting {} secs for next update",
-                            metadata.getId(), timeoutForNextUpdateSecs);
+                                 metadata.getId(), timeoutForNextUpdateSecs);
 
-                    wait(TimeUnit.SECONDS.toMillis(timeoutForNextUpdateSecs));
+                    Uploader.this.wait(TimeUnit.SECONDS.toMillis(timeoutForNextUpdateSecs));
                 }
             } catch (InterruptedException | UploadFailedException e) {
                 logger.error("Error while waiting for content " + metadata + " updates before upload", e);

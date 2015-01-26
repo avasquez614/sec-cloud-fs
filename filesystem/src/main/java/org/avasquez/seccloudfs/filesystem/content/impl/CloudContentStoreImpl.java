@@ -178,7 +178,7 @@ public class CloudContentStoreImpl extends AbstractCachedContentStore {
         Path downloadPath = getDownloadPath(metadata.getId());
         Lock accessLock = new ReentrantLock();
         Uploader uploader = new Uploader(metadata, metadataRepo, cloudStore, downloadPath, accessLock,
-                snapshotDir, executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
+                                         snapshotDir, executorService, timeoutForNextUpdateSecs, retryUploadDelaySecs);
 
         return new CloudContentImpl(metadata, metadataRepo, tmpDir, downloadPath, accessLock, cloudStore, uploader,
                                     retryDownloadDelaySecs, maxDownloadRetries);

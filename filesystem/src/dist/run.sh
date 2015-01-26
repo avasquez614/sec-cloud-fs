@@ -59,4 +59,4 @@ fi
 #export JAVA_OPTS="-server -Xms1024m -Xmx2048m -XX:MaxPermSize=512m -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
 export JAVA_OPTS="-server -Xms1024m -Xmx2048m -XX:MaxPermSize=512m"
 
-./bin/seccloudfs "$@"
+nohup ./bin/seccloudfs "$@" &
