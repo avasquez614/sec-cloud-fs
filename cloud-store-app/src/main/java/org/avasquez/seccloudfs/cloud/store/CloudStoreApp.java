@@ -180,7 +180,7 @@ public class CloudStoreApp {
         logger.info("Started bulk download");
 
         for (String file : files) {
-            downloadFile(path + SystemUtils.LINE_SEPARATOR + file, file, cloudStore);
+            downloadFile(path + SystemUtils.FILE_SEPARATOR + file, file, cloudStore);
         }
 
         logger.info("Finished bulk download");
