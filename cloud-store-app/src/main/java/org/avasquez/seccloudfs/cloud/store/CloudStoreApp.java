@@ -162,7 +162,7 @@ public class CloudStoreApp {
         logger.info("Started bulk upload");
 
         for (String file : files) {
-            uploadFile(path + SystemUtils.LINE_SEPARATOR + file.trim(), file, cloudStore);
+            uploadFile(path + SystemUtils.FILE_SEPARATOR + file, file, cloudStore);
         }
 
         logger.info("Finished bulk upload");
