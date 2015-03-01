@@ -22,7 +22,8 @@
     <!--<logger name="org.avasquez.seccloudfs.filesystem.fuse.SecCloudFS" level="DEBUG"/>-->
     <!--<logger name="org.avasquez.seccloudfs.filesystem.files.impl.FileObjectStoreImpl" level="DEBUG"/>-->
     <!--<logger name="org.avasquez.seccloudfs.filesystem.files.impl.DirectoryEntries" level="DEBUG"/>-->
-    <!--<logger name="org.avasquez.seccloudfs.filesystem.content.impl.Uploader" level="DEBUG"/>-->
+    <!--<logger name="org.avasquez.seccloudfs.filesystem.content.impl.CloudContentImpl" level="TRACE"/>-->
+    <!--<logger name="org.avasquez.seccloudfs.filesystem.content.impl.Uploader" level="TRACE"/>-->
     <!--<logger name="org.avasquez.seccloudfs.erasure" level="DEBUG"/>-->
     <!--<logger name="org.avasquez.seccloudfs.processing" level="DEBUG"/>-->
     <!--<logger name="org.avasquez.seccloudfs.dropbox" level="DEBUG"/>-->

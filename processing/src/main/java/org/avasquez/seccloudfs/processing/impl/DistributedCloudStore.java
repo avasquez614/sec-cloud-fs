@@ -1,5 +1,22 @@
 package org.avasquez.seccloudfs.processing.impl;
 
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorCompletionService;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.avasquez.seccloudfs.cloud.CloudStore;
@@ -16,19 +33,6 @@ import org.avasquez.seccloudfs.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
-
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorCompletionService;
 
 /**
  * {@link org.avasquez.seccloudfs.cloud.CloudStore} implementation that uses erasure coding to distribute the data
@@ -112,7 +116,7 @@ public class DistributedCloudStore implements CloudStore {
             SliceMetadata[] codingSliceMetadata = createSliceMetadata(codingSlices);
             Queue<CloudStore> availableCloudStores = new ConcurrentLinkedQueue<>(cloudStoreRegistry.list());
             List<UploadTask> uploadTasks = createUploadTasks(dataSlices, codingSlices, dataSliceMetadata,
-                codingSliceMetadata, sliceSize, availableCloudStores);
+                                                             codingSliceMetadata, sliceSize, availableCloudStores);
             CompletionService<Boolean> uploadCompletionService = new ExecutorCompletionService<>(taskExecutor);
 
             for (UploadTask task : uploadTasks) {

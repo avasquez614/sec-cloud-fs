@@ -138,7 +138,7 @@ public class CloudStoreApp {
 
     private List<String> getFileList(CommandLine commandLine) {
         List<String> fileList = null;
-        String fileListFile = commandLine.getOptionValue("fileListFile");
+        String fileListFile = commandLine.getOptionValue("filelist");
 
         if (StringUtils.isNotEmpty(fileListFile)) {
             try {
@@ -147,7 +147,7 @@ public class CloudStoreApp {
                 die("ERROR: Unable to read file list file " + fileListFile, e);
             }
         } else {
-            dieWithHelpInfo("ERROR: path command line option is required");
+            dieWithHelpInfo("ERROR: filelist command line option is required");
         }
 
         return fileList;
