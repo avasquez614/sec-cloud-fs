@@ -2,6 +2,8 @@ package org.avasquez.seccloudfs.amazon.utils;
 
 import com.amazonaws.services.s3.transfer.TransferManager;
 
+import javax.annotation.PreDestroy;
+
 import org.avasquez.seccloudfs.utils.adapters.ClientFactory;
 
 /**
@@ -12,18 +14,16 @@ import org.avasquez.seccloudfs.utils.adapters.ClientFactory;
  */
 public class AmazonS3ClientFactory implements ClientFactory<TransferManager, AmazonCredentials> {
 
+    private TransferManager tm;
+
+    @PreDestroy
+    public void destroy() {
+        tm.shutdownNow();
+    }
+
     @Override
     public TransferManager createClient(AmazonCredentials credentials) {
-        final TransferManager tm = new TransferManager(credentials.getCredentials());
-
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-
-            @Override
-            public void run() {
-                tm.shutdownNow();
-            }
-
-        });
+        tm = new TransferManager(credentials.getCredentials());
 
         return tm;
     }

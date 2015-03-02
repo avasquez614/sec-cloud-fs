@@ -231,12 +231,13 @@ public class CloudStoreApp {
 
     public static void main(String... args) {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(CONTEXT_PATH);
-        context.registerShutdownHook();
 
         CloudStore cloudStore = context.getBean(CloudStore.class);
         CloudStoreApp app = new CloudStoreApp(cloudStore);
 
         app.run(args);
+
+        context.close();
     }
 
 }
